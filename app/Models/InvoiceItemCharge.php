@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use App\Enums\ChargeCalculationType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InvoiceItemCharge extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = [
         'invoice_item_id', 'charge_type_id', 'label', 'code', 'calculation_type',

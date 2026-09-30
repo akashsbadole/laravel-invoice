@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerNote extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = ['customer_id', 'invoice_id', 'type', 'note', 'created_by'];
 

@@ -9,7 +9,7 @@ interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
 export function Heading({ title, description, className, ...props }: HeadingProps) {
     return (
         <div className={cn('flex flex-col gap-1', className)} {...props}>
-            <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+            <h2 className="font-display text-[1.7rem] font-semibold leading-tight tracking-normal">{title}</h2>
             {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
     );

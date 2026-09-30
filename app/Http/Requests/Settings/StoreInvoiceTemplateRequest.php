@@ -19,7 +19,7 @@ class StoreInvoiceTemplateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:100', 'alpha_dash', Rule::unique('invoice_templates', 'slug')],
+            'slug' => ['required', 'string', 'max:100', 'alpha_dash', Rule::unique('invoice_templates', 'slug')->where('tenant_id', $this->user()->tenant_id)],
             'accent_color' => ['required', 'string', 'max:7'],
             'header_alignment' => ['required', 'in:left,center'],
             'footer_note' => ['nullable', 'string', 'max:500'],

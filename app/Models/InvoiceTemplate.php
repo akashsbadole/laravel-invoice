@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
+use App\Concerns\TenantScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InvoiceTemplate extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = ['name', 'slug', 'is_default', 'layout_config'];
 
@@ -28,9 +32,15 @@ class InvoiceTemplate extends Model
 
     public static function currentDefault(): self
     {
-        return static::query()->where('is_default', true)->first()
-            ?? static::query()->firstOrCreate(
-                ['slug' => 'default'],
+        return static::forTenantDefault(Tenant::currentId());
+    }
+
+    public static function forTenantDefault(?int $tenantId): self
+    {
+        return static::query()->withoutGlobalScope(TenantScope::class)
+            ->where('tenant_id', $tenantId)->where('is_default', true)->first()
+            ?? static::query()->withoutGlobalScope(TenantScope::class)->firstOrCreate(
+                ['tenant_id' => $tenantId, 'slug' => 'default'],
                 ['name' => 'Default', 'is_default' => true, 'layout_config' => static::defaultLayoutConfig()],
             );
     }

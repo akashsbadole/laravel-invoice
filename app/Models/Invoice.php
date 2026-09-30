@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use App\Enums\InvoiceStatus;
 use App\Enums\PricingMode;
 use App\Enums\TaxMode;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 
 class Invoice extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = [
         'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',

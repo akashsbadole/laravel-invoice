@@ -1,6 +1,9 @@
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/manrope';
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -65,10 +68,12 @@ void createInertiaApp({
 
         createRoot(el).render(
             <StrictMode>
-                <TooltipProvider delayDuration={0}>
-                    {applyLayout(name, breadcrumbs, <App {...props} />)}
-                    <Toaster />
-                </TooltipProvider>
+                <ErrorBoundary>
+                    <TooltipProvider delayDuration={0}>
+                        {applyLayout(name, breadcrumbs, <App {...props} />)}
+                        <Toaster position="top-right" richColors closeButton />
+                    </TooltipProvider>
+                </ErrorBoundary>
             </StrictMode>,
         );
     },

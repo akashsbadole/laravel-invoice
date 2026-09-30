@@ -19,7 +19,7 @@ class StoreCatalogItemRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'item_code' => ['nullable', 'string', 'max:100', Rule::unique('catalog_items', 'item_code')],
+            'item_code' => ['nullable', 'string', 'max:100', Rule::unique('catalog_items', 'item_code')->where('tenant_id', $this->user()->tenant_id)],
             'hsn_code' => ['nullable', 'string', 'max:20'],
             'metal_type' => ['nullable', 'string', 'max:50'],
             'purity' => ['nullable', 'string', 'max:20'],

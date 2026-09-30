@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use App\Enums\RateType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InvoiceItem extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = [
         'invoice_id', 'sort_order', 'item_name', 'description', 'item_code', 'hsn_code',

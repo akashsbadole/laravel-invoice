@@ -19,7 +19,7 @@ class StoreChargeTypeRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'string', 'max:100', 'alpha_dash', Rule::unique('charge_types', 'code')],
+            'code' => ['required', 'string', 'max:100', 'alpha_dash', Rule::unique('charge_types', 'code')->where('tenant_id', $this->user()->tenant_id)],
             'calculation_type' => ['required', 'in:fixed,percentage,per_gram,per_carat'],
             'applies_to' => ['required', 'in:item,invoice'],
             'default_rate' => ['nullable', 'numeric', 'min:0'],

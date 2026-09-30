@@ -294,10 +294,13 @@ export default function Dashboard({
 
 function Stat({ label, value, emphasize, small }: { label: string; value: string | number; emphasize?: boolean; small?: boolean }) {
     return (
-        <Card>
-            <CardContent className="px-4">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className={`mt-1 font-semibold ${small ? 'text-base' : 'text-lg'} ${emphasize ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+        <Card className="min-w-0 overflow-hidden">
+            <CardContent className="min-w-0 p-4">
+                <p className="truncate text-xs text-muted-foreground" title={String(value)}>{label}</p>
+                <p
+                    className={`mt-1 truncate font-semibold tabular-nums ${small ? 'text-base' : 'text-lg md:text-xl'} ${emphasize ? 'text-gold-dark dark:text-gold-light' : ''}`}
+                    title={String(value)}
+                >
                     {value}
                 </p>
             </CardContent>

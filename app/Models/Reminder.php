@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Reminder extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = ['customer_id', 'assigned_to', 'title', 'notes', 'remind_on', 'is_done', 'created_by'];
 

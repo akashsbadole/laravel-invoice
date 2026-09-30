@@ -39,14 +39,14 @@ class InvoicePdfController extends Controller
     {
         $invoice->load(['customer', 'salesperson', 'items.charges', 'template']);
 
-        $template = $invoice->template ?? InvoiceTemplate::currentDefault();
+        $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
 
         $token = $invoice->shareLinks()->where('is_active', true)->latest()->value('token');
         $publicUrl = $token ? route('invoices.public.show', $token) : null;
 
         $pdf = Pdf::loadView('pdf.invoice', [
             'invoice' => $invoice,
-            'business' => BusinessSetting::current(),
+            'business' => BusinessSetting::forTenant($invoice->tenant_id),
             'template' => $template,
             'publicUrl' => $publicUrl,
             'qrSvg' => $publicUrl && $template->config('show_qr_code') ? $this->qrSvg($publicUrl) : null,

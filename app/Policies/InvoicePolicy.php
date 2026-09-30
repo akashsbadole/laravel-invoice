@@ -15,7 +15,7 @@ class InvoicePolicy
 
     public function view(User $user, Invoice $invoice): bool
     {
-        return true;
+        return $this->sameTenant($user, $invoice->tenant_id);
     }
 
     public function create(User $user): bool
@@ -25,6 +25,10 @@ class InvoicePolicy
 
     public function update(User $user, Invoice $invoice): bool
     {
+        if (! $this->sameTenant($user, $invoice->tenant_id)) {
+            return false;
+        }
+
         if ($invoice->status->value === 'cancelled') {
             return $user->role === UserRole::Admin;
         }
@@ -34,21 +38,26 @@ class InvoicePolicy
 
     public function delete(User $user, Invoice $invoice): bool
     {
-        return $user->role === UserRole::Admin;
+        return $this->sameTenant($user, $invoice->tenant_id) && $user->role === UserRole::Admin;
     }
 
     public function cancel(User $user, Invoice $invoice): bool
     {
-        return $user->role->canWrite();
+        return $this->sameTenant($user, $invoice->tenant_id) && $user->role->canWrite();
     }
 
     public function recordPayment(User $user, Invoice $invoice): bool
     {
-        return $user->role->canWrite();
+        return $this->sameTenant($user, $invoice->tenant_id) && $user->role->canWrite();
     }
 
     public function share(User $user, Invoice $invoice): bool
     {
-        return $user->role->canWrite();
+        return $this->sameTenant($user, $invoice->tenant_id) && $user->role->canWrite();
+    }
+
+    protected function sameTenant(User $user, ?int $tenantId): bool
+    {
+        return $tenantId !== null && $user->tenant_id === $tenantId;
     }
 }

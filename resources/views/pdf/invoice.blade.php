@@ -4,60 +4,73 @@
     <meta charset="utf-8">
     <title>{{ $invoice->invoice_number }}</title>
     <style>
-        @page { margin: 28px 32px; }
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1e293b; }
+        @page { margin: 0; }
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1c2420; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
+        .letterhead { background: #0b3d2e; color: #faf7f0; padding: 26px 32px 20px; }
+        .letterhead .business-name { font-size: 21px; font-weight: bold; letter-spacing: 0.06em; color: #faf7f0; }
+        .letterhead .muted { color: #c9bfae; }
+        .gold-band { height: 3px; background: #c9a227; }
+        .body-wrap { padding: 20px 32px 28px; }
         .header-table td { vertical-align: top; }
-        .business-name { font-size: 18px; font-weight: bold; color: {{ $template->config('accent_color') }}; }
-        .muted { color: #64748b; }
+        .muted { color: #6b7280; }
         .right { text-align: right; }
         .center { text-align: center; }
-        h2 { font-size: 14px; margin: 18px 0 6px; }
+        h2 { font-size: 12px; margin: 18px 0 6px; letter-spacing: 0.12em; text-transform: uppercase; color: #0b3d2e; }
+        .invoice-title { font-size: 20px; font-weight: bold; letter-spacing: 0.18em; color: #0b3d2e; margin: 0 0 4px; }
+        .invoice-no { font-size: 13px; font-weight: bold; color: #8c6e1a; }
         .badge {
             display: inline-block; padding: 2px 8px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; text-transform: uppercase;
-            background: #f1f5f9; color: #334155;
+            font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
+            background: #f4ecd8; color: #8c6e1a; border: 1px solid #c9a227;
         }
         .items-table th {
-            background: #f8fafc; border-bottom: 2px solid {{ $template->config('accent_color') }};
-            padding: 6px 4px; text-align: left; font-size: 9.5px; text-transform: uppercase;
+            background: #0b3d2e; color: #faf7f0;
+            padding: 7px 5px; text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
         }
-        .items-table td { padding: 6px 4px; border-bottom: 1px solid #e2e8f0; font-size: 10.5px; }
+        .items-table td { padding: 6px 5px; border-bottom: 1px solid #e7e0d0; font-size: 10.5px; }
+        .items-table tr:nth-child(even) td { background: #faf7f0; }
         .totals-table td { padding: 3px 0; }
-        .totals-table .label { color: #64748b; }
-        .grand-total { font-size: 14px; font-weight: bold; border-top: 1px solid #1e293b; padding-top: 6px !important; }
-        .footer { margin-top: 24px; font-size: 9.5px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+        .totals-table .label { color: #6b7280; }
+        .grand-total { font-size: 14px; font-weight: bold; border-top: 2px solid #c9a227; padding-top: 6px !important; }
+        .grand-total td { color: #0b3d2e; }
+        .footer { margin-top: 24px; font-size: 9.5px; color: #6b7280; border-top: 1px solid #e7e0d0; padding-top: 10px; }
         .signature-block { margin-top: 40px; }
         .signature-block img { max-height: 50px; }
+        .sign-line { border-top: 1px solid #0b3d2e; margin-top: 34px; padding-top: 4px; }
     </style>
 </head>
 <body>
-    <table class="header-table">
-        <tr>
-            <td style="width: 60%; text-align: {{ $template->config('header_alignment') }};">
-                @if($business->logo_path)
-                    <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 48px; margin-bottom: 6px;">
-                @endif
-                <div class="business-name">{{ $business->business_name }}</div>
-                <div class="muted">
-                    {{ $business->address }}<br>
-                    @if($business->phone) Phone: {{ $business->phone }} @endif
-                    @if($business->email) &nbsp;·&nbsp; {{ $business->email }} @endif
-                    <br>
-                    @if($business->tax_number) GSTIN: {{ $business->tax_number }} @endif
-                </div>
-            </td>
-            <td style="width: 40%;" class="right">
-                <h2 style="margin-top:0;">INVOICE</h2>
-                <div><strong>{{ $invoice->invoice_number }}</strong></div>
-                <div class="muted">Date: {{ $invoice->invoice_date->format('d M Y') }}</div>
-                @if($invoice->due_date)
-                    <div class="muted">Due: {{ $invoice->due_date->format('d M Y') }}</div>
-                @endif
-                <div class="badge">{{ str_replace('_', ' ', $invoice->status->value) }}</div>
-            </td>
-        </tr>
-    </table>
+    <div class="letterhead">
+        <table class="header-table">
+            <tr>
+                <td style="width: 62%;">
+                    @if($business->logo_path)
+                        <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 44px; margin-bottom: 8px;">
+                    @endif
+                    <div class="business-name">{{ $business->business_name }}</div>
+                    <div class="muted" style="margin-top: 4px;">
+                        {{ $business->address }}<br>
+                        @if($business->phone) Phone: {{ $business->phone }} @endif
+                        @if($business->email) &nbsp;·&nbsp; {{ $business->email }} @endif
+                        <br>
+                        @if($business->tax_number) GSTIN: {{ $business->tax_number }} @endif
+                    </div>
+                </td>
+                <td style="width: 38%; text-align: right;">
+                    <div class="invoice-title">INVOICE</div>
+                    <div class="invoice-no">{{ $invoice->invoice_number }}</div>
+                    <div class="muted" style="margin-top: 6px;">Date: {{ $invoice->invoice_date->format('d M Y') }}</div>
+                    @if($invoice->due_date)
+                        <div class="muted">Due: {{ $invoice->due_date->format('d M Y') }}</div>
+                    @endif
+                    <div style="margin-top: 6px;"><span class="badge">{{ str_replace('_', ' ', $invoice->status->value) }}</span></div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="gold-band"></div>
+    <div class="body-wrap">
 
     <table class="header-table" style="margin-top: 18px;">
         <tr>
@@ -196,6 +209,7 @@
                 @endif
             </tr>
         </table>
+    </div>
     </div>
 </body>
 </html>

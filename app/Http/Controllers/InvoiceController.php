@@ -6,18 +6,19 @@ use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceRequest;
+use App\Mail\InvoicePdfMail;
 use App\Models\ActivityLog;
 use App\Models\BusinessSetting;
 use App\Models\CatalogItem;
 use App\Models\ChargeType;
 use App\Models\Customer;
-use App\Mail\InvoicePdfMail;
 use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceTemplate;
 use App\Models\MetalRate;
 use App\Models\User;
 use App\Services\InvoiceCalculationService;
+use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -63,8 +64,12 @@ class InvoiceController extends Controller
 
     public function store(StoreInvoiceRequest $request): RedirectResponse
     {
+        if ($error = app(SubscriptionService::class)->invoiceQuotaError($request->user()->tenant)) {
+            return back()->withErrors(['customer_id' => $error]);
+        }
+
         $invoice = DB::transaction(function () use ($request) {
-            $business = BusinessSetting::query()->lockForUpdate()->find(1) ?? BusinessSetting::current();
+            $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
             $computed = $this->calculator->calculate($request->validated());
 
             $invoice = Invoice::create([

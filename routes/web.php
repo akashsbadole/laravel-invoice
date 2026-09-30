@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerFollowupController;
 use App\Http\Controllers\CustomerNoteController;
@@ -11,8 +12,10 @@ use App\Http\Controllers\InvoiceShareLinkController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PublicInvoiceController;
 use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Middleware\EnsureSubscribed;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -29,14 +32,26 @@ Route::middleware('guest')->group(function () {
 
 Route::post('logout', [AuthController::class, 'destroy'])->middleware('auth')->name('logout');
 
+Route::middleware('guest')->group(function () {
+    Route::get('register', [RegisterController::class, 'create'])->name('register');
+    Route::post('register', [RegisterController::class, 'store'])->middleware('throttle:6,1');
+});
+
+Route::post('billing/webhook', [BillingController::class, 'webhook'])->name('billing.webhook');
+
 // Public, unauthenticated invoice sharing — no auth/verified middleware.
 // Matches the spec's exact public URL shape: /invoice/view/{token}.
 Route::get('invoice/view/{token}', [PublicInvoiceController::class, 'show'])->name('invoices.public.show');
 Route::post('invoice/view/{token}/verify', [PublicInvoiceController::class, 'verifyPassword'])->name('invoices.public.verify');
 Route::get('invoice/view/{token}/pdf', [InvoicePdfController::class, 'public'])->name('invoices.public.pdf');
 
-Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
+Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::post('billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::post('billing/verify', [BillingController::class, 'verify'])->name('billing.verify');
+    Route::post('billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
 
     Route::get('customers/export', [CustomerController::class, 'exportCsv'])->name('customers.download');
     Route::resource('customers', CustomerController::class);

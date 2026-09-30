@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use App\Enums\ChargeAppliesTo;
 use App\Enums\ChargeCalculationType;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChargeType extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = [
         'name', 'code', 'calculation_type', 'applies_to', 'default_rate',

@@ -8,6 +8,7 @@ use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +16,8 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly SubscriptionService $subscriptions) {}
+
     public function index(Request $request): Response
     {
         abort_unless($request->user()->role->canManageUsers(), 403);
@@ -29,6 +32,10 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
+        if ($error = $this->subscriptions->staffQuotaError($request->user()->tenant)) {
+            return back()->withErrors(['role' => $error]);
+        }
+
         $user = new User([
             ...$request->safe()->only(['name', 'email', 'password', 'role']),
             'is_active' => $request->boolean('is_active', true),

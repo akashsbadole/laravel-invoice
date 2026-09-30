@@ -80,6 +80,13 @@ export default function Login({ status }: { status?: string | null }) {
                     <Button type="submit" disabled={processing} className="w-full">
                         Log in
                     </Button>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                        New here?{' '}
+                        <Link href="/register" className="hover:text-foreground hover:underline">
+                            Start your free trial
+                        </Link>
+                    </p>
                 </form>
             </div>
         </>

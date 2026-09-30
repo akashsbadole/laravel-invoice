@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Hash;
@@ -9,6 +10,8 @@ use Illuminate\Support\Str;
 
 class InvoiceShareLink extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = ['invoice_id', 'expires_at', 'is_active', 'sent_via', 'sent_at', 'created_by'];
 

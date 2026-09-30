@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
+use App\Concerns\TenantScope;
 use Illuminate\Database\Eloquent\Model;
 
 class BusinessSetting extends Model
 {
+    use BelongsToTenant;
+
     /** @var list<string> */
     protected $fillable = [
         'business_name', 'logo_path', 'address', 'phone', 'email', 'website',
@@ -28,13 +32,19 @@ class BusinessSetting extends Model
     }
 
     /**
-     * The settings row is a singleton — always id 1.
+     * The settings row is a per-tenant singleton — one row per tenant.
      */
     public static function current(): self
     {
-        return static::query()->firstOrCreate(['id' => 1], [
-            'business_name' => 'My Jewellery Store',
-        ]);
+        return static::forTenant(Tenant::currentId() ?? Tenant::current()?->id);
+    }
+
+    public static function forTenant(?int $tenantId): self
+    {
+        return static::query()->withoutGlobalScope(TenantScope::class)->firstOrCreate(
+            ['tenant_id' => $tenantId],
+            ['business_name' => Tenant::query()->find($tenantId)?->name ?? 'My Jewellery Store'],
+        );
     }
 
     /**

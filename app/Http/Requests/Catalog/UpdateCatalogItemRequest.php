@@ -21,7 +21,7 @@ class UpdateCatalogItemRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
-            'item_code' => ['nullable', 'string', 'max:100', Rule::unique('catalog_items', 'item_code')->ignore($itemId)],
+            'item_code' => ['nullable', 'string', 'max:100', Rule::unique('catalog_items', 'item_code')->where('tenant_id', $this->user()->tenant_id)->ignore($itemId)],
             'hsn_code' => ['nullable', 'string', 'max:20'],
             'metal_type' => ['nullable', 'string', 'max:50'],
             'purity' => ['nullable', 'string', 'max:20'],

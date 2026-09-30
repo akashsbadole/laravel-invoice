@@ -24,7 +24,7 @@ class InvoicePdfMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $business = BusinessSetting::current();
+        $business = BusinessSetting::forTenant($this->invoice->tenant_id);
 
         return new Envelope(
             subject: "Invoice {$this->invoice->invoice_number} from {$business->business_name}",
@@ -38,7 +38,7 @@ class InvoicePdfMail extends Mailable
         return new Content(
             htmlString: view('mail.invoice-pdf', [
                 'invoice' => $this->invoice,
-                'business' => BusinessSetting::current(),
+                'business' => BusinessSetting::forTenant($this->invoice->tenant_id),
                 'customMessage' => $this->customMessage,
             ])->render(),
         );
@@ -51,11 +51,11 @@ class InvoicePdfMail extends Mailable
     {
         $this->invoice->loadMissing(['customer', 'salesperson', 'items.charges', 'template']);
 
-        $template = $this->invoice->template ?? InvoiceTemplate::currentDefault();
+        $template = $this->invoice->template ?? InvoiceTemplate::forTenantDefault($this->invoice->tenant_id);
 
         $pdf = Pdf::loadView('pdf.invoice', [
             'invoice' => $this->invoice,
-            'business' => BusinessSetting::current(),
+            'business' => BusinessSetting::forTenant($this->invoice->tenant_id),
             'template' => $template,
             'publicUrl' => null,
             'qrSvg' => null,

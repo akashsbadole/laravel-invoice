@@ -35,14 +35,14 @@ class PublicInvoiceController extends Controller
             'customer', 'salesperson', 'items.charges', 'payments', 'template',
         ])->firstOrFail();
 
-        $template = $invoice->template ?? InvoiceTemplate::currentDefault();
+        $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
 
         return Inertia::render('invoices/public', [
             'status' => 'ok',
             'token' => $token,
             'invoice' => $invoice,
             'template' => $template->layout_config + InvoiceTemplate::defaultLayoutConfig(),
-            'business' => BusinessSetting::current()->only([
+            'business' => BusinessSetting::forTenant($invoice->tenant_id)->only([
                 'business_name', 'logo_path', 'address', 'phone', 'email',
                 'website', 'tax_number', 'footer_text',
             ]),

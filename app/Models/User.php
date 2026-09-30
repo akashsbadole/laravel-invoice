@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToTenant;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -37,6 +38,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = ['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'];
 
     /** @use HasFactory<UserFactory> */
+    use BelongsToTenant;
+
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**

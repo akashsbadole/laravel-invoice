@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\DueRemindersDigest;
 use App\Services\ReminderService;
@@ -19,6 +20,17 @@ class SendDueReminders extends Command
     protected $description = 'Send the daily reminder digest to staff and (optionally) SMS reminders to customers';
 
     public function handle(ReminderService $reminders, SmsService $sms): int
+    {
+        foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
+            Tenant::runInContext($tenant->id, function () use ($reminders, $sms) {
+                $this->handleTenant($reminders, $sms);
+            });
+        }
+
+        return self::SUCCESS;
+    }
+
+    protected function handleTenant(ReminderService $reminders, SmsService $sms): void
     {
         $data = $reminders->gather();
         $summary = [
@@ -55,8 +67,6 @@ class SendDueReminders extends Command
                 $this->smsBirthdays($reminders->upcoming('birthday', today(), 0), $sms, $business->business_name);
             }
         }
-
-        return self::SUCCESS;
     }
 
     /**

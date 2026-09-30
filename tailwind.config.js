@@ -11,7 +11,8 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['Manrope Variable', 'Manrope', ...defaultTheme.fontFamily.sans],
+                display: ['Fraunces Variable', 'Fraunces', 'Georgia', 'serif'],
             },
             colors: {
                 border: 'hsl(var(--border))',
@@ -47,11 +48,30 @@ export default {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))',
                 },
+                gold: {
+                    light: '#E9CE8C',
+                    DEFAULT: '#C9A227',
+                    dark: '#8C6E1A',
+                },
+                emeraldink: {
+                    DEFAULT: '#0B3D2E',
+                    deep: '#072A20',
+                },
+                ivory: '#FAF7F0',
             },
             borderRadius: {
                 lg: 'var(--radius)',
                 md: 'calc(var(--radius) - 2px)',
                 sm: 'calc(var(--radius) - 4px)',
+            },
+            keyframes: {
+                rise: {
+                    from: { opacity: '0', transform: 'translateY(10px)' },
+                    to: { opacity: '1', transform: 'translateY(0)' },
+                },
+            },
+            animation: {
+                rise: 'rise 0.5s ease-out both',
             },
         },
     },
