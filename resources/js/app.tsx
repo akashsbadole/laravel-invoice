@@ -1,6 +1,6 @@
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/manrope';
-import { StrictMode, type ReactNode } from 'react';
+import { StrictMode, type ComponentType, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -17,7 +17,7 @@ type Breadcrumb = {
     href?: string;
 };
 
-type PageWithLayout = {
+type PageWithLayoutData = {
     layout?: {
         breadcrumbs?: Breadcrumb[];
     };
@@ -25,16 +25,23 @@ type PageWithLayout = {
 
 const appName = import.meta.env.VITE_APP_NAME || 'Jewelry Invoice';
 
-const pages = import.meta.glob('./pages/**/*.tsx', { eager: true }) as Record<
+const pageModules = import.meta.glob('./pages/**/*.tsx', { eager: true }) as Record<
     string,
-    unknown
+    { default: ComponentType & PageWithLayoutData }
 >;
 
+/**
+ * Wrap a page in the app chrome. This runs INSIDE the Inertia provider
+ * (attached as Component.layout during resolve), so usePage() works in
+ * every layout, sidebar and nav component.
+ */
 function applyLayout(name: string, breadcrumbs: Breadcrumb[], page: ReactNode): ReactNode {
     switch (true) {
         case name === 'welcome':
             return page;
         case name === 'invoices/public':
+            return page;
+        case name.startsWith('portal/'):
             return page;
         case name.startsWith('auth/'):
             return <AuthLayout>{page}</AuthLayout>;
@@ -52,25 +59,23 @@ function applyLayout(name: string, breadcrumbs: Breadcrumb[], page: ReactNode): 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     resolve: (name) => {
-        const page = pages[`./pages/${name}.tsx`];
-        if (!page) {
+        const module = pageModules[`./pages/${name}.tsx`];
+        if (!module?.default) {
             throw new Error(`Page not found: ./pages/${name}.tsx`);
         }
-        return page;
+
+        const Component = module.default;
+        const breadcrumbs = Component.layout?.breadcrumbs ?? [];
+        Component.layout = (page: ReactNode) => applyLayout(name, breadcrumbs, page);
+
+        return Component;
     },
     setup({ el, App, props }) {
-        const initialPage = (
-            props as unknown as { initialPage: { component: string } }
-        ).initialPage;
-        const name = initialPage.component;
-        const breadcrumbs =
-            (App as unknown as PageWithLayout).layout?.breadcrumbs ?? [];
-
         createRoot(el).render(
             <StrictMode>
                 <ErrorBoundary>
                     <TooltipProvider delayDuration={0}>
-                        {applyLayout(name, breadcrumbs, <App {...props} />)}
+                        <App {...props} />
                         <Toaster position="top-right" richColors closeButton />
                     </TooltipProvider>
                 </ErrorBoundary>

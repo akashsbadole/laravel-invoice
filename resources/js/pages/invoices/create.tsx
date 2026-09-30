@@ -41,6 +41,7 @@ export default function CreateInvoice({
     };
 }) {
     const initialData: InvoiceFormData = {
+        document_type: 'jewelry_invoice',
         customer_id: preselectedCustomerId ?? '',
         invoice_date: today(),
         due_date: '',

@@ -16331,3 +16331,107 @@ ZDJjYmUxN2I4MDUxOD5dCj4+CnN0YXJ0eHJlZgo4Nzg5MTgKJSVFT0YK
 #80 C:/laragon/www/laravel-jewelry-only-invoice-app/server.php(11): require_once('C://laragon//www//...')
 #81 {main}
 "} 
+[2026-09-30 17:37:32] local.ERROR: Unmatched '}' {"exception":"[object] (ParseError(code: 0): Unmatched '}' at C:/laragon/www/laravel-jewelry-only-invoice-app/app/Http/Controllers/InvoiceController.php:268)
+[stacktrace]
+#0 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/composer/ClassLoader.php(427): Composer/Autoload/{closure}('C://laragon//www//...')
+#1 [internal function]: Composer/Autoload/ClassLoader->loadClass('App//Http//Contro...')
+#2 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Routing/Route.php(1117): is_a('App//Http//Contro...', 'Illuminate//Rout...', true)
+#3 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Routing/Route.php(1054): Illuminate/Routing/Route->controllerMiddleware()
+#4 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Routing/Router.php(820): Illuminate/Routing/Route->gatherMiddleware()
+#5 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(211): Illuminate/Routing/Router->gatherRouteMiddleware(Object(Illuminate/Routing/Route))
+#6 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(148): Illuminate/Foundation/Console/RouteListCommand->getMiddleware(Object(Illuminate/Routing/Route))
+#7 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(118): Illuminate/Foundation/Console/RouteListCommand->getRouteInformation(Object(Illuminate/Routing/Route))
+#8 [internal function]: Illuminate/Foundation/Console/RouteListCommand->Illuminate/Foundation/Console/{closure}(Object(Illuminate/Routing/Route), 63)
+#9 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Collections/Arr.php(609): array_map(Object(Closure), Array, Array)
+#10 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Collections/Collection.php(799): Illuminate/Support/Arr::map(Array, Object(Closure))
+#11 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(117): Illuminate/Support/Collection->map(Object(Closure))
+#12 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(103): Illuminate/Foundation/Console/RouteListCommand->getRoutes()
+#13 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate/Foundation/Console/RouteListCommand->handle()
+#14 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#15 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#16 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#17 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#18 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate/Container/Container->call(Array)
+#19 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Command/Command.php(341): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#20 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#21 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#22 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Illuminate/Foundation/Console/RouteListCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#23 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#24 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#25 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#26 C:/laragon/www/laravel-jewelry-only-invoice-app/artisan(12): Illuminate/Foundation/Application->handleCommand(Object(Symfony/Component/Console/Input/ArgvInput))
+#27 {main}
+"} 
+[2026-09-30 17:37:47] local.ERROR: Unmatched '}' {"exception":"[object] (ParseError(code: 0): Unmatched '}' at C:/laragon/www/laravel-jewelry-only-invoice-app/app/Http/Controllers/InvoiceController.php:268)
+[stacktrace]
+#0 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/composer/ClassLoader.php(427): Composer/Autoload/{closure}('C://laragon//www//...')
+#1 [internal function]: Composer/Autoload/ClassLoader->loadClass('App//Http//Contro...')
+#2 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Routing/Route.php(1117): is_a('App//Http//Contro...', 'Illuminate//Rout...', true)
+#3 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Routing/Route.php(1054): Illuminate/Routing/Route->controllerMiddleware()
+#4 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Routing/Router.php(820): Illuminate/Routing/Route->gatherMiddleware()
+#5 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(211): Illuminate/Routing/Router->gatherRouteMiddleware(Object(Illuminate/Routing/Route))
+#6 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(148): Illuminate/Foundation/Console/RouteListCommand->getMiddleware(Object(Illuminate/Routing/Route))
+#7 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(118): Illuminate/Foundation/Console/RouteListCommand->getRouteInformation(Object(Illuminate/Routing/Route))
+#8 [internal function]: Illuminate/Foundation/Console/RouteListCommand->Illuminate/Foundation/Console/{closure}(Object(Illuminate/Routing/Route), 63)
+#9 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Collections/Arr.php(609): array_map(Object(Closure), Array, Array)
+#10 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Collections/Collection.php(799): Illuminate/Support/Arr::map(Array, Object(Closure))
+#11 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(117): Illuminate/Support/Collection->map(Object(Closure))
+#12 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/RouteListCommand.php(103): Illuminate/Foundation/Console/RouteListCommand->getRoutes()
+#13 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate/Foundation/Console/RouteListCommand->handle()
+#14 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#15 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#16 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#17 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#18 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate/Container/Container->call(Array)
+#19 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Command/Command.php(341): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#20 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#21 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#22 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Illuminate/Foundation/Console/RouteListCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#23 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#24 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#25 C:/laragon/www/laravel-jewelry-only-invoice-app/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#26 C:/laragon/www/laravel-jewelry-only-invoice-app/artisan(12): Illuminate/Foundation/Application->handleCommand(Object(Symfony/Component/Console/Input/ArgvInput))
+#27 {main}
+"} 
+[2026-09-30 17:40:02] local.DEBUG: From: Example <hello@example.com>
+To: staff2@example.com
+Subject: You're invited to join Second Jewels.
+MIME-Version: 1.0
+Date: Wed, 30 Sep 2026 17:40:02 +0000
+Message-ID: <ea2a10f90189eb75a4862dcae2921460@example.com>
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<p>Hi,</p>
+
+<p>
+    You've been invited to join <strong>Second Jewels</strong> on Jewelry Invoice
+    as Viewer.
+</p>
+
+<p>
+    <a href="http://127.0.0.1:8000/invites/accept/YoqzCJulNfYhBia4N8z38S7ID4HEOKaN4ViJzcuBKgA7C1ik">Accept the invitation</a> — the link expires in 7 days.
+</p>
+
+<p>If you weren't expecting this, you can safely ignore this email.</p>
+  
+[2026-09-30 17:40:59] local.DEBUG: From: Example <hello@example.com>
+To: cust2@example.com
+Subject: Your secure invoice portal link
+MIME-Version: 1.0
+Date: Wed, 30 Sep 2026 17:40:59 +0000
+Message-ID: <6aad61d9836bbb5475c20d3fa113222b@example.com>
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<p>Hi T1 Customer,</p>
+
+<p>
+    Here is your secure link to view your invoices and payment status.
+    It expires in 30 minutes and works only once:
+</p>
+
+<p><a href="http://127.0.0.1:8000/portal/verify/1NCGbVIUJJIfooV11ejZivsseWqaVmln974yMQrLivj30Tf3">http://127.0.0.1:8000/portal/verify/1NCGbVIUJJIfooV11ejZivsseWqaVmln974yMQrLivj30Tf3</a></p>
+
+<p>If you didn't request this, you can safely ignore this email.</p>
+  

@@ -10,6 +10,10 @@ enum InvoiceStatus: string
     case Overdue = 'overdue';
     case Cancelled = 'cancelled';
     case Refunded = 'refunded';
+    case Draft = 'draft';
+    case Sent = 'sent';
+    case Accepted = 'accepted';
+    case Converted = 'converted';
 
     public function label(): string
     {
@@ -20,6 +24,10 @@ enum InvoiceStatus: string
             self::Overdue => 'Overdue',
             self::Cancelled => 'Cancelled',
             self::Refunded => 'Refunded',
+            self::Draft => 'Draft',
+            self::Sent => 'Sent',
+            self::Accepted => 'Accepted',
+            self::Converted => 'Converted',
         };
     }
 
@@ -32,6 +40,10 @@ enum InvoiceStatus: string
             self::Overdue => 'red',
             self::Cancelled => 'slate',
             self::Refunded => 'blue',
+            self::Draft => 'slate',
+            self::Sent => 'amber',
+            self::Accepted => 'green',
+            self::Converted => 'blue',
         };
     }
 

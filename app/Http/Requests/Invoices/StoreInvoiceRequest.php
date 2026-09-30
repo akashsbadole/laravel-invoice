@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Invoices;
 
+use App\Enums\DocumentType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -41,12 +43,13 @@ class StoreInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id' => ['required', 'exists:customers,id'],
+            'customer_id' => ['required', Rule::exists('customers', 'id')->where('tenant_id', $this->user()->tenant_id)],
+            'document_type' => ['sometimes', Rule::enum(DocumentType::class)],
             'invoice_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             'reference_number' => ['nullable', 'string', 'max:255'],
-            'salesperson_id' => ['nullable', 'exists:users,id'],
-            'invoice_template_id' => ['nullable', 'exists:invoice_templates,id'],
+            'salesperson_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
+            'invoice_template_id' => ['nullable', Rule::exists('invoice_templates', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'pricing_mode' => ['required', 'in:manual,jewelry_calculated'],
             'tax_mode' => ['nullable', 'in:single,cgst_sgst,igst'],
             'discount' => ['nullable', 'numeric', 'min:0'],
@@ -76,11 +79,11 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
 
             'items.*.charges' => ['nullable', 'array'],
-            'items.*.charges.*.charge_type_id' => ['required', 'exists:charge_types,id'],
+            'items.*.charges.*.charge_type_id' => ['required', Rule::exists('charge_types', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'items.*.charges.*.rate' => ['nullable', 'numeric'],
 
             'invoice_charges' => ['nullable', 'array'],
-            'invoice_charges.*.charge_type_id' => ['required', 'exists:charge_types,id'],
+            'invoice_charges.*.charge_type_id' => ['required', Rule::exists('charge_types', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'invoice_charges.*.rate' => ['nullable', 'numeric'],
         ];
     }

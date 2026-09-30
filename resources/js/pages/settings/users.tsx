@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import UserController from '@/actions/App/Http/Controllers/Settings/UserController';
+import StaffInviteController from '@/actions/App/Http/Controllers/Settings/StaffInviteController';
 import { destroy as destroyUser } from '@/routes/users';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,15 @@ import {
 import type { Auth } from '@/types/auth';
 import type { ManagedUser, RoleOption } from '@/types/user';
 
-export default function UsersPage({ users, roles }: { users: ManagedUser[]; roles: RoleOption[] }) {
+type PendingInvite = {
+    id: number;
+    email: string;
+    role: string;
+    expires_at: string;
+    created_at: string;
+};
+
+export default function UsersPage({ users, roles, invites }: { users: ManagedUser[]; roles: RoleOption[]; invites: PendingInvite[] }) {
     const { auth } = usePage<{ auth: Auth }>().props;
 
     return (
@@ -39,9 +48,36 @@ export default function UsersPage({ users, roles }: { users: ManagedUser[]; role
             <div className="space-y-6">
                 <Heading variant="small" title="Users" description="Who can sign in, and what they can do" />
 
-                <div className="flex justify-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                    <InviteUserDialog roles={roles} />
                     <AddUserDialog roles={roles} />
                 </div>
+
+                {invites.length > 0 && (
+                    <Card>
+                        <CardContent className="space-y-2 p-4">
+                            <p className="text-sm font-medium">Pending invitations</p>
+                            {invites.map((invite) => (
+                                <div key={invite.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm">
+                                    <div>
+                                        <span className="font-medium">{invite.email}</span>
+                                        <span className="ml-2 text-muted-foreground capitalize">
+                                            {invite.role.replace('_', ' ')} · expires{' '}
+                                            {new Date(invite.expires_at).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    <Form {...StaffInviteController.destroy.form(invite.id)}>
+                                        {({ processing }) => (
+                                            <Button variant="ghost" size="sm" disabled={processing}>
+                                                Revoke
+                                            </Button>
+                                        )}
+                                    </Form>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
 
                 <div className="space-y-2">
                     {users.map((user) => (
@@ -126,6 +162,64 @@ function AddUserDialog({ roles }: { roles: RoleOption[] }) {
                                     <Button variant="secondary" type="button">Cancel</Button>
                                 </DialogClose>
                                 <Button disabled={processing}>Add</Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function InviteUserDialog({ roles }: { roles: RoleOption[] }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    Invite by email
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Invite staff member</DialogTitle>
+                </DialogHeader>
+                <Form
+                    {...StaffInviteController.store.form()}
+                    resetOnSuccess
+                    onSuccess={() => setOpen(false)}
+                    className="space-y-4"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <p className="text-sm text-muted-foreground">
+                                They'll get an email link to join with their own password.
+                            </p>
+                            <div className="grid gap-2">
+                                <Label htmlFor="invite-email">Email</Label>
+                                <Input id="invite-email" name="email" type="email" required autoComplete="email" />
+                                <InputError message={errors.email} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="invite-role">Role</Label>
+                                <Select name="role" defaultValue="invoice_creator">
+                                    <SelectTrigger id="invite-role" className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roles.map((r) => (
+                                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.role} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="secondary" type="button">Cancel</Button>
+                                </DialogClose>
+                                <Button disabled={processing}>Send invite</Button>
                             </DialogFooter>
                         </>
                     )}

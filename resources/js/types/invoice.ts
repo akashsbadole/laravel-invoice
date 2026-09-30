@@ -11,7 +11,11 @@ export type InvoiceStatus =
     | 'paid'
     | 'overdue'
     | 'cancelled'
-    | 'refunded';
+    | 'refunded'
+    | 'draft'
+    | 'sent'
+    | 'accepted'
+    | 'converted';
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'card' | 'upi' | 'cheque' | 'other';
 
 export type ChargeType = {
@@ -72,6 +76,7 @@ export type InvoiceChargeInput = {
 };
 
 export type InvoiceFormData = {
+    document_type: DocumentType;
     customer_id: number | '';
     invoice_date: string;
     due_date: string;
@@ -155,6 +160,8 @@ export type ChargesSummaryRow = {
     amount: number;
 };
 
+export type DocumentType = 'jewelry_invoice' | 'general_invoice' | 'quotation';
+
 export type Invoice = {
     id: number;
     uuid: string;
@@ -162,6 +169,8 @@ export type Invoice = {
     invoice_date: string;
     due_date: string | null;
     reference_number: string | null;
+    document_type: DocumentType;
+    converted_to_id: number | null;
     status: InvoiceStatus;
     pricing_mode: PricingMode;
     invoice_template_id: number | null;

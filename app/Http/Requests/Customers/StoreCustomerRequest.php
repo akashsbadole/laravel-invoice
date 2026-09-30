@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Customers;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCustomerRequest extends FormRequest
 {
@@ -27,7 +28,7 @@ class StoreCustomerRequest extends FormRequest
             'anniversary' => ['nullable', 'date', 'before_or_equal:today'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'customer_type' => ['required', 'in:individual,business'],
-            'assigned_staff_id' => ['nullable', 'exists:users,id'],
+            'assigned_staff_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
+use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
 use App\Enums\PricingMode;
 use App\Enums\TaxMode;
@@ -19,7 +20,8 @@ class Invoice extends Model
     /** @var list<string> */
     protected $fillable = [
         'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
-        'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
+        'document_type', 'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
+        'converted_to_id',
         'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
         'grand_total', 'paid_amount', 'balance_amount',
         'notes', 'terms', 'created_by',
@@ -40,6 +42,7 @@ class Invoice extends Model
         return [
             'invoice_date' => 'date',
             'due_date' => 'date',
+            'document_type' => DocumentType::class,
             'status' => InvoiceStatus::class,
             'pricing_mode' => PricingMode::class,
             'cancelled_at' => 'datetime',
@@ -148,6 +151,12 @@ class Invoice extends Model
      */
     public function recalculatePaymentStatus(): void
     {
+        // Quotations never carry payments; their draft/sent/accepted
+        // lifecycle is managed explicitly, never derived from amounts.
+        if ($this->document_type === DocumentType::Quotation) {
+            return;
+        }
+
         $this->paid_amount = $this->relationLoaded('payments')
             ? $this->payments->sum('amount')
             : (float) $this->payments()->sum('amount');

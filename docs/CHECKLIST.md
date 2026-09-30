@@ -57,10 +57,14 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 ## Screens
 - [x] `/login` `/dashboard` `/customers` `/customers/create` `/customers/{id}`
 - [x] `/invoices` `/invoices/create` `/invoices/{id}` `/invoices/{id}/edit`
-      (show page doubles as preview; reminders screen covers follow-ups)
+      `/invoices/{id}/preview` (dedicated route) · `/follow-ups` (dedicated route)
 - [x] `/payments` `/reports` `/settings/business` `/settings/invoice-templates`
       `/settings/users` + profile/security/appearance
-- [x] `/register` (signup) · `/billing` (subscription)
+- [x] `/register` (signup) · `/billing` (subscription) · `/portal/*` (customer portal)
+
+## Boot fix (usePage provider)
+- [x] Layouts render inside the Inertia provider via `Component.layout` in `resolve`
+- [x] Favicon, SW cache v3, error boundary, toasts, dev-safe SW registration
 
 ## Multi-tenancy + SaaS
 - [x] `tenants` table, `tenant_id` scoping + global scopes, per-tenant settings/numbering
@@ -71,3 +75,18 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 ## Design
 - [x] Luxury jewelry-house theme (emerald + champagne gold, serif display)
 - [x] Reskinned app screens + luxury PDF letterhead
+
+## Stability (Phase A)
+- [x] PWA service worker dev-safe + cache versioned (no more stale-bundle blank pages)
+- [x] Toast notifications wired (backend flashes → sonner)
+- [x] React error boundary with branded fallback + cache-clear reload
+- [x] Dashboard stat overflow fixed
+- [x] Ops runbook (`docs/RUNBOOK.md`): SMTP, cron, backups, webhooks, tenancy notes
+
+## Growth (Phase B)
+- [x] Quotations + general invoices (`document_type`, QT numbering, draft→convert flow)
+- [x] Staff email invites (token links, accept page, revoke, quota-aware)
+- [x] Recurring invoices (weekly/monthly/quarterly profiles + `recurring:run`)
+- [x] Subscription receipt emails (checkout verify + webhook activation)
+- [x] Customer portal (magic-link login, invoice list/detail/PDF, per-customer isolation)
+- [x] Per-tenant SMS gateway settings (log/Twilio/custom HTTP, write-only secrets)

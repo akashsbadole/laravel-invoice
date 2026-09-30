@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\DocumentType;
 use App\Enums\UserRole;
 use App\Models\Invoice;
 use App\Models\User;
@@ -48,7 +49,9 @@ class InvoicePolicy
 
     public function recordPayment(User $user, Invoice $invoice): bool
     {
-        return $this->sameTenant($user, $invoice->tenant_id) && $user->role->canWrite();
+        return $this->sameTenant($user, $invoice->tenant_id)
+            && $user->role->canWrite()
+            && $invoice->document_type !== DocumentType::Quotation;
     }
 
     public function share(User $user, Invoice $invoice): bool

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Customers;
 
 use App\Enums\FollowupStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class UpdateCustomerFollowupRequest extends FormRequest
@@ -26,7 +27,7 @@ class UpdateCustomerFollowupRequest extends FormRequest
             'status' => ['sometimes', 'required', new Enum(FollowupStatus::class)],
             'followup_date' => ['sometimes', 'required', 'date'],
             'reminder_at' => ['sometimes', 'nullable', 'date'],
-            'assigned_to' => ['sometimes', 'nullable', 'exists:users,id'],
+            'assigned_to' => ['sometimes', 'nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
         ];
     }

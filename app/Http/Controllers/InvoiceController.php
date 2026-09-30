@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
@@ -16,14 +17,17 @@ use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceTemplate;
 use App\Models\MetalRate;
+use App\Models\RecurringProfile;
 use App\Models\User;
 use App\Services\InvoiceCalculationService;
+use App\Services\InvoiceCloner;
 use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,7 +37,7 @@ class InvoiceController extends Controller
 
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'status', 'customer_id']);
+        $filters = $request->only(['search', 'status', 'customer_id', 'document_type']);
 
         $invoices = Invoice::query()
             ->with('customer:id,full_name,mobile_number')
@@ -45,6 +49,7 @@ class InvoiceController extends Controller
             })
             ->when(($filters['status'] ?? 'all') !== 'all', fn ($query) => $query->where('status', $filters['status']))
             ->when($filters['customer_id'] ?? null, fn ($query, $id) => $query->where('customer_id', $id))
+            ->when(($filters['document_type'] ?? 'all') !== 'all', fn ($query) => $query->where('document_type', $filters['document_type']))
             ->latest('invoice_date')
             ->paginate(15)
             ->withQueryString();
@@ -71,10 +76,15 @@ class InvoiceController extends Controller
         $invoice = DB::transaction(function () use ($request) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
             $computed = $this->calculator->calculate($request->validated());
+            $documentType = $request->validated('document_type', DocumentType::JewelryInvoice->value);
 
             $invoice = Invoice::create([
                 'customer_id' => $request->validated('customer_id'),
-                'invoice_number' => $business->nextInvoiceNumber(),
+                'document_type' => $documentType,
+                'status' => $documentType === DocumentType::Quotation->value ? InvoiceStatus::Draft : InvoiceStatus::Unpaid,
+                'invoice_number' => $documentType === DocumentType::Quotation->value
+                    ? $business->nextQuotationNumber()
+                    : $business->nextInvoiceNumber(),
                 'invoice_date' => $request->validated('invoice_date'),
                 'due_date' => $request->validated('due_date'),
                 'reference_number' => $request->validated('reference_number'),
@@ -125,7 +135,15 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/show', [
             'invoice' => $invoice,
             'business' => BusinessSetting::current()->only(['default_currency']),
+            'recurringProfile' => RecurringProfile::query()
+                ->where('source_invoice_id', $invoice->id)
+                ->first(['id', 'frequency', 'next_run_at', 'last_run_at', 'is_active']),
         ]);
+    }
+
+    public function preview(Invoice $invoice): Response
+    {
+        return $this->show($invoice);
     }
 
     public function edit(Request $request, Invoice $invoice): Response
@@ -213,6 +231,29 @@ class InvoiceController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice cancelled.')]);
 
         return back();
+    }
+
+    public function convert(Request $request, Invoice $invoice): RedirectResponse
+    {
+        Gate::authorize('update', $invoice);
+        abort_unless($invoice->document_type === DocumentType::Quotation, 404);
+        abort_if($invoice->converted_to_id !== null, 422, 'Quotation already converted.');
+
+        $validated = $request->validate([
+            'document_type' => ['required', Rule::enum(DocumentType::class), Rule::notIn([DocumentType::Quotation->value])],
+        ]);
+
+        $documentType = $validated['document_type'];
+
+        $newInvoice = app(InvoiceCloner::class)->cloneAsNew($invoice, $request->user()->id, $documentType);
+
+        $invoice->update(['status' => InvoiceStatus::Converted, 'converted_to_id' => $newInvoice->id]);
+
+        ActivityLog::record('invoice.converted', $newInvoice, "Converted quotation {$invoice->invoice_number} to {$newInvoice->invoice_number}");
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation converted to invoice.')]);
+
+        return to_route('invoices.show', $newInvoice);
     }
 
     public function sendEmail(Request $request, Invoice $invoice): RedirectResponse

@@ -35,7 +35,15 @@ import type { Invoice } from '@/types/invoice';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
-export default function ShowInvoice({ invoice }: { invoice: Invoice }) {
+type RecurringProfile = {
+    id: number;
+    frequency: string;
+    next_run_at: string;
+    last_run_at: string | null;
+    is_active: boolean;
+} | null;
+
+export default function ShowInvoice({ invoice, recurringProfile }: { invoice: Invoice; recurringProfile: RecurringProfile }) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isAdmin = auth.user.role === 'admin';
     const activeLink = invoice.share_links.find((link) => link.is_active);
@@ -103,6 +111,11 @@ export default function ShowInvoice({ invoice }: { invoice: Invoice }) {
                             <Badge variant="secondary" className="capitalize">
                                 {invoice.status.replace('_', ' ')}
                             </Badge>
+                            {invoice.document_type !== 'jewelry_invoice' && (
+                                <Badge variant="outline">
+                                    {invoice.document_type === 'quotation' ? 'Quotation' : 'General invoice'}
+                                </Badge>
+                            )}
                         </div>
                     </div>
 
@@ -133,6 +146,50 @@ export default function ShowInvoice({ invoice }: { invoice: Invoice }) {
                                     </Button>
                                 )}
                             </Form>
+                        )}
+                        {canWrite && invoice.document_type === 'quotation' && !invoice.converted_to_id && (
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button>Convert to invoice</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Convert quotation to invoice</DialogTitle>
+                                    </DialogHeader>
+                                    <p className="text-sm text-muted-foreground">
+                                        A new invoice is created with the same items. The
+                                        quotation is marked as converted.
+                                    </p>
+                                    <Form {...InvoiceController.convert.form(invoice.id)}>
+                                        {({ processing }) => (
+                                            <>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="convert-type">Invoice type</Label>
+                                                    <Select name="document_type" defaultValue="jewelry_invoice">
+                                                        <SelectTrigger id="convert-type" className="w-full">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="jewelry_invoice">
+                                                                Jewelry invoice
+                                                            </SelectItem>
+                                                            <SelectItem value="general_invoice">
+                                                                General invoice
+                                                            </SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <DialogFooter className="mt-4 gap-2">
+                                                    <DialogClose asChild>
+                                                        <Button variant="secondary" type="button">Cancel</Button>
+                                                    </DialogClose>
+                                                    <Button disabled={processing}>Convert</Button>
+                                                </DialogFooter>
+                                            </>
+                                        )}
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
                         )}
                         {isAdmin && (
                             <Dialog>
@@ -238,7 +295,7 @@ export default function ShowInvoice({ invoice }: { invoice: Invoice }) {
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">
                         <CardTitle>Payments</CardTitle>
-                        {canWrite && Number(invoice.balance_amount) > 0 && (
+                        {canWrite && invoice.document_type !== 'quotation' && Number(invoice.balance_amount) > 0 && (
                             <RecordPaymentDialog invoiceId={invoice.id} balance={invoice.balance_amount} />
                         )}
                     </CardHeader>
@@ -353,6 +410,67 @@ export default function ShowInvoice({ invoice }: { invoice: Invoice }) {
                                         )}
                                     </div>
                                 </>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {canWrite && invoice.document_type !== 'quotation' && invoice.status !== 'cancelled' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Recurring</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {recurringProfile ? (
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                    <p className="text-muted-foreground">
+                                        Repeats <span className="font-medium text-foreground capitalize">{recurringProfile.frequency}</span>
+                                        {' · '}next run{' '}
+                                        {new Date(recurringProfile.next_run_at).toLocaleDateString()}
+                                    </p>
+                                    <Form {...InvoiceController.recurringDestroy.form(invoice.id, recurringProfile.id)}>
+                                        {({ processing }) => (
+                                            <Button variant="ghost" size="sm" disabled={processing}>
+                                                Stop recurring
+                                            </Button>
+                                        )}
+                                    </Form>
+                                </div>
+                            ) : (
+                                <Form
+                                    {...InvoiceController.recurringStore.form(invoice.id)}
+                                    options={{ preserveScroll: true }}
+                                    className="flex flex-col gap-2 sm:flex-row sm:items-end"
+                                >
+                                    {({ processing, errors }) => (
+                                        <>
+                                            <div className="grid gap-1.5">
+                                                <Label htmlFor="frequency">Repeat</Label>
+                                                <Select name="frequency" defaultValue="monthly">
+                                                    <SelectTrigger id="frequency" className="w-full sm:w-40">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="weekly">Weekly</SelectItem>
+                                                        <SelectItem value="monthly">Monthly</SelectItem>
+                                                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="grid gap-1.5">
+                                                <Label htmlFor="next_run_at">First run</Label>
+                                                <Input
+                                                    id="next_run_at"
+                                                    name="next_run_at"
+                                                    type="date"
+                                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                                />
+                                                <InputError message={errors.next_run_at} />
+                                            </div>
+                                            <Button disabled={processing}>Make recurring</Button>
+                                        </>
+                                    )}
+                                </Form>
                             )}
                         </CardContent>
                     </Card>

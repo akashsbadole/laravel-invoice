@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
+use App\Mail\SubscriptionReceiptMail;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Services\RazorpayService;
 use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -96,7 +100,8 @@ class BillingController extends Controller
         $tenant = $request->user()->tenant;
         $plan = Plan::query()->where('slug', $validated['plan'])->firstOrFail();
 
-        $this->activate($tenant, $plan, $validated['razorpay_payment_id']);
+        $subscription = $this->activate($tenant, $plan, $validated['razorpay_payment_id']);
+        $this->sendReceipt($subscription, $plan);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __("Subscribed to {$plan->name}. Thank you!")]);
 
@@ -157,7 +162,8 @@ class BillingController extends Controller
             return;
         }
 
-        $this->activate($tenant, $plan, $gatewayId);
+        $subscription = $this->activate($tenant, $plan, $gatewayId);
+        $this->sendReceipt($subscription, $plan);
     }
 
     protected function markPastDue(array $notes): void
@@ -173,7 +179,7 @@ class BillingController extends Controller
         }
     }
 
-    protected function activate(Tenant $tenant, Plan $plan, ?string $gatewayId): void
+    protected function activate(Tenant $tenant, Plan $plan, ?string $gatewayId): Subscription
     {
         $subscription = Subscription::query()->firstOrNew(['tenant_id' => $tenant->id]);
         $subscription->plan_id = $plan->id;
@@ -183,5 +189,24 @@ class BillingController extends Controller
         $subscription->gateway = 'razorpay';
         $subscription->gateway_subscription_id = $gatewayId;
         $subscription->save();
+
+        return $subscription->refresh();
+    }
+
+    protected function sendReceipt(Subscription $subscription, Plan $plan): void
+    {
+        $admins = User::query()
+            ->where('tenant_id', $subscription->tenant_id)
+            ->where('role', UserRole::Admin->value)
+            ->where('is_active', true)
+            ->get(['email', 'name']);
+
+        foreach ($admins as $admin) {
+            try {
+                Mail::to($admin->email)->send(new SubscriptionReceiptMail($subscription, $plan));
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
     }
 }

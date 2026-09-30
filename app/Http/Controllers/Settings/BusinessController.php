@@ -20,7 +20,9 @@ class BusinessController extends Controller
             'settings' => [
                 ...$settings->only([
                     'id', 'business_name', 'address', 'phone', 'email', 'website',
-                    'tax_number', 'invoice_prefix', 'invoice_number_start',
+                    'tax_number', 'invoice_prefix', 'invoice_number_start', 'quotation_prefix',
+                    'sms_driver', 'sms_country_code',
+                    'sms_twilio_from', 'sms_http_url', 'sms_http_to_field', 'sms_http_message_field',
                     'default_tax_rate', 'default_currency', 'invoice_terms', 'footer_text',
                     'state_code', 'receipt_width', 'sms_payment_reminders', 'sms_birthday_wishes',
                 ]),
@@ -39,7 +41,14 @@ class BusinessController extends Controller
     public function update(UpdateBusinessSettingsRequest $request): RedirectResponse
     {
         $settings = BusinessSetting::current();
-        $data = $request->safe()->except(['logo', 'signature', 'stamp', 'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'upi_id']);
+        $data = $request->safe()->except(['logo', 'signature', 'stamp', 'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'upi_id', 'sms_twilio_sid', 'sms_twilio_token', 'sms_http_token']);
+
+        // Secrets are write-only: blank means "keep the stored value".
+        foreach (['sms_twilio_sid', 'sms_twilio_token', 'sms_http_token'] as $secret) {
+            if ($request->filled($secret)) {
+                $data[$secret] = $request->input($secret);
+            }
+        }
 
         $data['bank_details'] = array_filter([
             'bank_name' => $request->input('bank_name'),

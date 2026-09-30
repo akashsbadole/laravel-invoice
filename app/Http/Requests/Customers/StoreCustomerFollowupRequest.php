@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Customers;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCustomerFollowupRequest extends FormRequest
 {
@@ -19,7 +20,7 @@ class StoreCustomerFollowupRequest extends FormRequest
         return [
             'followup_date' => ['required', 'date'],
             'reminder_at' => ['nullable', 'date'],
-            'assigned_to' => ['nullable', 'exists:users,id'],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }

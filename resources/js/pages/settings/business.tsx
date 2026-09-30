@@ -6,6 +6,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
 type BusinessSettings = {
@@ -17,6 +24,13 @@ type BusinessSettings = {
     tax_number: string | null;
     invoice_prefix: string;
     invoice_number_start: number;
+    quotation_prefix: string;
+    sms_driver: string;
+    sms_country_code: string;
+    sms_twilio_from: string | null;
+    sms_http_url: string | null;
+    sms_http_to_field: string;
+    sms_http_message_field: string;
     default_tax_rate: string;
     default_currency: string;
     invoice_terms: string | null;
@@ -248,6 +262,18 @@ export default function BusinessSettingsPage({
                                         />
                                     </div>
                                     <div className="grid gap-2">
+                                        <Label htmlFor="quotation_prefix">
+                                            Quotation prefix
+                                        </Label>
+                                        <Input
+                                            id="quotation_prefix"
+                                            name="quotation_prefix"
+                                            defaultValue={settings.quotation_prefix}
+                                            required
+                                        />
+                                        <InputError message={errors.quotation_prefix} />
+                                    </div>
+                                    <div className="grid gap-2">
                                         <Label htmlFor="default_tax_rate">
                                             Default tax rate (%)
                                         </Label>
@@ -324,6 +350,121 @@ export default function BusinessSettingsPage({
                                         currentUrl={settings.stamp_url}
                                         error={errors.stamp}
                                     />
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 border-t pt-6">
+                                <h3 className="text-sm font-semibold">
+                                    SMS gateway
+                                </h3>
+                                <p className="-mt-2 text-xs text-muted-foreground">
+                                    Used for payment reminders, share-link SMS and occasion wishes.
+                                    Secrets are write-only — leave blank to keep the stored value.
+                                </p>
+
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_driver">Driver</Label>
+                                        <Select name="sms_driver" defaultValue={settings.sms_driver || 'log'}>
+                                            <SelectTrigger id="sms_driver" className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="log">Log only</SelectItem>
+                                                <SelectItem value="twilio">Twilio</SelectItem>
+                                                <SelectItem value="http">Custom HTTP</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors.sms_driver} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_country_code">Country code</Label>
+                                        <Input
+                                            id="sms_country_code"
+                                            name="sms_country_code"
+                                            defaultValue={settings.sms_country_code || '91'}
+                                            required
+                                        />
+                                        <InputError message={errors.sms_country_code} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_twilio_from">Twilio from number</Label>
+                                        <Input
+                                            id="sms_twilio_from"
+                                            name="sms_twilio_from"
+                                            defaultValue={settings.sms_twilio_from ?? ''}
+                                            placeholder="+15551234567"
+                                        />
+                                        <InputError message={errors.sms_twilio_from} />
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_twilio_sid">Twilio SID</Label>
+                                        <Input
+                                            id="sms_twilio_sid"
+                                            name="sms_twilio_sid"
+                                            type="password"
+                                            autoComplete="off"
+                                            placeholder="Unchanged"
+                                        />
+                                        <InputError message={errors.sms_twilio_sid} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_twilio_token">Twilio auth token</Label>
+                                        <Input
+                                            id="sms_twilio_token"
+                                            name="sms_twilio_token"
+                                            type="password"
+                                            autoComplete="off"
+                                            placeholder="Unchanged"
+                                        />
+                                        <InputError message={errors.sms_twilio_token} />
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="sms_http_url">Custom gateway URL (POST JSON)</Label>
+                                    <Input
+                                        id="sms_http_url"
+                                        name="sms_http_url"
+                                        defaultValue={settings.sms_http_url ?? ''}
+                                        placeholder="https://gateway.example.com/send"
+                                    />
+                                    <InputError message={errors.sms_http_url} />
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_http_token">Gateway token</Label>
+                                        <Input
+                                            id="sms_http_token"
+                                            name="sms_http_token"
+                                            type="password"
+                                            autoComplete="off"
+                                            placeholder="Unchanged"
+                                        />
+                                        <InputError message={errors.sms_http_token} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_http_to_field">To field</Label>
+                                        <Input
+                                            id="sms_http_to_field"
+                                            name="sms_http_to_field"
+                                            defaultValue={settings.sms_http_to_field}
+                                        />
+                                        <InputError message={errors.sms_http_to_field} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="sms_http_message_field">Message field</Label>
+                                        <Input
+                                            id="sms_http_message_field"
+                                            name="sms_http_message_field"
+                                            defaultValue={settings.sms_http_message_field}
+                                        />
+                                        <InputError message={errors.sms_http_message_field} />
+                                    </div>
                                 </div>
                             </section>
 

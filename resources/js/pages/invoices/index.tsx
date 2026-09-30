@@ -27,15 +27,33 @@ const statusColors: Record<InvoiceStatus, string> = {
     overdue: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
     cancelled: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
     refunded: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+    draft: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+    sent: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+    accepted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    converted: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
 };
+
+const documentLabels: Record<string, string> = {
+    jewelry_invoice: 'Jewelry',
+    general_invoice: 'General',
+    quotation: 'Quotation',
+};
+
+const documentTabs = [
+    { value: 'all', label: 'All' },
+    { value: 'jewelry_invoice', label: 'Jewelry' },
+    { value: 'general_invoice', label: 'General' },
+    { value: 'quotation', label: 'Quotations' },
+];
 
 export default function InvoicesIndex({
     invoices,
     filters,
 }: {
     invoices: Paginated<Invoice>;
-    filters: { search?: string; status?: string };
+    filters: { search?: string; status?: string; document_type?: string };
 }) {
+    const activeTab = filters.document_type || 'all';
     return (
         <>
             <Head title="Invoices" />
@@ -49,6 +67,30 @@ export default function InvoicesIndex({
                             New invoice
                         </Link>
                     </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1">
+                    {documentTabs.map((tab) => {
+                        const href =
+                            tab.value === 'all'
+                                ? index()
+                                : `${index()}?document_type=${tab.value}`;
+                        const isActive = activeTab === tab.value;
+                        return (
+                            <Link
+                                key={tab.value}
+                                href={href}
+                                preserveScroll
+                                className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                                    isActive
+                                        ? 'bg-primary font-medium text-primary-foreground'
+                                        : 'text-muted-foreground hover:bg-muted'
+                                }`}
+                            >
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 <Card>
@@ -127,6 +169,11 @@ export default function InvoicesIndex({
                                                 >
                                                     {invoice.invoice_number}
                                                 </Link>
+                                                {invoice.document_type !== 'jewelry_invoice' && (
+                                                    <Badge variant="outline" className="ml-2 text-[11px]">
+                                                        {documentLabels[invoice.document_type] ?? invoice.document_type}
+                                                    </Badge>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3">{invoice.customer.full_name}</td>
                                             <td className="px-4 py-3">

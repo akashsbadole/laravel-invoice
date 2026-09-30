@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\BusinessSetting;
 use App\Models\MessageLog;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -19,8 +21,9 @@ class SmsService
      */
     public function send(string $to, string $message, array $context = []): MessageLog
     {
-        $driver = (string) config('sms.driver', 'log');
-        $number = $this->normalize($to);
+        $config = $this->resolveConfig();
+        $driver = $config['driver'];
+        $number = $this->normalize($to, $config['country_code']);
 
         $log = new MessageLog([
             'channel' => 'sms',
@@ -39,8 +42,8 @@ class SmsService
             }
 
             match ($driver) {
-                'twilio' => $this->sendTwilio($number, $message),
-                'http' => $this->sendHttp($number, $message),
+                'twilio' => $this->sendTwilio($number, $message, $config['twilio']),
+                'http' => $this->sendHttp($number, $message, $config['http']),
                 default => Log::info("[SMS:log] to {$number}: {$message}"),
             };
 
@@ -71,9 +74,58 @@ class SmsService
     }
 
     /**
+     * Resolve SMS config: the current tenant's settings win when a tenant
+     * context exists, otherwise the global .env configuration applies.
+     *
+     * @return array{driver: string, country_code: string, twilio: array{sid: ?string, token: ?string, from: ?string}, http: array{url: ?string, token: ?string, to_field: string, message_field: string}}
+     */
+    protected function resolveConfig(): array
+    {
+        $tenantId = Tenant::currentId();
+
+        if ($tenantId) {
+            $settings = BusinessSetting::query()->where('tenant_id', $tenantId)->first();
+
+            if ($settings) {
+                return [
+                    'driver' => $settings->sms_driver ?: 'log',
+                    'country_code' => $settings->sms_country_code ?: '91',
+                    'twilio' => [
+                        'sid' => $settings->sms_twilio_sid,
+                        'token' => $settings->sms_twilio_token,
+                        'from' => $settings->sms_twilio_from,
+                    ],
+                    'http' => [
+                        'url' => $settings->sms_http_url,
+                        'token' => $settings->sms_http_token,
+                        'to_field' => $settings->sms_http_to_field ?: 'to',
+                        'message_field' => $settings->sms_http_message_field ?: 'message',
+                    ],
+                ];
+            }
+        }
+
+        return [
+            'driver' => (string) config('sms.driver', 'log'),
+            'country_code' => (string) config('sms.default_country_code', '91'),
+            'twilio' => [
+                'sid' => config('sms.twilio.sid'),
+                'token' => config('sms.twilio.token'),
+                'from' => config('sms.twilio.from'),
+            ],
+            'http' => [
+                'url' => config('sms.http.url'),
+                'token' => config('sms.http.token'),
+                'to_field' => config('sms.http.to_field', 'to'),
+                'message_field' => config('sms.http.message_field', 'message'),
+            ],
+        ];
+    }
+
+    /**
      * Normalise to E.164-ish: digits only, default country code for 10-digit numbers.
      */
-    public function normalize(string $number): string
+    public function normalize(string $number, ?string $countryCode = null): string
     {
         $digits = preg_replace('/\D+/', '', $number) ?? '';
 
@@ -82,17 +134,20 @@ class SmsService
         }
 
         if (strlen($digits) === 10) {
-            $digits = config('sms.default_country_code', '91').$digits;
+            $digits = ($countryCode ?? config('sms.default_country_code', '91')).$digits;
         }
 
         return '+'.$digits;
     }
 
-    protected function sendTwilio(string $to, string $message): void
+    /**
+     * @param  array{sid: ?string, token: ?string, from: ?string}  $config
+     */
+    protected function sendTwilio(string $to, string $message, array $config): void
     {
-        $sid = config('sms.twilio.sid');
-        $token = config('sms.twilio.token');
-        $from = config('sms.twilio.from');
+        $sid = $config['sid'];
+        $token = $config['token'];
+        $from = $config['from'];
 
         if (! $sid || ! $token || ! $from) {
             throw new RuntimeException('Twilio is not configured (TWILIO_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM).');
@@ -108,23 +163,26 @@ class SmsService
             ->throw();
     }
 
-    protected function sendHttp(string $to, string $message): void
+    /**
+     * @param  array{url: ?string, token: ?string, to_field: string, message_field: string}  $config
+     */
+    protected function sendHttp(string $to, string $message, array $config): void
     {
-        $url = config('sms.http.url');
+        $url = $config['url'];
 
         if (! $url) {
-            throw new RuntimeException('SMS_HTTP_URL is not configured.');
+            throw new RuntimeException('SMS gateway URL is not configured.');
         }
 
         $request = Http::acceptJson();
 
-        if ($token = config('sms.http.token')) {
+        if ($token = $config['token']) {
             $request = $request->withToken($token);
         }
 
         $request->post($url, [
-            config('sms.http.to_field', 'to') => $to,
-            config('sms.http.message_field', 'message') => $message,
+            $config['to_field'] => $to,
+            $config['message_field'] => $message,
         ])->throw();
     }
 }

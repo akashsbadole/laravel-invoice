@@ -65,6 +65,7 @@ export default function EditInvoice({
     };
 }) {
     const initialData: InvoiceFormData = {
+        document_type: invoice.document_type,
         customer_id: invoice.customer.id,
         invoice_date: invoice.invoice_date.slice(0, 10),
         due_date: invoice.due_date ? invoice.due_date.slice(0, 10) : '',

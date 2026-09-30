@@ -28,6 +28,15 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'receipt_width' => ['required', 'in:58,80'],
             'sms_payment_reminders' => ['boolean'],
             'sms_birthday_wishes' => ['boolean'],
+            'sms_driver' => ['required', 'in:log,twilio,http'],
+            'sms_country_code' => ['required', 'string', 'max:5'],
+            'sms_twilio_sid' => ['nullable', 'string', 'max:255'],
+            'sms_twilio_token' => ['nullable', 'string', 'max:255'],
+            'sms_twilio_from' => ['nullable', 'string', 'max:50'],
+            'sms_http_url' => ['nullable', 'string', 'max:500'],
+            'sms_http_token' => ['nullable', 'string', 'max:500'],
+            'sms_http_to_field' => ['nullable', 'string', 'max:50'],
+            'sms_http_message_field' => ['nullable', 'string', 'max:50'],
 
             'bank_name' => ['nullable', 'string', 'max:255'],
             'account_holder_name' => ['nullable', 'string', 'max:255'],
@@ -37,6 +46,7 @@ class UpdateBusinessSettingsRequest extends FormRequest
 
             'invoice_prefix' => ['required', 'string', 'max:10'],
             'invoice_number_start' => ['required', 'integer', 'min:1'],
+            'quotation_prefix' => ['required', 'string', 'max:10'],
             'default_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'default_currency' => ['required', 'string', 'size:3'],
             'invoice_terms' => ['nullable', 'string', 'max:5000'],

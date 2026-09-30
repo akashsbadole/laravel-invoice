@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\ActivityLog;
+use App\Models\StaffInvite;
 use App\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
@@ -27,6 +28,9 @@ class UserController extends Controller
                 ->get(['id', 'name', 'email', 'role', 'is_active', 'last_login_at', 'created_at']),
             'roles' => collect(UserRole::cases())
                 ->map(fn (UserRole $r) => ['value' => $r->value, 'label' => $r->label()])->values(),
+            'invites' => StaffInvite::query()->whereNull('accepted_at')
+                ->orderByDesc('created_at')
+                ->get(['id', 'email', 'role', 'expires_at', 'created_at']),
         ]);
     }
 

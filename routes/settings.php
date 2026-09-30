@@ -9,6 +9,7 @@ use App\Http\Controllers\Settings\InvoiceTemplateController;
 use App\Http\Controllers\Settings\MetalRateController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\StaffInviteController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Middleware\EnsureSubscribed;
 use App\Http\Middleware\EnsureUserIsActive;
@@ -33,6 +34,9 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::put('settings/users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('settings/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::get('settings/activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
+
+    Route::post('settings/invites', [StaffInviteController::class, 'store'])->name('invites.store');
+    Route::delete('settings/invites/{invite}', [StaffInviteController::class, 'destroy'])->name('invites.destroy');
 
     Route::get('settings/metal-rates', [MetalRateController::class, 'index'])->name('metal-rates.index');
     Route::post('settings/metal-rates', [MetalRateController::class, 'store'])->name('metal-rates.store');

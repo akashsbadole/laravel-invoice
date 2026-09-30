@@ -275,6 +275,28 @@ export default function InvoiceForm({
                             </Select>
                         </div>
                         <div className="grid gap-1.5">
+                            <Label>Document type</Label>
+                            <Select
+                                value={data.document_type}
+                                onValueChange={(value) =>
+                                    setData('document_type', value as InvoiceFormData['document_type'])
+                                }
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="jewelry_invoice">
+                                        Jewelry invoice
+                                    </SelectItem>
+                                    <SelectItem value="general_invoice">
+                                        General invoice
+                                    </SelectItem>
+                                    <SelectItem value="quotation">Quotation</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-1.5">
                             <Label>Pricing mode</Label>
                             <Select
                                 value={data.pricing_mode}

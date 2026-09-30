@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Reminders;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreReminderRequest extends FormRequest
 {
@@ -19,8 +20,8 @@ class StoreReminderRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'remind_on' => ['required', 'date'],
-            'customer_id' => ['nullable', 'exists:customers,id'],
-            'assigned_to' => ['nullable', 'exists:users,id'],
+            'customer_id' => ['nullable', Rule::exists('customers', 'id')->where('tenant_id', $this->user()->tenant_id)],
+            'assigned_to' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }

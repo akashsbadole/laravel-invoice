@@ -5,7 +5,7 @@
 //  - Static assets (built JS/CSS/fonts/images/icons): stale-while-revalidate.
 //  - Anything else (POST/PUT/DELETE, external origins): pass straight through.
 
-const CACHE_VERSION = 'jewel-crm-v2';
+const CACHE_VERSION = 'jewel-crm-v3';
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
