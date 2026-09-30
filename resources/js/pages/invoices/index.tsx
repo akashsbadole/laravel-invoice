@@ -1,0 +1,181 @@
+import { Form, Head, Link } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
+import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { dashboard } from '@/routes';
+import { create, index, show } from '@/routes/invoices';
+import type { Paginated } from '@/types/customer';
+import type { Invoice, InvoiceStatus } from '@/types/invoice';
+import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
+
+const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+
+const statusColors: Record<InvoiceStatus, string> = {
+    unpaid: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+    partially_paid: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+    paid: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    overdue: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+    cancelled: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
+    refunded: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+};
+
+export default function InvoicesIndex({
+    invoices,
+    filters,
+}: {
+    invoices: Paginated<Invoice>;
+    filters: { search?: string; status?: string };
+}) {
+    return (
+        <>
+            <Head title="Invoices" />
+
+            <div className="space-y-6 p-4 md:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <Heading title="Invoices" description="Every invoice you've created." />
+                    <Button asChild className="w-full sm:w-auto">
+                        <Link href={create()}>
+                            <Plus className="size-4" />
+                            New invoice
+                        </Link>
+                    </Button>
+                </div>
+
+                <Card>
+                    <CardContent>
+                        <Form
+                            {...InvoiceController.index.form()}
+                            options={{ preserveState: true, preserveScroll: true }}
+                            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                        >
+                            {() => (
+                                <>
+                                    <div className="grid flex-1 gap-2">
+                                        <label htmlFor="search" className="text-sm font-medium">
+                                            Search
+                                        </label>
+                                        <Input
+                                            id="search"
+                                            name="search"
+                                            defaultValue={filters.search}
+                                            placeholder="Invoice number or customer"
+                                        />
+                                    </div>
+                                    <div className="grid gap-2 sm:w-48">
+                                        <label htmlFor="status" className="text-sm font-medium">
+                                            Status
+                                        </label>
+                                        <Select name="status" defaultValue={filters.status || 'all'}>
+                                            <SelectTrigger id="status" className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All statuses</SelectItem>
+                                                <SelectItem value="unpaid">Unpaid</SelectItem>
+                                                <SelectItem value="partially_paid">Partially paid</SelectItem>
+                                                <SelectItem value="paid">Paid</SelectItem>
+                                                <SelectItem value="overdue">Overdue</SelectItem>
+                                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                <SelectItem value="refunded">Refunded</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Button type="submit">Filter</Button>
+                                </>
+                            )}
+                        </Form>
+                    </CardContent>
+                </Card>
+
+                {invoices.data.length === 0 ? (
+                    <Card>
+                        <CardContent className="py-12 text-center text-muted-foreground">
+                            No invoices match your filters yet.
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card className="overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="border-b bg-muted/40 text-left text-muted-foreground">
+                                    <tr>
+                                        <th className="px-4 py-3 font-medium">Invoice</th>
+                                        <th className="px-4 py-3 font-medium">Customer</th>
+                                        <th className="px-4 py-3 font-medium">Date</th>
+                                        <th className="px-4 py-3 font-medium">Status</th>
+                                        <th className="px-4 py-3 text-right font-medium">Total</th>
+                                        <th className="px-4 py-3 text-right font-medium">Balance</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {invoices.data.map((invoice) => (
+                                        <tr key={invoice.id} className="hover:bg-muted/30">
+                                            <td className="px-4 py-3">
+                                                <Link
+                                                    href={show(invoice.id)}
+                                                    className="font-medium hover:underline"
+                                                >
+                                                    {invoice.invoice_number}
+                                                </Link>
+                                            </td>
+                                            <td className="px-4 py-3">{invoice.customer.full_name}</td>
+                                            <td className="px-4 py-3">
+                                                {new Date(invoice.invoice_date).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Badge className={statusColors[invoice.status]} variant="secondary">
+                                                    {invoice.status.replace('_', ' ')}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                {currency.format(Number(invoice.grand_total))}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                {currency.format(Number(invoice.balance_amount))}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                )}
+
+                {invoices.last_page > 1 && (
+                    <nav className="flex flex-wrap items-center justify-center gap-1">
+                        {invoices.links.map((link, i) => (
+                            <Link
+                                key={i}
+                                href={link.url ?? '#'}
+                                preserveScroll
+                                className={`rounded-md px-3 py-1.5 text-sm ${
+                                    link.active
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'text-muted-foreground hover:bg-muted'
+                                } ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
+                                dangerouslySetInnerHTML={{ __html: link.label }}
+                            />
+                        ))}
+                    </nav>
+                )}
+            </div>
+        </>
+    );
+}
+
+InvoicesIndex.layout = {
+    breadcrumbs: [
+        { title: 'Dashboard', href: dashboard() },
+        { title: 'Invoices', href: index() },
+    ],
+};
