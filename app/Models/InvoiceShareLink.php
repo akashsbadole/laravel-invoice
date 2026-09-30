@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
-#[Fillable(['invoice_id', 'expires_at', 'is_active', 'sent_via', 'sent_at', 'created_by'])]
-#[Hidden(['password_hash'])]
 class InvoiceShareLink extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['invoice_id', 'expires_at', 'is_active', 'sent_via', 'sent_at', 'created_by'];
+
+    /** @var list<string> */
+    protected $hidden = ['password_hash'];
+
     protected function casts(): array
     {
         return [

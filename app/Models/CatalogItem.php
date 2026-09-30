@@ -3,17 +3,18 @@
 namespace App\Models;
 
 use App\Enums\RateType;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'name', 'item_code', 'hsn_code', 'metal_type', 'purity', 'rate_type',
-    'default_rate', 'default_net_weight', 'default_gross_weight',
-    'description', 'is_active', 'created_by',
-])]
 class CatalogItem extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'name', 'item_code', 'hsn_code', 'metal_type', 'purity', 'rate_type',
+        'default_rate', 'default_net_weight', 'default_gross_weight',
+        'description', 'is_active', 'created_by',
+    ];
+
     protected function casts(): array
     {
         return [

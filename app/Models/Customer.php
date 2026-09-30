@@ -2,19 +2,20 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable([
-    'full_name', 'mobile_number', 'email', 'address', 'tax_number',
-    'state_code', 'birthday', 'anniversary',
-    'notes', 'customer_type', 'assigned_staff_id', 'created_by',
-])]
 class Customer extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'full_name', 'mobile_number', 'email', 'address', 'tax_number',
+        'state_code', 'birthday', 'anniversary',
+        'notes', 'customer_type', 'assigned_staff_id', 'created_by',
+    ];
+
     use SoftDeletes;
 
     protected function casts(): array

@@ -5,23 +5,24 @@ namespace App\Models;
 use App\Enums\InvoiceStatus;
 use App\Enums\PricingMode;
 use App\Enums\TaxMode;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
-#[Fillable([
-    'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
-    'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
-    'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
-    'grand_total', 'paid_amount', 'balance_amount',
-    'notes', 'terms', 'created_by',
-    'tax_mode', 'tax_breakdown', 'last_reminder_sent_at',
-])]
 class Invoice extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
+        'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
+        'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
+        'grand_total', 'paid_amount', 'balance_amount',
+        'notes', 'terms', 'created_by',
+        'tax_mode', 'tax_breakdown', 'last_reminder_sent_at',
+    ];
+
     use SoftDeletes;
 
     protected static function booted(): void

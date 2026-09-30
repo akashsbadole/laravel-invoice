@@ -2,26 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\ChargeAppliesTo;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceRequest;
 use App\Models\ActivityLog;
 use App\Models\BusinessSetting;
+use App\Models\CatalogItem;
 use App\Models\ChargeType;
 use App\Models\Customer;
+use App\Mail\InvoicePdfMail;
 use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceTemplate;
 use App\Models\MetalRate;
-use App\Models\CatalogItem;
 use App\Models\User;
 use App\Services\InvoiceCalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -205,6 +206,31 @@ class InvoiceController extends Controller
         ActivityLog::record('invoice.cancelled', $invoice, "Cancelled invoice {$invoice->invoice_number}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice cancelled.')]);
+
+        return back();
+    }
+
+    public function sendEmail(Request $request, Invoice $invoice): RedirectResponse
+    {
+        Gate::authorize('share', $invoice);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'message' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        Mail::to($validated['email'])->send(
+            new InvoicePdfMail($invoice, $validated['message'] ?? null)
+        );
+
+        InvoiceEvent::log(
+            $invoice,
+            InvoiceEventType::Sent,
+            ['action' => 'emailed', 'to' => $validated['email']],
+            $request->user()->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice emailed.')]);
 
         return back();
     }

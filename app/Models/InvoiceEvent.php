@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Enums\InvoiceEventType;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['invoice_id', 'event_type', 'meta', 'caused_by'])]
 class InvoiceEvent extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['invoice_id', 'event_type', 'meta', 'caused_by'];
+
     const UPDATED_AT = null;
 
     protected function casts(): array

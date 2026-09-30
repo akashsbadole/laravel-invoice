@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['customer_id', 'invoice_id', 'type', 'note', 'created_by'])]
 class CustomerNote extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['customer_id', 'invoice_id', 'type', 'note', 'created_by'];
+
     /**
      * @return BelongsTo<Customer, $this>
      */

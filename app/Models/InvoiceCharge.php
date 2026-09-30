@@ -3,16 +3,17 @@
 namespace App\Models;
 
 use App\Enums\ChargeCalculationType;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'invoice_id', 'charge_type_id', 'label', 'code', 'calculation_type',
-    'is_taxable', 'rate', 'amount', 'sort_order',
-])]
 class InvoiceCharge extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'invoice_id', 'charge_type_id', 'label', 'code', 'calculation_type',
+        'is_taxable', 'rate', 'amount', 'sort_order',
+    ];
+
     protected function casts(): array
     {
         return [

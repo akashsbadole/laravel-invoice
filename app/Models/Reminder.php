@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['customer_id', 'assigned_to', 'title', 'notes', 'remind_on', 'is_done', 'created_by'])]
 class Reminder extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['customer_id', 'assigned_to', 'title', 'notes', 'remind_on', 'is_done', 'created_by'];
+
     protected function casts(): array
     {
         return [

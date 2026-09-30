@@ -3,20 +3,21 @@
 namespace App\Models;
 
 use App\Enums\RateType;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable([
-    'invoice_id', 'sort_order', 'item_name', 'description', 'item_code', 'hsn_code',
-    'metal_type', 'purity', 'huid_number',
-    'stone_clarity', 'stone_color', 'stone_carat', 'certificate_number',
-    'quantity', 'gross_weight', 'net_weight', 'stone_weight',
-    'rate_type', 'rate', 'base_value', 'discount', 'tax_rate', 'tax', 'total',
-])]
 class InvoiceItem extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'invoice_id', 'sort_order', 'item_name', 'description', 'item_code', 'hsn_code',
+        'metal_type', 'purity', 'huid_number',
+        'stone_clarity', 'stone_color', 'stone_carat', 'certificate_number',
+        'quantity', 'gross_weight', 'net_weight', 'stone_weight',
+        'rate_type', 'rate', 'base_value', 'discount', 'tax_rate', 'tax', 'total',
+    ];
+
     protected function casts(): array
     {
         return [

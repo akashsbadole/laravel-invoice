@@ -307,6 +307,10 @@ export default function ShowInvoice({ invoice }: { invoice: Invoice }) {
                                                 Email
                                             </Button>
                                         )}
+                                        <SendEmailDialog
+                                            invoiceId={invoice.id}
+                                            defaultEmail={invoice.customer.email ?? ''}
+                                        />
                                         <Form {...InvoiceShareLinkController.sendSms.form({
                                             invoice: invoice.id,
                                             shareLink: activeLink.id,
@@ -447,6 +451,59 @@ function RecordPaymentDialog({ invoiceId, balance }: { invoiceId: number; balanc
                                     <Button variant="secondary" type="button">Cancel</Button>
                                 </DialogClose>
                                 <Button disabled={processing}>Record payment</Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function SendEmailDialog({ invoiceId, defaultEmail }: { invoiceId: number; defaultEmail: string }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">
+                    <Mail className="size-4" />
+                    Send via email
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Email invoice PDF</DialogTitle>
+                </DialogHeader>
+                <Form
+                    {...InvoiceController.sendEmail.form(invoiceId)}
+                    options={{ preserveScroll: true }}
+                    onSuccess={() => setOpen(false)}
+                    className="space-y-4"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="email-to">To</Label>
+                                <Input
+                                    id="email-to"
+                                    name="email"
+                                    type="email"
+                                    defaultValue={defaultEmail}
+                                    required
+                                />
+                                <InputError message={errors.email} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="email-message">Message (optional)</Label>
+                                <Textarea id="email-message" name="message" rows={3} />
+                                <InputError message={errors.message} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="secondary" type="button">Cancel</Button>
+                                </DialogClose>
+                                <Button disabled={processing}>Send email</Button>
                             </DialogFooter>
                         </>
                     )}

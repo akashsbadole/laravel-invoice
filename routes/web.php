@@ -48,6 +48,7 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
 
     Route::resource('invoices', InvoiceController::class);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
+    Route::post('invoices/{invoice}/send-email', [InvoiceController::class, 'sendEmail'])->name('invoices.send-email');
     Route::get('invoices/{invoice}/pdf', [InvoicePdfController::class, 'show'])->name('invoices.pdf');
     Route::get('invoices/{invoice}/receipt', [ReceiptController::class, 'invoice'])->name('invoices.receipt');
 

@@ -37,6 +37,7 @@
     33 => 'Termwind\\Laravel\\TermwindServiceProvider',
     34 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
     35 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
+    36 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -62,6 +63,7 @@
     19 => 'Termwind\\Laravel\\TermwindServiceProvider',
     20 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
     21 => 'Spatie\\LaravelIgnition\\IgnitionServiceProvider',
+    22 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (

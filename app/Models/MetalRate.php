@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
 
-#[Fillable(['metal_type', 'purity', 'rate_date', 'rate_per_gram', 'created_by'])]
 class MetalRate extends Model
 {
+    /** @var list<string> */
+    protected $fillable = ['metal_type', 'purity', 'rate_date', 'rate_per_gram', 'created_by'];
+
     protected function casts(): array
     {
         return [

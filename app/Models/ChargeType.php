@@ -4,16 +4,17 @@ namespace App\Models;
 
 use App\Enums\ChargeAppliesTo;
 use App\Enums\ChargeCalculationType;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable([
-    'name', 'code', 'calculation_type', 'applies_to', 'default_rate',
-    'is_taxable', 'is_system', 'is_active', 'sort_order',
-])]
 class ChargeType extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'name', 'code', 'calculation_type', 'applies_to', 'default_rate',
+        'is_taxable', 'is_system', 'is_active', 'sort_order',
+    ];
+
     protected function casts(): array
     {
         return [

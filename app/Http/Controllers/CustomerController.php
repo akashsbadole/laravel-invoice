@@ -132,7 +132,7 @@ class CustomerController extends Controller
             ->when($request->search, fn ($query, $search) => $query->where('full_name', 'like', "%{$search}%"))
             ->get();
 
-        $rows = ["Name,Mobile,Email,Type,Total Invoiced,Total Paid,Total Outstanding"];
+        $rows = ['Name,Mobile,Email,Type,Total Invoiced,Total Paid,Total Outstanding'];
 
         foreach ($customers as $customer) {
             $rows[] = implode(',', array_map(

@@ -3,16 +3,17 @@
 namespace App\Models;
 
 use App\Enums\PaymentMethod;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable([
-    'invoice_id', 'amount', 'payment_date', 'payment_method',
-    'reference_number', 'notes', 'received_by',
-])]
 class Payment extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'invoice_id', 'amount', 'payment_date', 'payment_method',
+        'reference_number', 'notes', 'received_by',
+    ];
+
     protected function casts(): array
     {
         return [

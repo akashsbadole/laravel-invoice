@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable([
-    'business_name', 'logo_path', 'address', 'phone', 'email', 'website',
-    'tax_number', 'bank_details', 'invoice_prefix', 'invoice_number_start',
-    'next_invoice_sequence', 'default_tax_rate', 'default_currency',
-    'invoice_terms', 'footer_text', 'signature_image_path', 'stamp_image_path',
-    'state_code', 'receipt_width', 'sms_payment_reminders', 'sms_birthday_wishes',
-])]
 class BusinessSetting extends Model
 {
+    /** @var list<string> */
+    protected $fillable = [
+        'business_name', 'logo_path', 'address', 'phone', 'email', 'website',
+        'tax_number', 'bank_details', 'invoice_prefix', 'invoice_number_start',
+        'next_invoice_sequence', 'default_tax_rate', 'default_currency',
+        'invoice_terms', 'footer_text', 'signature_image_path', 'stamp_image_path',
+        'state_code', 'receipt_width', 'sms_payment_reminders', 'sms_birthday_wishes',
+    ];
+
     protected function casts(): array
     {
         return [
