@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+﻿import { Head, Link, router } from '@inertiajs/react';
 import { Download, FileText, LogOut } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +53,7 @@ export default function PortalDashboard({
                         <h1 className="font-display text-2xl">Hi, {customer.full_name}</h1>
                         <p className="text-sm text-muted-foreground">
                             {customer.mobile_number}
-                            {customer.email && ` · ${customer.email}`}
+                            {customer.email && ` Â· ${customer.email}`}
                         </p>
                     </div>
 
@@ -73,7 +73,7 @@ export default function PortalDashboard({
                         <Card>
                             <CardContent className="p-4">
                                 <p className="text-xs text-muted-foreground">Due</p>
-                                <p className="truncate text-lg font-semibold tabular-nums text-gold-dark dark:text-gold-light">
+                                <p className="truncate text-lg font-semibold tabular-nums text-brand-dark dark:text-brand-light">
                                     {currency.format(totals.outstanding)}
                                 </p>
                             </CardContent>
@@ -100,7 +100,7 @@ export default function PortalDashboard({
                                         </Link>
                                         <p className="text-xs text-muted-foreground">
                                             {new Date(invoice.invoice_date).toLocaleDateString()}
-                                            {' · '}
+                                            {' Â· '}
                                             <Badge variant="secondary" className="capitalize">
                                                 {invoice.status.replace('_', ' ')}
                                             </Badge>

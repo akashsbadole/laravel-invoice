@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+﻿import { Head, Link, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -72,7 +72,7 @@ export default function Register({
                                     className={cn(
                                         'flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors',
                                         data.industry === option.key
-                                            ? 'border-gold bg-gold/5'
+                                            ? 'border-brand bg-brand/5'
                                             : 'hover:bg-muted/40',
                                     )}
                                 >

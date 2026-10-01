@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { AlertTriangle, ArrowRight, Bell, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
@@ -184,7 +184,7 @@ export default function Dashboard({
                                 {rates.map((r) => (
                                     <div key={r.id} className="flex justify-between text-sm">
                                         <span>{r.metal_type} {r.purity}</span>
-                                        <span className="font-medium">₹{r.rate_per_gram}/g</span>
+                                        <span className="font-medium">â‚¹{r.rate_per_gram}/g</span>
                                     </div>
                                 ))}
                             </CardContent>
@@ -210,7 +210,7 @@ export default function Dashboard({
                                         href={showInvoice(inv.id)}
                                         className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                                     >
-                                        <span>{inv.invoice_number} · {inv.customer.full_name}</span>
+                                        <span>{inv.invoice_number} Â· {inv.customer.full_name}</span>
                                         <span className="font-medium">{currency.format(Number(inv.grand_total))}</span>
                                     </Link>
                                 ))
@@ -232,7 +232,7 @@ export default function Dashboard({
                                         href={showInvoice(inv.id)}
                                         className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                                     >
-                                        <span>{inv.invoice_number} · {inv.customer.full_name}</span>
+                                        <span>{inv.invoice_number} Â· {inv.customer.full_name}</span>
                                         <span className="font-medium text-red-600 dark:text-red-400">
                                             {currency.format(Number(inv.balance_amount))}
                                         </span>
@@ -319,7 +319,7 @@ export default function Dashboard({
                                                 {item.brand && (
                                                     <span className="text-muted-foreground">
                                                         {' '}
-                                                        · {item.brand}
+                                                        Â· {item.brand}
                                                     </span>
                                                 )}
                                             </span>
@@ -387,7 +387,7 @@ function Stat({ label, value, emphasize, small }: { label: string; value: string
             <CardContent className="min-w-0 p-4">
                 <p className="truncate text-xs text-muted-foreground" title={String(value)}>{label}</p>
                 <p
-                    className={`mt-1 truncate font-semibold tabular-nums ${small ? 'text-base' : 'text-lg md:text-xl'} ${emphasize ? 'text-gold-dark dark:text-gold-light' : ''}`}
+                    className={`mt-1 truncate font-semibold tabular-nums ${small ? 'text-base' : 'text-lg md:text-xl'} ${emphasize ? 'text-brand-dark dark:text-brand-light' : ''}`}
                     title={String(value)}
                 >
                     {value}

@@ -167,7 +167,7 @@ export function QuotationBuilderDialog({ products }: { products: QuotationProduc
                                                 <input
                                                     type="checkbox"
                                                     id={`product-${product.id}`}
-                                                    name="items[][catalog_item_id]"
+                                                    name={`items[${product.id}][catalog_item_id]`}
                                                     value={product.id}
                                                     checked={Boolean(selection)}
                                                     onChange={() => toggle(product)}

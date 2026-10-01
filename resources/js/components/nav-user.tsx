@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+﻿import { router, usePage } from '@inertiajs/react';
 import { LogOut } from 'lucide-react';
 import type { Auth } from '@/types/auth';
 import { useLocale } from '@/lib/i18n';
@@ -13,7 +13,7 @@ export function NavUser() {
 
     return (
         <div className="flex items-center gap-2.5 rounded-lg border border-ivory/10 bg-ivory/5 p-2.5">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gold font-display text-sm font-semibold text-emeraldink-deep">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand font-display text-sm font-semibold text-navy-deep">
                 {initial}
             </div>
             <div className="min-w-0 flex-1">
@@ -26,7 +26,7 @@ export function NavUser() {
                 type="button"
                 title={t('nav.logout')}
                 onClick={() => router.post('/logout')}
-                className="rounded-md p-2 text-ivory/55 transition-colors hover:bg-ivory/10 hover:text-gold-light"
+                className="rounded-md p-2 text-ivory/55 transition-colors hover:bg-ivory/10 hover:text-brand-light"
             >
                 <LogOut className="size-4" />
             </button>

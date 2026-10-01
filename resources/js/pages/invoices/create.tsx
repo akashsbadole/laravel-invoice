@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+﻿import { Head } from '@inertiajs/react';
 import Heading from '@/components/heading';
 import InvoiceForm, { newInvoiceItem } from '@/components/invoices/invoice-form';
 import { dashboard } from '@/routes';
@@ -141,7 +141,7 @@ export default function CreateInvoice({
 
             <div className="mx-auto w-full max-w-3xl space-y-6 p-4 md:p-6">
                 {draftItems.length > 0 && (
-                    <p className="rounded-md border border-gold/40 bg-gold/5 px-3 py-2 text-sm">
+                    <p className="rounded-md border border-brand/40 bg-brand/5 px-3 py-2 text-sm">
                         Pre-filled with {draftItems.length} product
                         {draftItems.length === 1 ? '' : 's'} from your catalog.
                         Edit anything before saving.

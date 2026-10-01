@@ -1,5 +1,5 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
+﻿import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Bell, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
 import InstallmentController from '@/actions/App/Http/Controllers/InstallmentController';
@@ -121,7 +121,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             <Link href={`/customers/${invoice.customer.id}`} className="hover:underline">
                                 {invoice.customer.full_name}
                             </Link>
-                            <span>· {new Date(invoice.invoice_date).toLocaleDateString()}</span>
+                            <span>Â· {new Date(invoice.invoice_date).toLocaleDateString()}</span>
                             <Badge variant="secondary" className="capitalize">
                                 {invoice.status.replace('_', ' ')}
                             </Badge>
@@ -300,7 +300,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                         <td className="py-2 pr-2">
                                             <div className="font-medium">{item.item_name}</div>
                                             {item.line_type === 'exchange_credit' && (
-                                                <div className="text-xs text-gold-dark dark:text-gold-light">
+                                                <div className="text-xs text-brand-dark dark:text-brand-light">
                                                     Exchange credit
                                                 </div>
                                             )}
@@ -322,7 +322,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                                 ([key, value]) =>
                                                                     `${key}: ${value}`,
                                                             )
-                                                            .join(' · ')}
+                                                            .join(' Â· ')}
                                                     </div>
                                                 )}
                                         </td>
@@ -341,12 +341,12 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                 <td className="py-2 pr-2">
                                                     {[item.brand, item.model_number]
                                                         .filter(Boolean)
-                                                        .join(' · ') || '—'}
+                                                        .join(' Â· ') || 'â€”'}
                                                 </td>
                                                 <td className="py-2 pr-2 text-right">
                                                     {area !== null
                                                         ? `${area.toFixed(2)} sq ft`
-                                                        : (item.size_label ?? '—')}
+                                                        : (item.size_label ?? 'â€”')}
                                                 </td>
                                             </>
                                         )}
@@ -390,12 +390,18 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                 </Card>
 
                 <Card>
-                    <CardHeader className="flex-row items-center justify-between">
-                        <CardTitle>Payments</CardTitle>
-                        {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0 && (
-                            <RecordPaymentDialog invoiceId={invoice.id} balance={invoice.balance_amount} />
-                        )}
-                    </CardHeader>
+<CardHeader className="flex-row items-center justify-between">
+                            <CardTitle>Payments</CardTitle>
+                            {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0 && (
+                                <div className="flex gap-2">
+                                    <RemindCustomerButton invoiceId={invoice.id} />
+                                    <RecordPaymentDialog
+                                        invoiceId={invoice.id}
+                                        balance={invoice.balance_amount}
+                                    />
+                                </div>
+                            )}
+                        </CardHeader>
                     <CardContent className="space-y-2">
                         {invoice.payments.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No payments recorded.</p>
@@ -433,7 +439,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 >
                                     {({ processing }) => (
                                         <Button disabled={processing}>
-                                            {processing ? 'Generating…' : 'Generate share link'}
+                                            {processing ? 'Generatingâ€¦' : 'Generate share link'}
                                         </Button>
                                     )}
                                 </Form>
@@ -491,7 +497,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                         )}
                                         {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && (
                                             invoice.einvoice_status === 'generated' && invoice.irn ? (
-                                                <span className="inline-flex items-center rounded-md border border-gold/50 bg-gold/10 px-2.5 py-1.5 text-xs font-medium text-gold-dark dark:text-gold-light" title={`IRN: ${invoice.irn}`}>
+                                                <span className="inline-flex items-center rounded-md border border-brand/50 bg-brand/10 px-2.5 py-1.5 text-xs font-medium text-brand-dark dark:text-brand-light" title={`IRN: ${invoice.irn}`}>
                                                     IRN generated
                                                 </span>
                                             ) : (
@@ -499,7 +505,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                     {({ processing, errors }) => (
                                                         <>
                                                             <Button variant="outline" disabled={processing} title="Generate e-invoice IRN / e-way bill">
-                                                                {processing ? 'Requesting…' : 'E-invoice / IRN'}
+                                                                {processing ? 'Requestingâ€¦' : 'E-invoice / IRN'}
                                                             </Button>
                                                             <InputError message={errors.einvoice} />
                                                         </>
@@ -547,7 +553,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <p className="text-muted-foreground">
                                         Repeats <span className="font-medium text-foreground capitalize">{recurringProfile.frequency}</span>
-                                        {' · '}next run{' '}
+                                        {' Â· '}next run{' '}
                                         {new Date(recurringProfile.next_run_at).toLocaleDateString()}
                                     </p>
                                     <Form {...InvoiceController.recurringDestroy.form(invoice.id, recurringProfile.id)}>
@@ -614,7 +620,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             <CardContent className="space-y-2">
                                 {invoice.installments.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No plan set — the full balance of{' '}
+                                        No plan set â€” the full balance of{' '}
                                         {currency.format(
                                             Number(invoice.balance_amount),
                                         )}{' '}
@@ -767,7 +773,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                         <span className="capitalize">{note.type}</span>
                                         <span>
-                                            {note.creator?.name ?? 'System'} ·{' '}
+                                            {note.creator?.name ?? 'System'} Â·{' '}
                                             {new Date(note.created_at).toLocaleString()}
                                         </span>
                                     </div>
@@ -899,7 +905,7 @@ function QuotationStatusCard({ invoice }: { invoice: Invoice }) {
 
 /**
  * Builds an equal-split plan by default and lets the amounts be overridden,
- * e.g. "₹10,000 booking now, balance in 2 months".
+ * e.g. "â‚¹10,000 booking now, balance in 2 months".
  */
 function InstallmentPlanDialog({
     invoiceId,
@@ -1072,6 +1078,58 @@ function TotalRow({ label, value, emphasize }: { label: string; value: string; e
             <span>{label}</span>
             <span>{currency.format(Number(value))}</span>
         </div>
+    );
+}
+
+/**
+ * Staff-triggered nudge. Unlike the nightly job this always sends, so a
+ * customer who called can be chased immediately.
+ */
+function RemindCustomerButton({ invoiceId }: { invoiceId: number }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    <Bell className="size-4" />
+                    Remind
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send a payment reminder</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                    Texts their mobile and emails their address, with the
+                    invoice link. Their progress is shown on the customer
+                    timeline.
+                </p>
+                <Form
+                    {...PaymentController.remind.form(invoiceId)}
+                    onSuccess={() => setOpen(false)}
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <InputError message={errors.reminder} />
+                            <DialogFooter className="gap-2">
+                                <DialogClose asChild>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button disabled={processing}>
+                                    {processing ? 'Sendingâ€¦' : 'Send reminder'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
     );
 }
 

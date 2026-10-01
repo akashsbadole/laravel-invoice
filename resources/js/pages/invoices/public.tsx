@@ -1,4 +1,4 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
+﻿import { Head, useForm, usePage } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
@@ -130,7 +130,7 @@ export default function PublicInvoicePage({
                     >
                         <a
                             href={`https://wa.me/?text=${encodeURIComponent(
-                                `${business.business_name} — ${invoice.invoice_number}: ${window.location.href}`,
+                                `${business.business_name} â€” ${invoice.invoice_number}: ${window.location.href}`,
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -201,15 +201,15 @@ export default function PublicInvoicePage({
                         </div>
 
                         {invoice.irn && (
-                            <div className="mt-4 rounded-md border border-gold/40 bg-gold/5 p-3 text-xs">
+                            <div className="mt-4 rounded-md border border-brand/40 bg-brand/5 p-3 text-xs">
                                 <p className="font-medium">GST e-invoice (IRN)</p>
                                 <p className="break-all text-muted-foreground">
                                     {invoice.irn}
                                 </p>
                                 <p className="text-muted-foreground">
-                                    Ack no.: {invoice.irn_ack_no ?? '—'}
+                                    Ack no.: {invoice.irn_ack_no ?? 'â€”'}
                                     {invoice.eway_bill_no &&
-                                        ` · E-way bill: ${invoice.eway_bill_no}`}
+                                        ` Â· E-way bill: ${invoice.eway_bill_no}`}
                                 </p>
                             </div>
                         )}
@@ -231,8 +231,8 @@ export default function PublicInvoicePage({
                                                 {item.item_name}
                                                 <span className="block text-xs text-muted-foreground">
                                                     {item.metal_type} {item.purity}
-                                                    {template?.show_huid && item.huid_number && ` · HUID ${item.huid_number}`}
-                                                    {template?.show_hsn && item.hsn_code && ` · HSN ${item.hsn_code}`}
+                                                    {template?.show_huid && item.huid_number && ` Â· HUID ${item.huid_number}`}
+                                                    {template?.show_hsn && item.hsn_code && ` Â· HSN ${item.hsn_code}`}
                                                 </span>
                                             </td>
                                             <td className="py-2 text-right">{item.net_weight}g</td>
@@ -313,7 +313,7 @@ function QuotationPanel({
                     </p>
                     <p className="text-sm text-muted-foreground">
                         Status: <span className="capitalize">{quotation.status}</span>
-                        {quotation.response && ` · ${quotation.response}`}
+                        {quotation.response && ` Â· ${quotation.response}`}
                     </p>
                 </div>
 
@@ -380,7 +380,7 @@ function QuotationPanel({
                                 post(`/invoice/view/${token}/decide`)
                             }
                         >
-                            {processing ? 'Sending…' : 'Send my response'}
+                            {processing ? 'Sendingâ€¦' : 'Send my response'}
                         </Button>
                     </>
                 )}
@@ -405,7 +405,7 @@ function QuotationPanel({
                                     <span className="text-foreground">
                                         {update.label}
                                     </span>{' '}
-                                    — {new Date(update.at).toLocaleString()}
+                                    â€” {new Date(update.at).toLocaleString()}
                                     {update.detail && (
                                         <span className="block text-xs">
                                             {update.detail}
@@ -468,7 +468,7 @@ function PasswordGate({ token }: { token: string }) {
                             <InputError message={errors.password} />
                         </div>
                         <Button type="submit" className="w-full" disabled={processing}>
-                            {processing ? 'Checking…' : 'View invoice'}
+                            {processing ? 'Checkingâ€¦' : 'View invoice'}
                         </Button>
                     </form>
                 </CardContent>

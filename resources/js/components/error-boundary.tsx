@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react';
+﻿import { Component, type ReactNode } from 'react';
 import { Gem, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -31,20 +31,20 @@ export class ErrorBoundary extends Component<Props, State> {
         }
 
         return (
-            <div className="brand-glow flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center text-ivory">
-                <span className="flex size-12 items-center justify-center rounded-full border border-gold/60 bg-gold/10 text-gold">
+            <div className="brand-panel flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center text-ivory">
+                <span className="flex size-12 items-center justify-center rounded-full border border-brand/60 bg-brand/10 text-brand">
                     <Gem className="size-5" />
                 </span>
                 <div className="space-y-1">
                     <h1 className="font-display text-2xl">Something went sideways.</h1>
                     <p className="max-w-sm text-sm text-ivory/70">
-                        The page hit an unexpected error. Reloading usually fixes it —
+                        The page hit an unexpected error. Reloading usually fixes it â€”
                         especially after an update.
                     </p>
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        className="bg-gold text-emeraldink-deep hover:bg-gold-light"
+                        className="bg-brand text-navy-deep hover:bg-brand-light"
                         onClick={() => window.location.reload()}
                     >
                         <RefreshCw className="size-4" />

@@ -1,4 +1,4 @@
-import type { Staff } from './customer';
+﻿import type { Staff } from './customer';
 
 export type ReminderCustomer = { id: number; full_name: string; mobile_number: string };
 
@@ -35,17 +35,4 @@ export type CustomReminder = {
     remind_on: string;
     is_done: boolean;
     customer: ReminderCustomer | null;
-};
-
-export type MessageLogRow = {
-    id: number;
-    channel: string;
-    driver: string;
-    to: string;
-    body: string;
-    status: string;
-    error: string | null;
-    created_at: string;
-    customer: ReminderCustomer | null;
-    invoice: { id: number; invoice_number: string } | null;
 };

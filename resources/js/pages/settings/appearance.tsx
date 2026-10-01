@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+﻿import { Head } from '@inertiajs/react';
 import { Check, Languages } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ const options = [
 
 const locales: { value: Locale; label: string; description: string }[] = [
     { value: 'en', label: 'English', description: 'Default interface language.' },
-    { value: 'hi', label: 'Hindi (हिन्दी)', description: 'मेनू और शीर्षक हिन्दी में।' },
+    { value: 'hi', label: 'Hindi (à¤¹à¤¿à¤¨à¥à¤¦à¥€)', description: 'à¤®à¥‡à¤¨à¥‚ à¤”à¤° à¤¶à¥€à¤°à¥à¤·à¤• à¤¹à¤¿à¤¨à¥à¤¦à¥€ à¤®à¥‡à¤‚à¥¤' },
 ];
 
 export default function Appearance() {
@@ -66,7 +66,7 @@ export default function Appearance() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
-                            <Languages className="size-4 text-gold-dark dark:text-gold-light" />
+                            <Languages className="size-4 text-brand-dark dark:text-brand-light" />
                             {t('language.title')}
                         </CardTitle>
                     </CardHeader>

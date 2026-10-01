@@ -13,7 +13,6 @@ use App\Http\Controllers\InviteAcceptController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\InvoiceShareLinkController;
-use App\Http\Controllers\MessageLogController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalInvoiceController;
@@ -120,6 +119,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::post('invoices/{invoice}/installments/{installment}/collect', [InstallmentController::class, 'collect'])->name('invoices.installments.collect');
     Route::delete('invoices/{invoice}/installments/{installment}', [InstallmentController::class, 'destroy'])->name('invoices.installments.destroy');
     Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('invoices.payments.store');
+    Route::post('invoices/{invoice}/remind', [PaymentController::class, 'remind'])->name('invoices.remind');
 
     Route::post('invoices/{invoice}/share-links', [InvoiceShareLinkController::class, 'store'])->name('invoices.share-links.store');
     Route::post('invoices/{invoice}/share-links/{shareLink}/deactivate', [InvoiceShareLinkController::class, 'deactivate'])->name('invoices.share-links.deactivate');
@@ -127,8 +127,6 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::post('invoices/{invoice}/share-links/{shareLink}/sms', [InvoiceShareLinkController::class, 'sendSms'])->name('invoices.share-links.sms');
 
     Route::post('invoice/view/{token}/decide', [PublicInvoiceController::class, 'decide'])->name('invoices.public.decide');
-
-    Route::get('message-logs', [MessageLogController::class, 'index'])->name('message-logs.index');
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/download', [ReportController::class, 'download'])->name('reports.download');

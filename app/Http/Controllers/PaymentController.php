@@ -6,6 +6,7 @@ use App\Enums\InstallmentStatus;
 use App\Http\Requests\Invoices\StorePaymentRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\PaymentReminderService;
 use App\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +49,33 @@ class PaymentController extends Controller
         $this->settleMatchingInstallments($invoice, $payment);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
+
+        return back();
+    }
+
+    public function remind(Request $request, Invoice $invoice, PaymentReminderService $reminders): RedirectResponse
+    {
+        Gate::authorize('recordPayment', $invoice);
+
+        if ((float) $invoice->balance_amount <= 0) {
+            return back()->withErrors(['reminder' => 'This invoice has nothing outstanding.']);
+        }
+
+        // Staff-initiated, so it bypasses the nightly 3-day throttle.
+        $sent = $reminders->sendForInvoice($invoice, $request->user()->id, force: true);
+
+        if ($sent === []) {
+            return back()->withErrors(['reminder' => 'No contact details on file for this customer.']);
+        }
+
+        $channels = collect($sent)
+            ->map(fn (string $status, string $channel) => $channel.' ('.$status.')')
+            ->implode(', ');
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "Reminder sent: {$channels}",
+        ]);
 
         return back();
     }

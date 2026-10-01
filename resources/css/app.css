@@ -4,48 +4,48 @@
 
 @layer base {
     :root {
-        --background: 43 43% 97%;
-        --foreground: 164 68% 12%;
-        --card: 44 50% 99%;
-        --card-foreground: 164 68% 12%;
-        --popover: 44 50% 99%;
-        --popover-foreground: 164 68% 12%;
-        --primary: 164 68% 14%;
-        --primary-foreground: 43 43% 97%;
-        --secondary: 43 30% 92%;
-        --secondary-foreground: 164 68% 14%;
-        --muted: 43 25% 93%;
-        --muted-foreground: 160 12% 38%;
-        --accent: 43 60% 88%;
-        --accent-foreground: 164 68% 14%;
+        --background: 240 20% 99%;
+        --foreground: 222 47% 11%;
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 262 83% 58%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 250 20% 95%;
+        --secondary-foreground: 222 47% 11%;
+        --muted: 250 20% 96%;
+        --muted-foreground: 217 15% 42%;
+        --accent: 258 90% 96%;
+        --accent-foreground: 263 69% 42%;
         --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 43 43% 97%;
-        --border: 43 25% 86%;
-        --input: 43 25% 86%;
-        --ring: 43 74% 45%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 250 20% 90%;
+        --input: 250 20% 90%;
+        --ring: 262 83% 58%;
         --radius: 0.625rem;
     }
 
     .dark {
-        --background: 166 70% 6%;
-        --foreground: 43 40% 94%;
-        --card: 165 55% 9%;
-        --card-foreground: 43 40% 94%;
-        --popover: 165 55% 9%;
-        --popover-foreground: 43 40% 94%;
-        --primary: 43 74% 52%;
-        --primary-foreground: 166 70% 8%;
-        --secondary: 164 40% 13%;
-        --secondary-foreground: 43 40% 94%;
-        --muted: 164 40% 13%;
-        --muted-foreground: 43 18% 66%;
-        --accent: 164 45% 16%;
-        --accent-foreground: 43 74% 72%;
+        --background: 222 47% 11%;
+        --foreground: 250 20% 96%;
+        --card: 222 40% 14%;
+        --card-foreground: 250 20% 96%;
+        --popover: 222 40% 14%;
+        --popover-foreground: 250 20% 96%;
+        --primary: 258 92% 76%;
+        --primary-foreground: 222 47% 11%;
+        --secondary: 222 30% 20%;
+        --secondary-foreground: 250 20% 96%;
+        --muted: 222 30% 20%;
+        --muted-foreground: 217 20% 70%;
+        --accent: 263 40% 24%;
+        --accent-foreground: 258 92% 85%;
         --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 43 40% 94%;
-        --border: 164 35% 17%;
-        --input: 164 35% 17%;
-        --ring: 43 74% 52%;
+        --destructive-foreground: 250 20% 96%;
+        --border: 222 25% 24%;
+        --input: 222 25% 24%;
+        --ring: 258 92% 76%;
     }
 }
 
@@ -59,16 +59,14 @@
 }
 
 @layer components {
-    /* Thin champagne-gold rule used under display headings. */
-    .gold-rule {
-        @apply h-px w-16 bg-gold;
+    /* Thin accent rule used under display headings. */
+    .brand-rule {
+        @apply h-px w-16 bg-brand;
     }
 
-    /* Subtle radial glow for hero / auth brand panels. */
-    .brand-glow {
-        background:
-            radial-gradient(60% 50% at 50% 0%, rgba(201, 162, 39, 0.22), transparent 70%),
-            linear-gradient(180deg, #0b3d2e 0%, #072a20 100%);
+    /* Flat navy brand panel for hero / auth surfaces — deliberately no gradient. */
+    .brand-panel {
+        @apply bg-navy-deep;
     }
 
     /* Staggered entrance: apply .rise-in with inline animation-delay. */

@@ -1,4 +1,4 @@
-export interface User {
+﻿export interface User {
     id: number;
     name: string;
     email: string;
@@ -189,17 +189,6 @@ export interface CustomerNote {
     customer_id: number;
     note: string;
     created_by: number;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface MessageLog {
-    id: number;
-    recipient: string;
-    message: string;
-    status: string;
-    provider: string | null;
-    error_message: string | null;
     created_at: string;
     updated_at: string;
 }

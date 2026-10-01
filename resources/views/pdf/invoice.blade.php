@@ -1,43 +1,43 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <title>{{ $invoice->invoice_number }}</title>
     <style>
         @page { margin: 0; }
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #1c2420; margin: 0; }
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #0F172A; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
-        .letterhead { background: #0b3d2e; color: #faf7f0; padding: 26px 32px 20px; }
-        .letterhead .business-name { font-size: 21px; font-weight: bold; letter-spacing: 0.06em; color: #faf7f0; }
-        .letterhead .muted { color: #c9bfae; }
-        .gold-band { height: 3px; background: #c9a227; }
+        .letterhead { background: #0F172A; color: #F8FAFC; padding: 26px 32px 20px; }
+        .letterhead .business-name { font-size: 21px; font-weight: bold; letter-spacing: 0.06em; color: #F8FAFC; }
+        .letterhead .muted { color: #94A3B8; }
+        .brand-band { height: 3px; background: #7C3AED; }
         .body-wrap { padding: 20px 32px 28px; }
         .header-table td { vertical-align: top; }
-        .muted { color: #6b7280; }
+        .muted { color: #64748B; }
         .right { text-align: right; }
         .center { text-align: center; }
-        h2 { font-size: 12px; margin: 18px 0 6px; letter-spacing: 0.12em; text-transform: uppercase; color: #0b3d2e; }
-        .invoice-title { font-size: 20px; font-weight: bold; letter-spacing: 0.18em; color: #0b3d2e; margin: 0 0 4px; }
-        .invoice-no { font-size: 13px; font-weight: bold; color: #8c6e1a; }
+        h2 { font-size: 12px; margin: 18px 0 6px; letter-spacing: 0.12em; text-transform: uppercase; color: #0F172A; }
+        .invoice-title { font-size: 20px; font-weight: bold; letter-spacing: 0.18em; color: #0F172A; margin: 0 0 4px; }
+        .invoice-no { font-size: 13px; font-weight: bold; color: #5B21B6; }
         .badge {
             display: inline-block; padding: 2px 8px; border-radius: 4px;
             font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
-            background: #f4ecd8; color: #8c6e1a; border: 1px solid #c9a227;
+            background: #F5F3FF; color: #5B21B6; border: 1px solid #7C3AED;
         }
         .items-table th {
-            background: #0b3d2e; color: #faf7f0;
+            background: #0F172A; color: #F8FAFC;
             padding: 7px 5px; text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
         }
-        .items-table td { padding: 6px 5px; border-bottom: 1px solid #e7e0d0; font-size: 10.5px; }
-        .items-table tr:nth-child(even) td { background: #faf7f0; }
+        .items-table td { padding: 6px 5px; border-bottom: 1px solid #E2E8F0; font-size: 10.5px; }
+        .items-table tr:nth-child(even) td { background: #F8FAFC; }
         .totals-table td { padding: 3px 0; }
-        .totals-table .label { color: #6b7280; }
-        .grand-total { font-size: 14px; font-weight: bold; border-top: 2px solid #c9a227; padding-top: 6px !important; }
-        .grand-total td { color: #0b3d2e; }
-        .footer { margin-top: 24px; font-size: 9.5px; color: #6b7280; border-top: 1px solid #e7e0d0; padding-top: 10px; }
+        .totals-table .label { color: #64748B; }
+        .grand-total { font-size: 14px; font-weight: bold; border-top: 2px solid #7C3AED; padding-top: 6px !important; }
+        .grand-total td { color: #0F172A; }
+        .footer { margin-top: 24px; font-size: 9.5px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; }
         .signature-block { margin-top: 40px; }
         .signature-block img { max-height: 50px; }
-        .sign-line { border-top: 1px solid #0b3d2e; margin-top: 34px; padding-top: 4px; }
+        .sign-line { border-top: 1px solid #0F172A; margin-top: 34px; padding-top: 4px; }
     </style>
 </head>
 <body>
@@ -52,7 +52,7 @@
                     <div class="muted" style="margin-top: 4px;">
                         {{ $business->address }}<br>
                         @if($business->phone) Phone: {{ $business->phone }} @endif
-                        @if($business->email) &nbsp;·&nbsp; {{ $business->email }} @endif
+                        @if($business->email) &nbsp;Â·&nbsp; {{ $business->email }} @endif
                         <br>
                         @if($business->tax_number) GSTIN: {{ $business->tax_number }} @endif
                     </div>
@@ -69,7 +69,7 @@
             </tr>
         </table>
     </div>
-    <div class="gold-band"></div>
+    <div class="brand-band"></div>
     <div class="body-wrap">
 
     <table class="header-table" style="margin-top: 18px;">
@@ -78,7 +78,7 @@
                 <div class="muted">Billed to</div>
                 <strong>{{ $invoice->customer->full_name }}</strong><br>
                 {{ $invoice->customer->mobile_number }}
-                @if($invoice->customer->email) &nbsp;·&nbsp; {{ $invoice->customer->email }} @endif
+                @if($invoice->customer->email) &nbsp;Â·&nbsp; {{ $invoice->customer->email }} @endif
                 <br>
                 {{ $invoice->customer->address }}
                 @if($invoice->customer->tax_number)
@@ -126,19 +126,19 @@
                             @if($item->stone_carat > 0)<br><span class="muted">Stone: {{ number_format((float) $item->stone_carat, 3) }} ct {{ $item->stone_clarity }} {{ $item->stone_color }}</span>@endif
                         @endif
                         @if(! empty($item->attributes))
-                            <br><span class="muted">{{ collect($item->attributes)->map(fn ($value, $key) => $key.': '.$value)->implode(' · ') }}</span>
+                            <br><span class="muted">{{ collect($item->attributes)->map(fn ($value, $key) => $key.': '.$value)->implode(' Â· ') }}</span>
                         @endif
                     </td>
                     @if($showWeights)
                         <td>{{ $item->metal_type }} @if($item->purity) / {{ $item->purity }} @endif</td>
                         <td class="right">{{ number_format((float) $item->net_weight, 3) }}</td>
                     @else
-                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' · ') ?: '—' }}</td>
+                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' Â· ') ?: 'â€”' }}</td>
                         <td class="right">
                             @if($item->length && $item->width)
                                 {{ number_format((float) $item->length * (float) $item->width / 929.0304, 2) }}
                             @else
-                                {{ $item->size_label ?? '—' }}
+                                {{ $item->size_label ?? 'â€”' }}
                             @endif
                         </td>
                     @endif
@@ -178,17 +178,17 @@
     </table>
 
     @if($invoice->irn)
-        <table style="margin-top: 14px; border: 1px solid #c9a227; border-collapse: collapse;">
+        <table style="margin-top: 14px; border: 1px solid #7C3AED; border-collapse: collapse;">
             <tr>
                 <td style="padding: 6px 10px;">
                     <strong>IRN</strong>: {{ $invoice->irn }}<br>
                     <span class="muted">
-                        Ack no.: {{ $invoice->irn_ack_no ?? '—' }}
+                        Ack no.: {{ $invoice->irn_ack_no ?? 'â€”' }}
                         @if($invoice->irn_ack_date)
-                            · Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
+                            Â· Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
                         @endif
                         @if($invoice->eway_bill_no)
-                            · E-way bill: {{ $invoice->eway_bill_no }}
+                            Â· E-way bill: {{ $invoice->eway_bill_no }}
                         @endif
                     </span>
                 </td>

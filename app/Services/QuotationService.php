@@ -128,7 +128,6 @@ class QuotationService
                 InvoiceEventType::Created->value,
                 InvoiceEventType::Updated->value,
                 InvoiceEventType::Sent->value,
-                InvoiceEventType::Converted->value,
             ])
             ->latest()
             ->get()

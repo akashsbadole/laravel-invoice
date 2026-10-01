@@ -9,6 +9,8 @@ use App\Models\BusinessSetting;
 use App\Models\Invoice;
 use App\Models\InvoiceShareLink;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Services\QuotationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,10 +18,10 @@ class QuotationLifecycleTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected \App\Models\User $staff;
+    protected User $staff;
 
     /** The staff user who owns the quotation created by quotation(). */
-    protected function user(): \App\Models\User
+    protected function user(): User
     {
         return $this->staff ??= $this->adminFor();
     }
@@ -66,7 +68,7 @@ class QuotationLifecycleTest extends TestCase
 
     public function test_a_new_quotation_starts_as_draft(): void
     {
-        $this->assertSame(QuotationStatus::Draft, app(\App\Services\QuotationService::class)->currentStatus($this->quotation()));
+        $this->assertSame(QuotationStatus::Draft, app(QuotationService::class)->currentStatus($this->quotation()));
     }
 
     public function test_staff_can_mark_a_quotation_as_sent(): void

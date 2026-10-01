@@ -1,4 +1,4 @@
-import { Link, router, usePage } from '@inertiajs/react';
+﻿import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     Bell,
@@ -38,7 +38,7 @@ export function AppSidebar() {
     const currentFirmId = auth.tenant?.id;
 
     return (
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-emeraldink-deep text-ivory md:flex">
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-navy-deep text-ivory md:flex">
             <div className="border-b border-ivory/10 px-5 pb-5 pt-6">
                 <AppLogo dark />
                 {firms.length > 1 ? (
@@ -60,7 +60,7 @@ export function AppSidebar() {
                         ))}
                     </select>
                 ) : (
-                    <div className="gold-rule mt-4" />
+                    <div className="brand-rule mt-4" />
                 )}
             </div>
 
@@ -81,11 +81,11 @@ export function AppSidebar() {
                         >
                             <span
                                 className={cn(
-                                    'absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gold transition-opacity',
+                                    'absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-brand transition-opacity',
                                     isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-40',
                                 )}
                             />
-                            <Icon className={cn('size-4', isActive ? 'text-gold' : 'text-ivory/50 group-hover:text-gold-light')} />
+                            <Icon className={cn('size-4', isActive ? 'text-brand' : 'text-ivory/50 group-hover:text-brand-light')} />
                             {t(item.titleKey)}
                         </Link>
                     );

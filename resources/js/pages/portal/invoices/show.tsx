@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+﻿import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Download, Printer } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';
@@ -94,8 +94,8 @@ export default function PortalInvoiceShow({
                                             <p className="text-xs text-muted-foreground">
                                                 {item.metal_type}
                                                 {item.purity && ` / ${item.purity}`}
-                                                {Number(item.net_weight) > 0 && ` · ${item.net_weight}g`}
-                                                {` · Qty ${item.quantity}`}
+                                                {Number(item.net_weight) > 0 && ` Â· ${item.net_weight}g`}
+                                                {` Â· Qty ${item.quantity}`}
                                             </p>
                                         </div>
                                         <p className="shrink-0 tabular-nums">{currency.format(Number(item.total))}</p>
@@ -122,7 +122,7 @@ export default function PortalInvoiceShow({
                                     <span>Paid</span>
                                     <span className="tabular-nums">{currency.format(Number(invoice.paid_amount))}</span>
                                 </div>
-                                <div className="flex justify-between font-semibold text-gold-dark dark:text-gold-light">
+                                <div className="flex justify-between font-semibold text-brand-dark dark:text-brand-light">
                                     <span>Balance due</span>
                                     <span className="tabular-nums">{currency.format(Number(invoice.balance_amount))}</span>
                                 </div>
@@ -133,7 +133,7 @@ export default function PortalInvoiceShow({
                                     <p className="mb-1 font-medium">Payments</p>
                                     {invoice.payments.map((payment) => (
                                         <div key={payment.id} className="flex justify-between py-1 text-muted-foreground">
-                                            <span>{new Date(payment.payment_date).toLocaleDateString()} · {String(payment.payment_method).replace('_', ' ')}</span>
+                                            <span>{new Date(payment.payment_date).toLocaleDateString()} Â· {String(payment.payment_method).replace('_', ' ')}</span>
                                             <span className="tabular-nums">{currency.format(Number(payment.amount))}</span>
                                         </div>
                                     ))}

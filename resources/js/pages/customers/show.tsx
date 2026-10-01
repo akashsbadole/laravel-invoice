@@ -1,4 +1,4 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+﻿import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerFollowupController from '@/actions/App/Http/Controllers/CustomerFollowupController';
@@ -94,7 +94,7 @@ export default function ShowCustomer({
                         <Heading title={customer.full_name} />
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                             <span>{customer.mobile_number}</span>
-                            {customer.email && <span>· {customer.email}</span>}
+                            {customer.email && <span>Â· {customer.email}</span>}
                             <Badge variant="outline" className="capitalize">
                                 {customer.customer_type}
                             </Badge>
@@ -164,7 +164,7 @@ export default function ShowCustomer({
                     />
                     <StatCard
                         label="Last invoice"
-                        value={stats.last_invoice_date ?? '—'}
+                        value={stats.last_invoice_date ?? 'â€”'}
                     />
                 </div>
 
@@ -235,12 +235,12 @@ export default function ShowCustomer({
                                             {followup.assignee && (
                                                 <span className="font-normal text-muted-foreground">
                                                     {' '}
-                                                    · {followup.assignee.name}
+                                                    Â· {followup.assignee.name}
                                                 </span>
                                             )}
                                         </p>
                                         {followup.reminder_at && (
-                                            <p className="text-xs text-gold-dark dark:text-gold-light">
+                                            <p className="text-xs text-brand-dark dark:text-brand-light">
                                                 Reminder{' '}
                                                 {new Date(
                                                     followup.reminder_at,
@@ -322,7 +322,7 @@ export default function ShowCustomer({
                                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                         <span className="capitalize">{note.type}</span>
                                         <span>
-                                            {note.creator?.name ?? 'Unknown'} ·{' '}
+                                            {note.creator?.name ?? 'Unknown'} Â·{' '}
                                             {new Date(note.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
@@ -352,7 +352,7 @@ export default function ShowCustomer({
                                                 event.kind === 'payment'
                                                     ? 'bg-emerald-500'
                                                     : event.kind === 'invoice'
-                                                      ? 'bg-gold'
+                                                      ? 'bg-brand'
                                                       : event.kind === 'message'
                                                         ? 'bg-sky-500'
                                                         : 'bg-muted-foreground/40',
@@ -373,7 +373,7 @@ export default function ShowCustomer({
                                             )}
                                             <span className="block text-xs text-muted-foreground">
                                                 {event.detail && (
-                                                    <>{event.detail} · </>
+                                                    <>{event.detail} Â· </>
                                                 )}
                                                 {new Date(
                                                     event.at,

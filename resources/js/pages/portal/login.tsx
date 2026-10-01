@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+﻿import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { AppLogo } from '@/components/app-logo';
 import InputError from '@/components/input-error';
@@ -21,7 +21,7 @@ export default function PortalLogin({ status }: { status?: string | null }) {
         <>
             <Head title="Customer portal" />
 
-            <div className="brand-glow flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+            <div className="brand-panel flex min-h-screen flex-col items-center justify-center gap-6 p-6">
                 <AppLogo dark />
                 <Card className="w-full max-w-md">
                     <CardContent className="space-y-4 pt-6">

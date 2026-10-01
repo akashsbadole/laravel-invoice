@@ -1,4 +1,4 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { CreditCard, FileText, LayoutDashboard, Package, Users } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
@@ -35,7 +35,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
         <div className="flex min-h-screen">
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
-                <div className="border-b border-ivory/10 bg-emeraldink-deep px-4 py-3 md:hidden">
+                <div className="border-b border-ivory/10 bg-navy-deep px-4 py-3 md:hidden">
                     <AppLogo dark />
                 </div>
 
@@ -43,7 +43,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                     <header className="flex items-center gap-1.5 overflow-x-auto border-b px-4 py-2.5 text-sm text-muted-foreground md:px-6">
                         {breadcrumbs.map((crumb, i) => (
                             <React.Fragment key={`${crumb.title}-${i}`}>
-                                {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-gold-dark" />}
+                                {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-brand-dark" />}
                                 {crumb.href && i < breadcrumbs.length - 1 ? (
                                     <Link href={crumb.href} className="shrink-0 hover:text-foreground">
                                         {crumb.title}
@@ -62,7 +62,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                 <FlashToaster />
             </div>
 
-            <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ivory/10 bg-emeraldink-deep/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+            <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-ivory/10 bg-navy-deep/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
                 <div className="grid grid-cols-5">
                     {mobileTabs.map((tab) => {
                         const isActive = url === tab.href || url.startsWith(`${tab.href}/`);
@@ -73,7 +73,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                                 href={tab.href}
                                 className={cn(
                                     'flex flex-col items-center gap-0.5 py-2 text-[11px] transition-colors',
-                                    isActive ? 'font-semibold text-gold' : 'text-ivory/60',
+                                    isActive ? 'font-semibold text-brand' : 'text-ivory/60',
                                 )}
                             >
                                 <Icon className="size-5" />

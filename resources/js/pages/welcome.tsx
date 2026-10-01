@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+﻿import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowRight, FileText, Package, QrCode, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Auth } from '@/types/auth';
@@ -16,10 +16,10 @@ export default function Welcome() {
         <>
             <Head title="Welcome" />
 
-            <div className="brand-glow min-h-screen text-ivory">
+            <div className="brand-panel min-h-screen text-ivory">
                 <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
                     <span className="flex items-center gap-2.5">
-                        <span className="flex size-9 items-center justify-center rounded-full border border-gold/60 bg-gold/10 text-gold">
+                        <span className="flex size-9 items-center justify-center rounded-full border border-brand/60 bg-brand/10 text-brand">
                             <Package className="size-4" />
                         </span>
                         <span className="font-display text-xl font-semibold tracking-wide">
@@ -36,7 +36,7 @@ export default function Welcome() {
                                 <Button asChild variant="ghost" className="text-ivory/80 hover:text-ivory">
                                     <Link href="/login">Log in</Link>
                                 </Button>
-                                <Button asChild className="bg-gold text-emeraldink-deep hover:bg-gold-light">
+                                <Button asChild className="bg-brand text-navy-deep hover:bg-brand-light">
                                     <Link href="/register">
                                         Start free trial
                                         <ArrowRight className="size-4" />
@@ -48,8 +48,8 @@ export default function Welcome() {
                 </header>
 
                 <main className="mx-auto w-full max-w-6xl px-6 pb-20 pt-10 text-center md:pt-16">
-                    <p className="rise-in text-xs font-semibold uppercase tracking-[0.24em] text-gold-light">
-                        Estimates · GST invoices · Payments
+                    <p className="rise-in text-xs font-semibold uppercase tracking-[0.24em] text-brand-light">
+                        Estimates Â· GST invoices Â· Payments
                     </p>
                     <h1
                         className="rise-in mx-auto mt-4 max-w-3xl font-display text-4xl font-medium leading-tight md:text-6xl"
@@ -64,7 +64,7 @@ export default function Welcome() {
                     </p>
                     {!auth.user && (
                         <div className="rise-in mt-8 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: '240ms' }}>
-                            <Button asChild size="lg" className="bg-gold text-emeraldink-deep hover:bg-gold-light">
+                            <Button asChild size="lg" className="bg-brand text-navy-deep hover:bg-brand-light">
                                 <Link href="/register">
                                     Start 14-day free trial
                                     <ArrowRight className="size-4" />
@@ -83,7 +83,7 @@ export default function Welcome() {
                                 className="rise-in rounded-xl border border-ivory/12 bg-ivory/[0.04] p-6 backdrop-blur"
                                 style={{ animationDelay: `${320 + i * 100}ms` }}
                             >
-                                <step.icon className="size-5 text-gold" />
+                                <step.icon className="size-5 text-brand" />
                                 <h2 className="mt-3 font-display text-xl">{step.title}</h2>
                                 <p className="mt-1 text-sm text-ivory/65">{step.text}</p>
                             </div>
@@ -91,7 +91,7 @@ export default function Welcome() {
                     </div>
 
                     <p className="mt-14 text-xs uppercase tracking-[0.2em] text-ivory/40">
-                        No inventory · No barcode billing · No POS screens
+                        No inventory Â· No barcode billing Â· No POS screens
                     </p>
                 </main>
             </div>

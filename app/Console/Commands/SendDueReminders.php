@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\DueRemindersDigest;
+use App\Services\PaymentReminderService;
 use App\Services\ReminderService;
 use App\Services\SmsService;
 use Illuminate\Console\Command;
@@ -18,6 +19,11 @@ class SendDueReminders extends Command
     protected $signature = 'reminders:send {--no-sms : Skip automatic SMS to customers}';
 
     protected $description = 'Send the daily reminder digest to staff and (optionally) SMS reminders to customers';
+
+    public function __construct(private readonly PaymentReminderService $paymentReminders)
+    {
+        parent::__construct();
+    }
 
     public function handle(ReminderService $reminders, SmsService $sms): int
     {
@@ -59,8 +65,11 @@ class SendDueReminders extends Command
         if (! $this->option('no-sms')) {
             $business = BusinessSetting::current();
 
-            if ($business->sms_payment_reminders) {
-                $this->smsOverdue($data['payments'], $sms, $business->business_name);
+            // One service drives both channels and the 3-day throttle, so
+            // staff nudges and the nightly job cannot double-send. Each
+            // channel is gated by its own tenant setting.
+            if ($business->sms_payment_reminders || $business->email_payment_reminders) {
+                $this->remindOverdue($data['payments']);
             }
 
             if ($business->sms_birthday_wishes) {
@@ -79,36 +88,26 @@ class SendDueReminders extends Command
     }
 
     /**
+     * Only chase invoices that are actually past their due date; the service
+     * handles the per-channel delivery and the 3-day throttle.
+     *
      * @param  Collection<int,Invoice>  $invoices
      */
-    protected function smsOverdue(Collection $invoices, SmsService $sms, string $businessName): void
+    protected function remindOverdue(Collection $invoices): void
     {
         $sent = 0;
 
         foreach ($invoices as $invoice) {
-            $overdue = $invoice->due_date && $invoice->due_date->isPast();
-            $recentlyReminded = $invoice->last_reminder_sent_at && $invoice->last_reminder_sent_at->gt(now()->subDays(3));
-
-            if (! $overdue || $recentlyReminded || ! $invoice->customer?->mobile_number) {
+            if (! $invoice->due_date || ! $invoice->due_date->isPast()) {
                 continue;
             }
 
-            $log = $sms->send($invoice->customer->mobile_number, sprintf(
-                'Dear %s, invoice %s has Rs.%s pending (was due %s). Please pay at your earliest. - %s',
-                $invoice->customer->full_name,
-                $invoice->invoice_number,
-                number_format((float) $invoice->balance_amount, 2),
-                $invoice->due_date->format('d M'),
-                $businessName,
-            ), ['customer_id' => $invoice->customer_id, 'invoice_id' => $invoice->id]);
-
-            if ($log->status !== 'failed') {
-                $invoice->forceFill(['last_reminder_sent_at' => now()])->saveQuietly();
+            if ($this->paymentReminders->sendForInvoice($invoice) !== []) {
                 $sent++;
             }
         }
 
-        $this->info("{$sent} payment reminder SMS processed.");
+        $this->info("{$sent} payment reminder(s) processed.");
     }
 
     /**

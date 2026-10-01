@@ -65,6 +65,48 @@ class QuotationBuilderTest extends TestCase
             );
     }
 
+    /**
+     * The builder form names fields `items[<id>][…]`, so the payload arrives
+     * with sparse, id-keyed indexes rather than a 0..n list. This guards the
+     * browser/contract pairing — a `items[][catalog_item_id]` checkbox would
+     * post under index 0 and silently drop the product.
+     */
+    public function test_the_draft_accepts_the_id_keyed_payload_the_builder_form_posts(): void
+    {
+        $user = $this->adminFor($this->tilesTenant());
+        $first = $this->product($user, ['item_code' => 'TILE-A', 'name' => 'Tile A']);
+        $second = $this->product($user, ['item_code' => 'TILE-B', 'name' => 'Tile B']);
+
+        $this->actingAs($user)
+            ->post(route('quotations.draft'), [
+                'items' => [
+                    $first->id => [
+                        'catalog_item_id' => $first->id,
+                        'quantity' => 12,
+                        'rate' => 58,
+                    ],
+                    $second->id => [
+                        'catalog_item_id' => $second->id,
+                        'quantity' => 3,
+                        'rate' => 61,
+                    ],
+                ],
+            ])
+            ->assertRedirect(route('invoices.create', ['document_type' => 'quotation']))
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($user)
+            ->get(route('invoices.create', ['document_type' => 'quotation']))
+            ->assertInertia(fn ($page) => $page
+                ->has('draftItems', 2)
+                ->where('draftItems.0.item_name', 'Tile A')
+                ->where('draftItems.0.catalog_item_id', $first->id)
+                ->where('draftItems.0.rate', 58)
+                ->where('draftItems.1.item_name', 'Tile B')
+                ->where('draftItems.1.catalog_item_id', $second->id)
+            );
+    }
+
     public function test_the_draft_is_single_use(): void
     {
         $user = $this->adminFor($this->tilesTenant());

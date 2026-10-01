@@ -48,16 +48,16 @@ export default {
                     DEFAULT: 'hsl(var(--card))',
                     foreground: 'hsl(var(--card-foreground))',
                 },
-                gold: {
-                    light: '#E9CE8C',
-                    DEFAULT: '#C9A227',
-                    dark: '#8C6E1A',
+                brand: {
+                    light: '#A78BFA',
+                    DEFAULT: '#7C3AED',
+                    dark: '#5B21B6',
                 },
-                emeraldink: {
-                    DEFAULT: '#0B3D2E',
-                    deep: '#072A20',
+                navy: {
+                    DEFAULT: '#1E293B',
+                    deep: '#0F172A',
                 },
-                ivory: '#FAF7F0',
+                ivory: '#F8FAFC',
             },
             borderRadius: {
                 lg: 'var(--radius)',
