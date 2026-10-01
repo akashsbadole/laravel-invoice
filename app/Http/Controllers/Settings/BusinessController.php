@@ -44,6 +44,8 @@ class BusinessController extends Controller
                     'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
                     'sms_birthday_wishes', 'sms_anniversary_wishes',
                     'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
+                    'receipt_width', 'receipt_accent_color', 'receipt_footer',
+                    'receipt_show_logo', 'receipt_show_signature', 'receipt_show_stamp', 'receipt_show_gstin',
                 ]),
                 'logo_url' => $settings->logo_path ? Storage::disk('public')->url($settings->logo_path) : null,
                 'signature_url' => $settings->signature_image_path ? Storage::disk('public')->url($settings->signature_image_path) : null,
@@ -70,6 +72,10 @@ class BusinessController extends Controller
             'quotation_customer_decisions' => $request->boolean('quotation_customer_decisions'),
             'quotation_show_updates' => $request->boolean('quotation_show_updates'),
             'show_all_catalog_fields' => $request->boolean('show_all_catalog_fields'),
+            'receipt_show_logo' => $request->boolean('receipt_show_logo'),
+            'receipt_show_signature' => $request->boolean('receipt_show_signature'),
+            'receipt_show_stamp' => $request->boolean('receipt_show_stamp'),
+            'receipt_show_gstin' => $request->boolean('receipt_show_gstin'),
         ]);
 
         // Secrets are write-only: blank means "keep the stored value".

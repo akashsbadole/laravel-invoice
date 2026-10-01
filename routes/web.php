@@ -32,6 +32,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
+// Public marketing pages. Reachable by guests, and also useful to signed-in
+// users who want to re-read what the product does.
+Route::inertia('/features', 'features')->name('features');
+
+Route::get('/contact', fn () => inertia('contact', [
+    'support' => config('billing.support'),
+]))->name('contact');
+
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'create'])->name('login');
     Route::post('login', [AuthController::class, 'store'])->middleware('throttle:6,1');

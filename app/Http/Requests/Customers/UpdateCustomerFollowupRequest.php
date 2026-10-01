@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Customers;
 
-use App\Enums\Permission;
 use App\Enums\FollowupStatus;
+use App\Enums\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -18,7 +18,7 @@ class UpdateCustomerFollowupRequest extends FormRequest
     /**
      * Every field is optional per-request (`sometimes`) so this same
      * endpoint supports both a full edit and a quick one-field status
-     * change â€” only the keys actually sent are validated and updated.
+     * change — only the keys actually sent are validated and updated.
      *
      * @return array<string, mixed>
      */

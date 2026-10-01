@@ -2,6 +2,7 @@ import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { Bell, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
+import { AttributesList } from '@/components/attributes-editor';
 import InstallmentController from '@/actions/App/Http/Controllers/InstallmentController';
 import InvoiceShareLinkController from '@/actions/App/Http/Controllers/InvoiceShareLinkController';
 import PaymentController from '@/actions/App/Http/Controllers/PaymentController';
@@ -121,7 +122,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             <Link href={`/customers/${invoice.customer.id}`} className="hover:underline">
                                 {invoice.customer.full_name}
                             </Link>
-                            <span>· {new Date(invoice.invoice_date).toLocaleDateString()}</span>
+                            <span>Â· {new Date(invoice.invoice_date).toLocaleDateString()}</span>
                             <Badge variant="secondary" className="capitalize">
                                 {invoice.status.replace('_', ' ')}
                             </Badge>
@@ -322,7 +323,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                                 ([key, value]) =>
                                                                     `${key}: ${value}`,
                                                             )
-                                                            .join(' · ')}
+                                                            .join(' Â· ')}
                                                     </div>
                                                 )}
                                         </td>
@@ -341,7 +342,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                 <td className="py-2 pr-2">
                                                     {[item.brand, item.model_number]
                                                         .filter(Boolean)
-                                                        .join(' · ') || 'â€”'}
+                                                        .join(' Â· ') || 'â€”'}
                                                 </td>
                                                 <td className="py-2 pr-2 text-right">
                                                     {area !== null
@@ -553,7 +554,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <p className="text-muted-foreground">
                                         Repeats <span className="font-medium text-foreground capitalize">{recurringProfile.frequency}</span>
-                                        {' · '}next run{' '}
+                                        {' Â· '}next run{' '}
                                         {new Date(recurringProfile.next_run_at).toLocaleDateString()}
                                     </p>
                                     <Form {...InvoiceController.recurringDestroy.form(invoice.id, recurringProfile.id)}>
@@ -773,7 +774,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                         <span className="capitalize">{note.type}</span>
                                         <span>
-                                            {note.creator?.name ?? 'System'} ·{' '}
+                                            {note.creator?.name ?? 'System'} Â·{' '}
                                             {new Date(note.created_at).toLocaleString()}
                                         </span>
                                     </div>
@@ -783,6 +784,20 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         )}
                     </CardContent>
                 </Card>
+
+                {invoice.attributes &&
+                    Object.keys(invoice.attributes).length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Extra attributes</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <AttributesList
+                                    attributes={invoice.attributes}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
             </div>
         </>
     );
@@ -905,7 +920,7 @@ function QuotationStatusCard({ invoice }: { invoice: Invoice }) {
 
 /**
  * Builds an equal-split plan by default and lets the amounts be overridden,
- * e.g. "â‚¹10,000 booking now, balance in 2 months".
+ * e.g. "Ã¢â€šÂ¹10,000 booking now, balance in 2 months".
  */
 function InstallmentPlanDialog({
     invoiceId,

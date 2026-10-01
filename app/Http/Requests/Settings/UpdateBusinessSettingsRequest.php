@@ -36,6 +36,16 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'sms_birthday_wishes' => ['boolean'],
             'sms_anniversary_wishes' => ['boolean'],
             'quotation_customer_decisions' => ['boolean'],
+            'receipt_width' => ['required', 'in:58,80'],
+            // Nullable, not required: adding a field must not break existing API
+            // callers that post to this endpoint. Omitted means "keep the
+            // default", and ReceiptTheme falls back if it is ever malformed.
+            'receipt_accent_color' => ['nullable', 'regex:/^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/'],
+            'receipt_footer' => ['nullable', 'string', 'max:255'],
+            'receipt_show_logo' => ['boolean'],
+            'receipt_show_signature' => ['boolean'],
+            'receipt_show_stamp' => ['boolean'],
+            'receipt_show_gstin' => ['boolean'],
             'quotation_show_updates' => ['boolean'],
             'show_all_catalog_fields' => ['boolean'],
             'sms_driver' => ['required', 'in:log,twilio,http'],

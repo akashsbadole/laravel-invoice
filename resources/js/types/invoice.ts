@@ -118,6 +118,7 @@ export type InvoiceFormData = {
     tax_rate: number;
     notes: string;
     terms: string;
+    attributes?: Record<string, string>;
     items: InvoiceItemForm[];
     invoice_charges: InvoiceChargeInput[];
 };
@@ -274,6 +275,7 @@ export type Invoice = {
     balance_amount: string;
     notes: string | null;
     terms: string | null;
+    attributes: Record<string, string> | null;
     cancelled_at: string | null;
     customer: Customer;
     salesperson?: Staff | null;

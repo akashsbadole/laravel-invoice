@@ -133,12 +133,12 @@
                         <td>{{ $item->metal_type }} @if($item->purity) / {{ $item->purity }} @endif</td>
                         <td class="right">{{ number_format((float) $item->net_weight, 3) }}</td>
                     @else
-                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' · ') ?: 'â€”' }}</td>
+                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' · ') ?: '—' }}</td>
                         <td class="right">
                             @if($item->length && $item->width)
                                 {{ number_format((float) $item->length * (float) $item->width / 929.0304, 2) }}
                             @else
-                                {{ $item->size_label ?? 'â€”' }}
+                                {{ $item->size_label ?? '—' }}
                             @endif
                         </td>
                     @endif
@@ -183,7 +183,7 @@
                 <td style="padding: 6px 10px;">
                     <strong>IRN</strong>: {{ $invoice->irn }}<br>
                     <span class="muted">
-                        Ack no.: {{ $invoice->irn_ack_no ?? 'â€”' }}
+                        Ack no.: {{ $invoice->irn_ack_no ?? '—' }}
                         @if($invoice->irn_ack_date)
                             · Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
                         @endif

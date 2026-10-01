@@ -130,7 +130,7 @@ export default function PublicInvoicePage({
                     >
                         <a
                             href={`https://wa.me/?text=${encodeURIComponent(
-                                `${business.business_name} â€” ${invoice.invoice_number}: ${window.location.href}`,
+                                `${business.business_name} — ${invoice.invoice_number}: ${window.location.href}`,
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -207,7 +207,7 @@ export default function PublicInvoicePage({
                                     {invoice.irn}
                                 </p>
                                 <p className="text-muted-foreground">
-                                    Ack no.: {invoice.irn_ack_no ?? 'â€”'}
+                                    Ack no.: {invoice.irn_ack_no ?? '—'}
                                     {invoice.eway_bill_no &&
                                         ` · E-way bill: ${invoice.eway_bill_no}`}
                                 </p>
@@ -380,7 +380,7 @@ function QuotationPanel({
                                 post(`/invoice/view/${token}/decide`)
                             }
                         >
-                            {processing ? 'Sendingâ€¦' : 'Send my response'}
+                            {processing ? 'Sending…' : 'Send my response'}
                         </Button>
                     </>
                 )}
@@ -405,7 +405,7 @@ function QuotationPanel({
                                     <span className="text-foreground">
                                         {update.label}
                                     </span>{' '}
-                                    â€” {new Date(update.at).toLocaleString()}
+                                    — {new Date(update.at).toLocaleString()}
                                     {update.detail && (
                                         <span className="block text-xs">
                                             {update.detail}
@@ -468,7 +468,7 @@ function PasswordGate({ token }: { token: string }) {
                             <InputError message={errors.password} />
                         </div>
                         <Button type="submit" className="w-full" disabled={processing}>
-                            {processing ? 'Checkingâ€¦' : 'View invoice'}
+                            {processing ? 'Checking…' : 'View invoice'}
                         </Button>
                     </form>
                 </CardContent>

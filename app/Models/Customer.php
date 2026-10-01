@@ -27,7 +27,7 @@ class Customer extends Model
     /** @var list<string> */
     protected $fillable = [
         'full_name', 'mobile_number', 'email', 'address', 'tax_number',
-        'state_code', 'birthday', 'anniversary',
+        'state_code', 'birthday', 'anniversary', 'attributes',
         'notes', 'customer_type', 'assigned_staff_id', 'created_by',
     ];
 
@@ -38,6 +38,7 @@ class Customer extends Model
         return [
             'birthday' => 'date:Y-m-d',
             'anniversary' => 'date:Y-m-d',
+            'attributes' => 'array',
         ];
     }
 

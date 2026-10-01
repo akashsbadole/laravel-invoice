@@ -25,6 +25,7 @@ use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
 use App\Services\QuotationService;
 use App\Services\SubscriptionService;
+use App\Support\Attributes;
 use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -151,6 +152,8 @@ class InvoiceController extends Controller
                 'balance_amount' => $computed['grand_total'],
                 'notes' => $request->validated('notes'),
                 'terms' => $request->validated('terms'),
+                // Free-form per-invoice detail (site reference, job number).
+                'attributes' => Attributes::clean($request->validated('attributes') ?? []),
                 'created_by' => $request->user()->id,
             ]);
 
@@ -243,6 +246,7 @@ class InvoiceController extends Controller
                 'grand_total' => $computed['grand_total'],
                 'notes' => $request->validated('notes'),
                 'terms' => $request->validated('terms'),
+                'attributes' => Attributes::clean($request->validated('attributes') ?? []),
             ]);
 
             // Full replace of items/charges is the simplest correct approach

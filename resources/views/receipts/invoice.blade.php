@@ -16,11 +16,14 @@
     </div>
 @endunless
 <div class="receipt">
+    @if($theme['showLogo'] && ! empty($logoUrl))
+        <img src="{{ $logoUrl }}" alt="" class="logo">
+    @endif
     <div class="c b big">{{ $business->business_name }}</div>
     @if($business->address)<div class="c small">{{ $business->address }}</div>@endif
     @if($business->phone)<div class="c small">Ph: {{ $business->phone }}</div>@endif
-    @if($business->tax_number)<div class="c small">GSTIN: {{ $business->tax_number }}</div>@endif
-    <hr>
+    @if($theme['showGstin'] && $business->tax_number)<div class="c small">GSTIN: {{ $business->tax_number }}</div>@endif
+    <hr class="accent">
     <div class="row"><span>Bill no</span><span>{{ $invoice->invoice_number }}</span></div>
     <div class="row"><span>Date</span><span>{{ $invoice->invoice_date->format('d-m-Y') }}</span></div>
     <div class="row"><span>Customer</span><span>{{ $invoice->customer->full_name }}</span></div>
@@ -60,7 +63,7 @@
     @if((float) $invoice->round_off != 0.0)
         <div class="row"><span>Round off</span><span>{{ number_format((float) $invoice->round_off, 2) }}</span></div>
     @endif
-    <hr>
+    <hr class="accent">
     <div class="row grand"><span>TOTAL</span><span>Rs. {{ number_format((float) $invoice->grand_total, 2) }}</span></div>
     <div class="row"><span>Paid</span><span>{{ number_format((float) $invoice->paid_amount, 2) }}</span></div>
     <div class="row b"><span>Balance</span><span>{{ number_format((float) $invoice->balance_amount, 2) }}</span></div>
@@ -71,7 +74,15 @@
         @endforeach
     @endif
     <hr>
-    <div class="c small">{{ $business->footer_text ?: 'Thank you! Visit again.' }}</div>
+    <div class="c small">{{ $theme['footer'] ?: $business->footer_text ?: 'Thank you! Visit again.' }}</div>
+
+    @if($theme['showStamp'] && ! empty($stampUrl))
+        <img src="{{ $stampUrl }}" alt="" class="footer-art">
+    @endif
+    @if($theme['showSignature'] && ! empty($signatureUrl))
+        <div class="c small">Authorised signature</div>
+        <img src="{{ $signatureUrl }}" alt="" class="footer-art">
+    @endif
 </div>
 </body>
 </html>

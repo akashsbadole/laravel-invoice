@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\MessageLog;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\Attributes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -59,8 +60,12 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request): RedirectResponse
     {
+        $data = $request->validated();
+
         $customer = Customer::create([
-            ...$request->validated(),
+            ...$data,
+            // The editor posts indexed [key, value] rows; flatten to a map.
+            'attributes' => Attributes::clean($data['attributes'] ?? []),
             'created_by' => $request->user()->id,
         ]);
 
@@ -105,7 +110,12 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
     {
-        $customer->update($request->validated());
+        $data = $request->validated();
+
+        $customer->update([
+            ...$data,
+            'attributes' => Attributes::clean($data['attributes'] ?? []),
+        ]);
 
         ActivityLog::record('customer.updated', $customer, "Updated customer {$customer->full_name}");
 

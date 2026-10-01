@@ -16,10 +16,14 @@
     </div>
 @endunless
 <div class="receipt">
+    @if($theme['showLogo'] && ! empty($logoUrl))
+        <img src="{{ $logoUrl }}" alt="" class="logo">
+    @endif
     <div class="c b big">{{ $business->business_name }}</div>
     @if($business->address)<div class="c small">{{ $business->address }}</div>@endif
     @if($business->phone)<div class="c small">Ph: {{ $business->phone }}</div>@endif
-    <hr>
+    @if($theme['showGstin'] && $business->tax_number)<div class="c small">GSTIN: {{ $business->tax_number }}</div>@endif
+    <hr class="accent">
     <div class="c b">PAYMENT RECEIPT</div>
     <hr>
     <div class="row"><span>Receipt</span><span>{{ $receiptNumber }}</span></div>
@@ -35,8 +39,16 @@
     <div class="row"><span>Paid so far</span><span>{{ number_format((float) $invoice->paid_amount, 2) }}</span></div>
     <div class="row b"><span>Balance due</span><span>{{ number_format((float) $invoice->balance_amount, 2) }}</span></div>
     @if($payment->receiver)<div class="small" style="margin-top:6px">Received by: {{ $payment->receiver->name }}</div>@endif
-    <hr>
-    <div class="c small">{{ $business->footer_text ?: 'Thank you!' }}</div>
+    <hr class="accent">
+    <div class="c small">{{ $theme['footer'] ?: $business->footer_text ?: 'Thank you!' }}</div>
+
+    @if($theme['showStamp'] && ! empty($stampUrl))
+        <img src="{{ $stampUrl }}" alt="" class="footer-art">
+    @endif
+    @if($theme['showSignature'] && ! empty($signatureUrl))
+        <div class="c small">Received by</div>
+        <img src="{{ $signatureUrl }}" alt="" class="footer-art">
+    @endif
 </div>
 </body>
 </html>

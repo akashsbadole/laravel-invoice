@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useMemo } from 'react';
 import InputError from '@/components/input-error';
+import { AttributesField } from '@/components/attributes-editor';
 import InvoiceItemEditor from '@/components/invoices/invoice-item-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -525,6 +526,11 @@ export default function InvoiceForm({
                     />
                 </div>
             </div>
+
+            <AttributesField
+                value={data.attributes ?? {}}
+                onChange={(next) => setData('attributes', next)}
+            />
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Button

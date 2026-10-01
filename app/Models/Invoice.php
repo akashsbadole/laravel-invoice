@@ -25,7 +25,7 @@ class Invoice extends Model
         'converted_to_id', 'quotation_status', 'quotation_response', 'quotation_responded_at', 'quotation_valid_until',
         'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
         'grand_total', 'paid_amount', 'balance_amount',
-        'notes', 'terms', 'created_by',
+        'notes', 'terms', 'attributes', 'created_by',
         'tax_mode', 'tax_breakdown', 'last_reminder_sent_at',
         'einvoice_status', 'irn', 'irn_ack_no', 'irn_ack_date', 'eway_bill_no',
     ];
@@ -53,6 +53,7 @@ class Invoice extends Model
             'cancelled_at' => 'datetime',
             'charges_summary' => 'array',
             'tax_mode' => TaxMode::class,
+            'attributes' => 'array',
             'tax_breakdown' => 'array',
             'last_reminder_sent_at' => 'datetime',
             'irn_ack_date' => 'datetime',

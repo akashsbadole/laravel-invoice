@@ -5,12 +5,12 @@ import {
     FileDown,
     ImageIcon,
     Plus,
-    Trash2,
     Upload,
 } from 'lucide-react';
 import { useState } from 'react';
 import CatalogItemController from '@/actions/App/Http/Controllers/CatalogItemController';
 import CatalogItemImportController from '@/actions/App/Http/Controllers/CatalogItemImportController';
+import { AttributesEditor } from '@/components/attributes-editor';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -397,79 +397,6 @@ function FieldInput({
 /**
  * Repeatable key/value rows for the free-form `attributes` column.
  */
-function AttributesEditor({
-    initial,
-}: {
-    initial: Record<string, string>;
-}) {
-    const [rows, setRows] = useState(() => {
-        const entries = Object.entries(initial);
-        return entries.length > 0 ? entries : [['', '']];
-    });
-
-    const update = (index: number, key: string, value: string) => {
-        setRows((current) =>
-            current.map((row, i) =>
-                i === index ? [key, value] : row,
-            ),
-        );
-    };
-
-    return (
-        <div className="space-y-2">
-            {rows.map(([key, value], index) => (
-                <div
-                    key={index}
-                    className="flex items-center gap-2"
-                >
-                    {/* Indexed by row, not by key: a typed key would
-                        otherwise change the posted array shape mid-edit and
-                        collide with a sibling row. The backend flattens
-                        these pairs. */}
-                    <Input
-                        name={`attributes[${index}][key]`}
-                        defaultValue={key}
-                        placeholder="Name"
-                        aria-label={`Attribute ${index + 1} name`}
-                        onChange={(e) => update(index, e.target.value, value)}
-                    />
-                    <Input
-                        name={`attributes[${index}][value]`}
-                        defaultValue={value}
-                        placeholder="Value"
-                        aria-label={`Attribute ${index + 1} value`}
-                        onChange={(e) => update(index, key, e.target.value)}
-                    />
-                    <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label="Remove attribute"
-                        onClick={() =>
-                            setRows((current) =>
-                                current.length === 1
-                                    ? [['', '']]
-                                    : current.filter((_, i) => i !== index),
-                            )
-                        }
-                    >
-                        <Trash2 className="size-4" />
-                    </Button>
-                </div>
-            ))}
-            <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setRows((c) => [...c, ['', '']])}
-            >
-                <Plus className="size-4" />
-                Add attribute
-            </Button>
-            </div>
-    );
-}
-
 function ItemFields({
     item,
     errors,

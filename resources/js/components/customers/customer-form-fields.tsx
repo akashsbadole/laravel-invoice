@@ -9,6 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { AttributesEditor } from '@/components/attributes-editor';
 import type { Customer, Staff } from '@/types/customer';
 
 type Props = {
@@ -171,6 +172,14 @@ export default function CustomerFormFields({ customer, staff, errors }: Props) {
                 />
                 <InputError message={errors.notes} />
             </div>
+
+            <AttributesEditor
+                initial={customer?.attributes ?? {}}
+                label="Extra attributes"
+                hint="Referral source, GSTIN type, segment or anything else this business tracks."
+            />
+
+            <InputError message={errors.attributes} />
         </div>
     );
 }

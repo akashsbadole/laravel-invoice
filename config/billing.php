@@ -23,4 +23,21 @@ return [
 
     'trial_plan' => env('BILLING_TRIAL_PLAN', 'starter'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Support
+    |--------------------------------------------------------------------------
+    |
+    | Shown on the public contact page. Set these per deployment so the page
+    | points at the right inbox and number rather than a developer's.
+    |
+    */
+
+    'support' => [
+        'email' => env('SUPPORT_EMAIL', 'support@example.com'),
+        'whatsapp' => env('SUPPORT_WHATSAPP'),
+        'phone' => env('SUPPORT_PHONE'),
+        'hours' => env('SUPPORT_HOURS', 'Monday to Saturday, 10:00 to 19:00 IST'),
+    ],
+
 ];

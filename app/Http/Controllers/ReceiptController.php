@@ -6,15 +6,21 @@ use App\Models\BusinessSetting;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Support\Industry;
+use App\Support\ReceiptTheme;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Thermal (58 mm / 80 mm) receipts. The HTML view is print-ready for browser
  * printing to a thermal printer driver; ?pdf=1 renders the same layout as a PDF.
+ *
+ * Branding (accent colour, logo, signature, stamp, footer) comes from the
+ * tenant's receipt theme, so the slip a customer keeps looks like the
+ * business rather than a stock template.
  */
 class ReceiptController extends Controller
 {
@@ -31,6 +37,7 @@ class ReceiptController extends Controller
             'width' => $width,
             'isPdf' => $request->boolean('pdf'),
             'showWeights' => Industry::usesWeightFields($business->industryKey()),
+            ...$this->theme($business),
         ];
 
         if (! $request->boolean('pdf')) {
@@ -61,6 +68,7 @@ class ReceiptController extends Controller
             'width' => $width,
             'receiptNumber' => sprintf('RCPT-%06d', $payment->id),
             'isPdf' => $request->boolean('pdf'),
+            ...$this->theme($business),
         ];
 
         if (! $request->boolean('pdf')) {
@@ -68,6 +76,29 @@ class ReceiptController extends Controller
         }
 
         return $this->pdf('receipts.payment', $data, $width, 460, $data['receiptNumber']);
+    }
+
+    /**
+     * Resolved theme plus the asset URLs the templates print, so the views
+     * never build storage URLs themselves.
+     *
+     * @return array<string,mixed>
+     */
+    protected function theme(BusinessSetting $business): array
+    {
+        $theme = ReceiptTheme::for($business);
+
+        return [
+            'theme' => $theme,
+            'logoUrl' => $this->assetUrl($theme['showLogo'] ? $business->logo_path : null),
+            'signatureUrl' => $this->assetUrl($theme['showSignature'] ? $business->signature_image_path : null),
+            'stampUrl' => $this->assetUrl($theme['showStamp'] ? $business->stamp_image_path : null),
+        ];
+    }
+
+    protected function assetUrl(?string $path): ?string
+    {
+        return $path ? Storage::disk('public')->url($path) : null;
     }
 
     protected function width(Request $request, BusinessSetting $business): string

@@ -11,7 +11,7 @@ interface AuthLayoutProps {
 const highlights = [
     { icon: FileText, text: 'Jewelry by the gram, tiles by area, hardware by the piece' },
     { icon: Share2, text: 'Quotations, invoices & secure customer links with PDF tracking' },
-    { icon: BadgeCheck, text: 'Payments, receipts & reports â€” no POS clutter' },
+    { icon: BadgeCheck, text: 'Payments, receipts & reports — no POS clutter' },
 ];
 
 export default function AuthLayout({ children }: AuthLayoutProps) {

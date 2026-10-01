@@ -1,4 +1,13 @@
-export type UserRole = 'admin' | 'invoice_creator' | 'viewer';
+/**
+ * Mirrors App\Enums\UserRole. `super_admin` is a platform account with no
+ * tenant; a tenant can never assign it (see UserRole::assignable()).
+ */
+export type UserRole =
+    | 'super_admin'
+    | 'admin'
+    | 'manager'
+    | 'invoice_creator'
+    | 'viewer';
 
 export type User = {
     id: number;

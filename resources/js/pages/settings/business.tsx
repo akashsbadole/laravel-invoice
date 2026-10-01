@@ -42,6 +42,13 @@ type BusinessSettings = {
     quotation_customer_decisions: boolean;
     quotation_show_updates: boolean;
     show_all_catalog_fields: boolean;
+    receipt_width: string;
+    receipt_accent_color: string;
+    receipt_show_logo: boolean;
+    receipt_show_signature: boolean;
+    receipt_show_stamp: boolean;
+    receipt_show_gstin: boolean;
+    receipt_footer: string | null;
     default_tax_rate: string;
     default_currency: string;
     invoice_terms: string | null;
@@ -209,6 +216,137 @@ export default function BusinessSettingsPage({
                                             Required for e-invoice (IRN) generation.
                                         </p>
                                     </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 border-t pt-6">
+                                <h3 className="text-sm font-semibold">
+                                    Receipts
+                                </h3>
+                                <p className="-mt-2 text-xs text-muted-foreground">
+                                    Printed on the 58 mm and 80 mm thermal slips
+                                    your customers keep.
+                                </p>
+
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="receipt_width">
+                                            Paper width
+                                        </Label>
+                                        <Select
+                                            name="receipt_width"
+                                            defaultValue={
+                                                settings.receipt_width ?? '80'
+                                            }
+                                        >
+                                            <SelectTrigger id="receipt_width">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="58">
+                                                    58 mm
+                                                </SelectItem>
+                                                <SelectItem value="80">
+                                                    80 mm
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={errors.receipt_width}
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="receipt_accent_color">
+                                            Accent colour
+                                        </Label>
+                                        <Input
+                                            id="receipt_accent_color"
+                                            name="receipt_accent_color"
+                                            type="color"
+                                            className="h-10 p-1"
+                                            defaultValue={
+                                                settings.receipt_accent_color ??
+                                                '#0F172A'
+                                            }
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Used for the header rule and totals.
+                                        </p>
+                                        <InputError
+                                            message={
+                                                errors.receipt_accent_color
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="receipt_footer">
+                                        Receipt footer
+                                    </Label>
+                                    <Input
+                                        id="receipt_footer"
+                                        name="receipt_footer"
+                                        placeholder="Leave blank to use your invoice footer"
+                                        defaultValue={
+                                            settings.receipt_footer ?? ''
+                                        }
+                                    />
+                                    <InputError
+                                        message={errors.receipt_footer}
+                                    />
+                                </div>
+
+                                <div className="space-y-2 rounded-md border p-4">
+                                    {(
+                                        [
+                                            {
+                                                name: 'receipt_show_logo',
+                                                label: 'Print your logo',
+                                                hint: 'Uses the logo from the Business details section above.',
+                                            },
+                                            {
+                                                name: 'receipt_show_gstin',
+                                                label: 'Print GSTIN',
+                                                hint: 'Include your tax number in the receipt header.',
+                                            },
+                                            {
+                                                name: 'receipt_show_stamp',
+                                                label: 'Print stamp',
+                                                hint: 'Uses the stamp uploaded above.',
+                                            },
+                                            {
+                                                name: 'receipt_show_signature',
+                                                label: 'Print signature',
+                                                hint: 'Uses the signature uploaded above.',
+                                            },
+                                        ] as const
+                                    ).map((option) => (
+                                        <label
+                                            key={option.name}
+                                            className="flex cursor-pointer items-start gap-3"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                name={option.name}
+                                                defaultChecked={
+                                                    settings[
+                                                        option.name
+                                                    ] ?? false
+                                                }
+                                                className="mt-1 size-4"
+                                            />
+                                            <span>
+                                                <span className="text-sm">
+                                                    {option.label}
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {option.hint}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    ))}
                                 </div>
                             </section>
 

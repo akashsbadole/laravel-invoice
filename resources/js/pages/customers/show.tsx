@@ -4,6 +4,7 @@ import CustomerController from '@/actions/App/Http/Controllers/CustomerControlle
 import CustomerFollowupController from '@/actions/App/Http/Controllers/CustomerFollowupController';
 import CustomerNoteController from '@/actions/App/Http/Controllers/CustomerNoteController';
 import Heading from '@/components/heading';
+import { AttributesList } from '@/components/attributes-editor';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -164,9 +165,23 @@ export default function ShowCustomer({
                     />
                     <StatCard
                         label="Last invoice"
-                        value={stats.last_invoice_date ?? 'â€”'}
+                        value={stats.last_invoice_date ?? '—'}
                     />
                 </div>
+
+                {customer.attributes &&
+                    Object.keys(customer.attributes).length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Extra attributes</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <AttributesList
+                                    attributes={customer.attributes}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
 
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">

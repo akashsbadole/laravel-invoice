@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\Invoices;
 
-use App\Enums\Permission;
 use App\Enums\DocumentType;
 use App\Enums\LineType;
+use App\Enums\Permission;
+use App\Support\Attributes;
 use App\Support\Industry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -71,6 +72,7 @@ class StoreInvoiceRequest extends FormRequest
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'terms' => ['nullable', 'string', 'max:2000'],
+            ...Attributes::rules(),
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_name' => ['required', 'string', 'max:255'],

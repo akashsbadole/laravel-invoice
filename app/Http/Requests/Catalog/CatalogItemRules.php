@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Catalog;
 
+use App\Support\Attributes;
 use App\Support\CatalogField;
 use App\Support\Industry;
 use Illuminate\Validation\Rule;
@@ -49,6 +50,39 @@ trait CatalogItemRules
     }
 
     /**
+     * Fall back to the industry's first rate type when none was sent.
+     *
+     * The dialog pre-selects a rate type, but an untouched select is not
+     * guaranteed to submit one, and "the rate type field is required" is a
+     * confusing way to learn you filled in the product name. Falling back
+     * matches what the CSV importer already does, and the column's own
+     * database default, so the form can never be unsatisfiable.
+     *
+     * On update an omitted value means "leave it alone" rather than "reset
+     * it", so the item's existing rate type is kept.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (! blank($this->input('rate_type'))) {
+            return;
+        }
+
+        $existing = $this->route('catalogItem');
+
+        if ($existing !== null) {
+            $this->merge(['rate_type' => $existing->rate_type?->value]);
+
+            return;
+        }
+
+        $allowed = $this->allowedRateTypes();
+
+        if ($allowed !== []) {
+            $this->merge(['rate_type' => $allowed[0]]);
+        }
+    }
+
+    /**
      * Rules for every field in the registry, plus the two request-level
      * concerns (item code uniqueness and the attributes array).
      *
@@ -68,10 +102,7 @@ trait CatalogItemRules
             // Two shapes are accepted: a plain map (CSV importer, API) and indexed
             // key/value rows (the repeatable editor). Both are flattened to a
             // string map by catalogPayload().
-            'attributes' => ['nullable', 'array'],
-            'attributes.*' => ['nullable'],
-            'attributes.*.key' => ['nullable', 'string', 'max:255'],
-            'attributes.*.value' => ['nullable', 'string', 'max:255'],
+            ...Attributes::rules(),
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'remove_image' => ['boolean'],
         ];
@@ -178,22 +209,6 @@ trait CatalogItemRules
      */
     protected function cleanAttributes(array $attributes): array
     {
-        $clean = [];
-
-        foreach ($attributes as $key => $value) {
-            if (is_array($value)) {
-                $key = (string) ($value['key'] ?? '');
-                $value = $value['value'] ?? '';
-            }
-
-            $key = trim((string) $key);
-            $value = is_scalar($value) ? trim((string) $value) : '';
-
-            if ($key !== '' && $value !== '') {
-                $clean[$key] = $value;
-            }
-        }
-
-        return $clean;
+        return Attributes::clean($attributes);
     }
 }

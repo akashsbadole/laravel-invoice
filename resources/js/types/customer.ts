@@ -57,6 +57,7 @@ export type Customer = {
     state_code: string | null;
     birthday: string | null;
     anniversary: string | null;
+    attributes?: Record<string, string> | null;
     assigned_staff_id: number | null;
     assigned_staff?: Staff | null;
     total_invoiced?: string | null;
