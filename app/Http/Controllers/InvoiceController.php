@@ -135,6 +135,11 @@ class InvoiceController extends Controller
                 },
                 'invoice_date' => $request->validated('invoice_date'),
                 'due_date' => $request->validated('due_date'),
+                // Only a quotation carries a validity window; storing it on an
+                // invoice would make the expiry sweep pick up a sale.
+                'quotation_valid_until' => $documentType === DocumentType::Quotation->value
+                    ? $request->validated('quotation_valid_until')
+                    : null,
                 'reference_number' => $request->validated('reference_number'),
                 'salesperson_id' => $request->validated('salesperson_id'),
                 'invoice_template_id' => $request->validated('invoice_template_id')
@@ -232,6 +237,9 @@ class InvoiceController extends Controller
                 'document_type' => $request->validated('document_type', $invoice->document_type->value),
                 'invoice_date' => $request->validated('invoice_date'),
                 'due_date' => $request->validated('due_date'),
+                'quotation_valid_until' => $request->validated('document_type', $invoice->document_type->value) === DocumentType::Quotation->value
+                    ? $request->validated('quotation_valid_until')
+                    : null,
                 'reference_number' => $request->validated('reference_number'),
                 'salesperson_id' => $request->validated('salesperson_id'),
                 'invoice_template_id' => $request->validated('invoice_template_id') ?? $invoice->invoice_template_id,

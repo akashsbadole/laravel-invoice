@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
 use App\Enums\QuotationStatus;
 use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use RuntimeException;
 
 /**
@@ -20,6 +23,12 @@ class QuotationService
 {
     public function currentStatus(Invoice $quotation): QuotationStatus
     {
+        // An expiry date outranks the stored status: a quotation whose window
+        // has closed reads as expired even though nobody has touched it yet.
+        if ($this->hasLapsed($quotation)) {
+            return QuotationStatus::Expired;
+        }
+
         if ($quotation->quotation_status !== null) {
             return $quotation->quotation_status;
         }
@@ -29,6 +38,74 @@ class QuotationService
         return $quotation->status === InvoiceStatus::Sent
             ? QuotationStatus::Sent
             : QuotationStatus::Draft;
+    }
+
+    /**
+     * Whether a quotation's validity window has closed.
+     *
+     * Only an undecided quotation can lapse. An accepted or converted quote is
+     * a commitment, and a rejected one is already closed, so none of those
+     * should be overwritten by a nightly sweep.
+     */
+    public function hasLapsed(Invoice $quotation): bool
+    {
+        if ($quotation->quotation_valid_until === null) {
+            return false;
+        }
+
+        $status = $this->storedStatus($quotation);
+
+        if ($status->isDecided()) {
+            return false;
+        }
+
+        return $quotation->quotation_valid_until->isPast();
+    }
+
+    /**
+     * Mark every lapsed quotation expired.
+     *
+     * Run daily from the scheduler. Returns how many changed so the command
+     * can report something useful and so tests can assert the effect.
+     */
+    public function expireLapsed(?Carbon $asOf = null): int
+    {
+        $asOf ??= now();
+
+        $expired = 0;
+
+        Invoice::query()
+            ->where('document_type', DocumentType::Quotation->value)
+            ->whereNotNull('quotation_valid_until')
+            ->where('quotation_valid_until', '<', $asOf)
+            // Skip anything already decided so a nightly sweep cannot undo a
+            // customer decision that landed after the quote lapsed.
+            ->where(function (Builder $q): void {
+                $q->whereNull('quotation_status')
+                    ->orWhereIn('quotation_status', [
+                        QuotationStatus::Draft->value,
+                        QuotationStatus::Sent->value,
+                    ]);
+            })
+            ->each(function (Invoice $quotation) use (&$expired): void {
+                $this->transition($quotation, QuotationStatus::Expired, note: 'Validity window closed.');
+                $expired++;
+            });
+
+        return $expired;
+    }
+
+    /**
+     * The status actually persisted on the row.
+     *
+     * Deliberately separate from currentStatus(): the expiry overlay is a
+     * read-time interpretation, while transitions must reason about what is
+     * stored. If the sweep compared against the overlay it would see "already
+     * Expired" for the very row it is trying to expire and silently skip it.
+     */
+    protected function storedStatus(Invoice $quotation): QuotationStatus
+    {
+        return $quotation->quotation_status ?? QuotationStatus::Draft;
     }
 
     /**
@@ -42,7 +119,7 @@ class QuotationService
     ): QuotationStatus {
         $this->guardIsQuotation($quotation);
 
-        $from = $this->currentStatus($quotation);
+        $from = $this->storedStatus($quotation);
 
         if ($from === $to) {
             return $from;
@@ -85,6 +162,11 @@ class QuotationService
 
     /**
      * Customer decision made from the shared link.
+     *
+     * Uses the stored status rather than currentStatus(): a lapsed quotation
+     * reads as Expired, and blocking a customer's answer because the validity
+     * date passed would throw away a real decision. A quote can still be
+     * accepted after expiry; staff then decide whether to honour it.
      */
     public function decide(Invoice $quotation, QuotationStatus $decision, ?string $response = null): QuotationStatus
     {
@@ -92,7 +174,7 @@ class QuotationService
             throw new RuntimeException('Invalid quotation decision.');
         }
 
-        $from = $this->currentStatus($quotation);
+        $from = $this->storedStatus($quotation);
 
         if ($from->isDecided()) {
             throw new RuntimeException("This quotation was already {$from->label()}.");

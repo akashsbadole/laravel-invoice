@@ -6,6 +6,14 @@ export type IndustryOption = {
     key: IndustryKey;
     label: string;
     description: string;
+    /**
+     * Catalog field names this industry reveals, plus the rate types it can
+     * price with. Sent by BusinessController so the settings page can preview
+     * the effect of switching trade before saving. Optional because the
+     * invoice form's industry payload carries its own richer shape.
+     */
+    item_fields?: string[];
+    rate_types?: string[];
 };
 
 /**
@@ -101,6 +109,17 @@ export const INDUSTRY_ITEM_FIELD_LABELS: Record<string, string> = {
     height: 'Height (cm)',
     wastage_percent: 'Wastage %',
     boxes: 'Boxes',
+    // Furniture, textiles, electronics, paint and contractors.
+    fabric: 'Fabric',
+    weave: 'Weave',
+    pattern: 'Pattern / design',
+    shade_code: 'Shade code',
+    volume: 'Volume (litre)',
+    coverage_area: 'Coverage (sq ft)',
+    service_type: 'Service type',
+    site_reference: 'Site reference',
+    material: 'Material',
+    color: 'Colour',
 };
 
 export const RATE_TYPE_LABELS: Record<string, string> = {
@@ -114,6 +133,7 @@ export const RATE_TYPE_LABELS: Record<string, string> = {
     per_kg: 'Per kg (× weight)',
     per_box: 'Per box (× boxes)',
     per_unit: 'Per unit (× qty)',
+    per_litre: 'Per litre (× volume)',
 };
 
 export function rateTypeLabel(value: string): string {

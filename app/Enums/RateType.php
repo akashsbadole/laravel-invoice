@@ -21,6 +21,7 @@ enum RateType: string
     case PerKg = 'per_kg';
     case PerBox = 'per_box';
     case PerUnit = 'per_unit';
+    case PerLitre = 'per_litre';
 
     public function label(): string
     {
@@ -35,6 +36,7 @@ enum RateType: string
             self::PerKg => 'Per kg (× weight)',
             self::PerBox => 'Per box (× boxes)',
             self::PerUnit => 'Per unit (× quantity)',
+            self::PerLitre => 'Per litre (× volume)',
         };
     }
 

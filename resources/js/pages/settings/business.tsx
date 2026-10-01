@@ -1,8 +1,10 @@
 import { Form, Head } from '@inertiajs/react';
+import { useState } from 'react';
 import BusinessController from '@/actions/App/Http/Controllers/Settings/BusinessController';
 import Heading from '@/components/heading';
 import ImageUploadField from '@/components/settings/image-upload-field';
 import InputError from '@/components/input-error';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +16,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { IndustryOption } from '@/lib/industries';
+import {
+    itemFieldLabel,
+    rateTypeLabel,
+    type IndustryOption,
+} from '@/lib/industries';
 
 type BusinessSettings = {
     business_name: string;
@@ -70,6 +76,12 @@ export default function BusinessSettingsPage({
     settings: BusinessSettings;
     industries: IndustryOption[];
 }) {
+    // Controlled so picking a trade previews the product fields and pricing
+    // it will reveal, rather than waiting for the form to be saved.
+    const [selectedIndustry, setSelectedIndustry] = useState(
+        settings.industry,
+    );
+
     return (
         <>
             <Head title="Business settings" />
@@ -117,7 +129,15 @@ export default function BusinessSettingsPage({
                                     <Label htmlFor="industry">
                                         Industry
                                     </Label>
-                                    <Select name="industry" defaultValue={settings.industry}>
+                                    {/* Controlled, because choosing an industry
+                                        reveals a different set of product
+                                        fields and the change has to preview
+                                        immediately rather than after a save. */}
+                                    <Select
+                                        name="industry"
+                                        value={selectedIndustry}
+                                        onValueChange={setSelectedIndustry}
+                                    >
                                         <SelectTrigger id="industry" className="w-full">
                                             <SelectValue placeholder="Select your trade" />
                                         </SelectTrigger>
@@ -133,11 +153,16 @@ export default function BusinessSettingsPage({
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-muted-foreground">
-                                        Controls which modules and item fields
-                                        appear — metal rates and hallmarking for
-                                        jewelry, per sq ft pricing for tiles,
-                                        and so on.
+                                        {industries.find(
+                                            (option) =>
+                                                option.key === selectedIndustry,
+                                        )?.description ??
+                                            'Controls which modules and product fields appear.'}
                                     </p>
+                                    <IndustryFieldPreview
+                                        industry={selectedIndustry}
+                                        industries={industries}
+                                    />
                                     <InputError message={errors.industry} />
                                 </div>
 
@@ -789,7 +814,7 @@ export default function BusinessSettingsPage({
                             </section>
 
                             <div className="flex justify-end border-t pt-6">
-                                <Button disabled={processing}>
+<Button disabled={processing}>
                                     {processing ? 'Saving…' : 'Save settings'}
                                 </Button>
                             </div>
@@ -798,5 +823,51 @@ export default function BusinessSettingsPage({
                 </Form>
             </div>
         </>
+    );
+}
+
+/**
+ * Previews what switching trade will change, so the industry choice is not a
+ * leap of faith: these are the exact product fields and pricing modes that
+ * come from config/industries.php for the selected key.
+ */
+function IndustryFieldPreview({
+    industry,
+    industries,
+}: {
+    industry: string;
+    industries: IndustryOption[];
+}) {
+    const option = industries.find((entry) => entry.key === industry);
+    const fields = option?.item_fields ?? [];
+
+    if (fields.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="rounded-md border bg-muted/30 p-3">
+            <p className="mb-2 text-xs font-medium">
+                Product fields for {option?.label ?? industry}
+            </p>
+
+            <div className="flex flex-wrap gap-1">
+                {fields.map((field) => (
+                    <Badge key={field} variant="secondary" className="text-xs">
+                        {itemFieldLabel(field)}
+                    </Badge>
+                ))}
+            </div>
+
+            {option?.rate_types && option.rate_types.length > 0 && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                    Priced as{' '}
+                    {option.rate_types
+                        .map((rate) => rateTypeLabel(rate))
+                        .join(', ')}
+                    .
+                </p>
+            )}
+        </div>
     );
 }

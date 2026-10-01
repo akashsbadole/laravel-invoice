@@ -34,7 +34,20 @@ Route::inertia('/', 'welcome')->name('home');
 
 // Public marketing pages. Reachable by guests, and also useful to signed-in
 // users who want to re-read what the product does.
-Route::inertia('/features', 'features')->name('features');
+//
+// The industry list is read from config so the marketing page cannot claim a
+// trade the product does not support, or omit one it does.
+Route::inertia('/features', 'features', [
+    'industries' => array_values(array_map(
+        fn (array $config, string $key) => [
+            'key' => $key,
+            'name' => $config['label'],
+            'note' => $config['description'],
+        ],
+        config('industries'),
+        array_keys(config('industries')),
+    )),
+])->name('features');
 
 Route::get('/contact', fn () => inertia('contact', [
     'support' => config('billing.support'),

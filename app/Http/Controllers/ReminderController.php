@@ -29,6 +29,13 @@ class ReminderController extends Controller
             'birthdays' => $data['birthdays'],
             'anniversaries' => $data['anniversaries'],
             'custom' => $data['custom'],
+            'expiringQuotes' => $data['expiring_quotes']->map(fn (Invoice $quote) => [
+                'id' => $quote->id,
+                'invoice_number' => $quote->invoice_number,
+                'quotation_valid_until' => $quote->quotation_valid_until?->toDateString(),
+                'grand_total' => $quote->grand_total,
+                'customer' => $quote->customer,
+            ]),
             'staff' => User::query()->orderBy('name')->get(['id', 'name']),
             'customers' => Customer::query()->orderBy('full_name')->get(['id', 'full_name']),
             'businessName' => BusinessSetting::current()->business_name,

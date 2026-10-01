@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\RateType;
 use App\Models\BusinessSetting;
 
 /**
@@ -127,5 +128,55 @@ class Industry
         $flags = self::config($key ?? self::current())['template_flags'];
 
         return $flags;
+    }
+
+    /**
+     * Every name an industry declares that the catalog registry does not know.
+     *
+     * A typo or a column that was never added leaves the field silently
+     * unrenderable: `item_fields` is the gate that reveals it, and the registry
+     * is what actually produces the form input. This mismatch is otherwise
+     * invisible, so tests assert on it rather than trusting review.
+     *
+     * @return array<string, list<string>> industry key => unknown names
+     */
+    public static function unknownCatalogFields(): array
+    {
+        $known = CatalogField::names(null, true);
+        $unknown = [];
+
+        foreach (array_keys(self::all()) as $key) {
+            $missing = array_values(array_diff(self::itemFields($key), $known));
+
+            if ($missing !== []) {
+                $unknown[$key] = $missing;
+            }
+        }
+
+        return $unknown;
+    }
+
+    /**
+     * Rate types declared by an industry that the RateType enum does not have.
+     *
+     * An unrecognised rate type cannot be calculated, so it must not reach a
+     * tenant's pricing options.
+     *
+     * @return array<string, list<string>> industry key => unknown rate types
+     */
+    public static function unknownRateTypes(): array
+    {
+        $known = array_column(RateType::cases(), 'value');
+        $unknown = [];
+
+        foreach (array_keys(self::all()) as $key) {
+            $missing = array_values(array_diff(self::rateTypes($key), $known));
+
+            if ($missing !== []) {
+                $unknown[$key] = $missing;
+            }
+        }
+
+        return $unknown;
     }
 }

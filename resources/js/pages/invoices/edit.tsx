@@ -98,6 +98,7 @@ export default function EditInvoice({
         tax_rate: 0,
         notes: invoice.notes ?? '',
         terms: invoice.terms ?? '',
+        quotation_valid_until: invoice.quotation_valid_until ?? '',
         items: invoice.items.map(toFormItem),
         invoice_charges: invoice.charges.map((c) => ({
             charge_type_id: c.charge_type_id ?? 0,

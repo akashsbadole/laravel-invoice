@@ -22,6 +22,11 @@ class CatalogItem extends Model
         'cost_price', 'minimum_order_quantity', 'pack_size', 'tax_inclusive',
         'barcode', 'color', 'material', 'thickness', 'warranty_months',
         'manufacturer', 'country_of_origin',
+        // Fields added for furniture, textiles, electronics, paint and
+        // contractors; each industry opts into them via item_fields.
+        'fabric', 'weave', 'pattern', 'serial_number', 'shade_code',
+        'volume', 'coverage_area', 'service_type', 'site_reference',
+        'batch_number', 'boxes',
         'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
         'image_path',
         'attributes', 'description', 'is_active', 'created_by',
@@ -40,6 +45,9 @@ class CatalogItem extends Model
             'cost_price' => 'decimal:2',
             'minimum_order_quantity' => 'integer',
             'warranty_months' => 'integer',
+            'volume' => 'decimal:3',
+            'coverage_area' => 'decimal:3',
+            'boxes' => 'decimal:2',
             'tax_inclusive' => 'boolean',
             'stock_tracked' => 'boolean',
             'stock_quantity' => 'decimal:3',

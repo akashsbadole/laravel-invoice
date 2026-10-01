@@ -184,7 +184,7 @@ export default function Dashboard({
                                 {rates.map((r) => (
                                     <div key={r.id} className="flex justify-between text-sm">
                                         <span>{r.metal_type} {r.purity}</span>
-                                        <span className="font-medium">â‚¹{r.rate_per_gram}/g</span>
+                                        <span className="font-medium">₹{r.rate_per_gram}/g</span>
                                     </div>
                                 ))}
                             </CardContent>

@@ -32,24 +32,15 @@ final class CatalogField
     /**
      * Whether a trade-specific field applies to this industry.
      *
-     * Weight columns belong to weight-priced trades and area columns to
-     * area-priced ones; the rest are opted into via `item_fields` so a tiles
-     * catalog does not show a "Metal" box.
+     * `item_fields` in config/industries.php is the single source of truth:
+     * an industry lists exactly the trade-specific fields it wants, so adding
+     * an industry never needs a code change here. Weight and area columns are
+     * no longer special-cased - a trade that prices by weight lists the weight
+     * columns and declares a per_kg/per_gram rate type, which is exactly what
+     * the invoice calculator keys off.
      */
     private static function physicalApplies(string $name, string $industry): bool
     {
-        $weightOnly = ['metal_type', 'purity', 'default_net_weight', 'default_gross_weight'];
-        $areaOnly = ['default_length', 'default_width', 'default_wastage_percent'];
-
-        if (in_array($name, $weightOnly, true)) {
-            return Industry::usesWeightFields($industry);
-        }
-
-        if (in_array($name, $areaOnly, true)) {
-            return in_array('per_sqft', Industry::rateTypes($industry), true)
-                || in_array('per_sqm', Industry::rateTypes($industry), true);
-        }
-
         return in_array($name, Industry::itemFields($industry), true);
     }
 
@@ -65,6 +56,7 @@ final class CatalogField
             ['name' => 'barcode', 'label' => 'Barcode', 'type' => 'text', 'group' => self::GROUP_IDENTITY],
             ['name' => 'brand', 'label' => 'Brand', 'type' => 'text', 'group' => self::GROUP_IDENTITY],
             ['name' => 'model_number', 'label' => 'Model number', 'type' => 'text', 'group' => self::GROUP_IDENTITY],
+            ['name' => 'serial_number', 'label' => 'Serial number', 'type' => 'text', 'group' => self::GROUP_IDENTITY, 'hint' => 'The unit-level serial a warranty is issued against.'],
             ['name' => 'manufacturer', 'label' => 'Manufacturer', 'type' => 'text', 'group' => self::GROUP_IDENTITY],
             ['name' => 'country_of_origin', 'label' => 'Country of origin', 'type' => 'text', 'group' => self::GROUP_IDENTITY],
             ['name' => 'hsn_code', 'label' => 'HSN / SAC code', 'type' => 'text', 'group' => self::GROUP_IDENTITY, 'hint' => 'Required for GST invoices.'],
@@ -87,8 +79,18 @@ final class CatalogField
             ['name' => 'grade', 'label' => 'Grade', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
             ['name' => 'color', 'label' => 'Colour', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
             ['name' => 'material', 'label' => 'Material', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
+            ['name' => 'fabric', 'label' => 'Fabric', 'type' => 'text', 'group' => self::GROUP_PHYSICAL, 'hint' => 'e.g. cotton, silk, teak, MDF.'],
+            ['name' => 'weave', 'label' => 'Weave', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
+            ['name' => 'pattern', 'label' => 'Pattern / design', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
+            ['name' => 'shade_code', 'label' => 'Shade code', 'type' => 'text', 'group' => self::GROUP_PHYSICAL, 'hint' => 'The manufacturer shade reference for a paint or finish.'],
+            ['name' => 'volume', 'label' => 'Volume', 'type' => 'number', 'group' => self::GROUP_PHYSICAL, 'hint' => 'Litres per unit — used with per litre pricing.'],
+            ['name' => 'coverage_area', 'label' => 'Coverage', 'type' => 'number', 'group' => self::GROUP_PHYSICAL, 'hint' => 'sq ft covered per litre.'],
             ['name' => 'thickness', 'label' => 'Thickness', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
             ['name' => 'specification', 'label' => 'Specification', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
+            ['name' => 'service_type', 'label' => 'Service type', 'type' => 'text', 'group' => self::GROUP_PHYSICAL, 'hint' => 'e.g. installation, fitting, site visit.'],
+            ['name' => 'site_reference', 'label' => 'Site reference', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
+            ['name' => 'batch_number', 'label' => 'Batch number', 'type' => 'text', 'group' => self::GROUP_PHYSICAL],
+            ['name' => 'boxes', 'label' => 'Boxes per unit', 'type' => 'number', 'group' => self::GROUP_PHYSICAL, 'hint' => 'For tiles sold by the box — used with per box pricing.'],
             ['name' => 'warranty_months', 'label' => 'Warranty (months)', 'type' => 'number', 'group' => self::GROUP_PHYSICAL],
             ['name' => 'default_net_weight', 'label' => 'Net weight', 'type' => 'number', 'group' => self::GROUP_PHYSICAL],
             ['name' => 'default_gross_weight', 'label' => 'Gross weight', 'type' => 'number', 'group' => self::GROUP_PHYSICAL],

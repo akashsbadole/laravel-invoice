@@ -265,6 +265,33 @@ export default function InvoiceForm({
                             />
                             <InputError message={errors.due_date} />
                         </div>
+                        {/* Only a quotation can lapse, so the validity
+                            window is meaningless on an invoice. */}
+                        {data.document_type === 'quotation' && (
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="quotation_valid_until">
+                                    Valid until (optional)
+                                </Label>
+                                <Input
+                                    id="quotation_valid_until"
+                                    type="date"
+                                    value={data.quotation_valid_until ?? ''}
+                                    onChange={(e) =>
+                                        setData(
+                                            'quotation_valid_until',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Marked expired automatically once this date
+                                    passes.
+                                </p>
+                                <InputError
+                                    message={errors.quotation_valid_until}
+                                />
+                            </div>
+                        )}
                         <div className="grid gap-1.5">
                             <Label htmlFor="reference_number">Reference no. (optional)</Label>
                             <Input

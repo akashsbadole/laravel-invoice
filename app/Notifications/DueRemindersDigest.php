@@ -8,7 +8,7 @@ use Illuminate\Notifications\Notification;
 class DueRemindersDigest extends Notification
 {
     /**
-     * @param  array<string,int>  $summary  payments, followups, birthdays, anniversaries, custom
+     * @param  array<string,int>  $summary  payments, followups, birthdays, anniversaries, custom, expiring_quotes
      */
     public function __construct(public array $summary) {}
 
@@ -28,6 +28,7 @@ class DueRemindersDigest extends Notification
             'birthdays' => 'upcoming birthday(s)',
             'anniversaries' => 'upcoming anniversary(ies)',
             'custom' => 'custom reminder(s)',
+            'expiring_quotes' => 'quotation(s) expiring within 3 days',
         ];
 
         $mail = (new MailMessage)

@@ -36,3 +36,15 @@ export type CustomReminder = {
     is_done: boolean;
     customer: ReminderCustomer | null;
 };
+
+/**
+ * A quotation whose validity window is about to close. Staff chase these
+ * before the customer can, so the deadline is the point of the reminder.
+ */
+export type ExpiringQuote = {
+    id: number;
+    invoice_number: string;
+    quotation_valid_until: string;
+    grand_total: string;
+    customer: ReminderCustomer;
+};

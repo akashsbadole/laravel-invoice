@@ -93,19 +93,6 @@ const operations: Item[] = [
     },
 ];
 
-const industries = [
-    { name: 'Jewelry', note: 'Metal rates, purity, HUID, stone details, gold exchange' },
-    { name: 'Hardware & building materials', note: 'Per piece or kg, brand, model, warranty' },
-    { name: 'Tiles, marble & stone', note: 'Area pricing, wastage, batch and box quantities' },
-    { name: 'Plumbing & electrical', note: 'Per piece or metre, material, thickness' },
-    { name: 'Furniture & interiors', note: 'Per piece or area, delivery date, installments' },
-    { name: 'Textiles & sarees', note: 'Per piece or metre, fabric, colour, design' },
-    { name: 'Electronics & appliances', note: 'Brand, model, serial, warranty months' },
-    { name: 'Paint & hardware retail', note: 'Per litre or kg, shade codes, area estimation' },
-    { name: 'Contractors & civil work', note: 'Site references, milestones, advance tokens' },
-    { name: 'Repair & servicing', note: 'Challan as job card, quote then approve then bill' },
-];
-
 const notFor = [
     'Restaurants and cafés (no POS billing)',
     'Grocery and supermarkets (no barcode POS checkout)',
@@ -114,7 +101,21 @@ const notFor = [
     'Logistics and fleet operations',
 ];
 
-export default function Features() {
+/**
+ * Supplied by the /features route straight from config/industries.php, so this
+ * page lists exactly the trades the product supports.
+ */
+export type FeatureIndustry = {
+    key: string;
+    name: string;
+    note: string;
+};
+
+export default function Features({
+    industries,
+}: {
+    industries: FeatureIndustry[];
+}) {
     const { auth } = usePage<{ auth: Auth }>().props;
 
     return (

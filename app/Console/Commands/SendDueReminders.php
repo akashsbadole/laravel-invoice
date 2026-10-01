@@ -45,6 +45,7 @@ class SendDueReminders extends Command
             'birthdays' => $data['birthdays']->count(),
             'anniversaries' => $data['anniversaries']->count(),
             'custom' => $data['custom']->count(),
+            'expiring_quotes' => $data['expiring_quotes']->count(),
         ];
 
         if (array_sum($summary) > 0) {

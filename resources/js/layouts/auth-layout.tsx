@@ -52,7 +52,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
                 <FlashToaster />
                 <p className="mt-6 text-center text-xs text-muted-foreground">
                     <Link href="/" className="hover:text-foreground hover:underline">
-                        â† Back to home
+                        ← Back to home
                     </Link>
                 </p>
             </div>

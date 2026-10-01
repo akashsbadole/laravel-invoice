@@ -1,5 +1,5 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
-import { Cake, Gift, MessageSquare, Plus, Receipt as ReceiptIcon, Users } from 'lucide-react';
+import { Cake, FileText, Gift, MessageSquare, Plus, Receipt as ReceiptIcon, Users } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import Heading from '@/components/heading';
@@ -30,7 +30,13 @@ import { dashboard } from '@/routes';
 import { index as remindersIndex } from '@/routes/reminders';
 import { update as updateFollowup } from '@/routes/customers/followups';
 import type { Staff } from '@/types/customer';
-import type { CustomReminder, DueFollowup, DueInvoiceReminder, OccasionReminder } from '@/types/reminder';
+import type {
+    CustomReminder,
+    DueFollowup,
+    DueInvoiceReminder,
+    ExpiringQuote,
+    OccasionReminder,
+} from '@/types/reminder';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
@@ -40,6 +46,7 @@ export default function RemindersPage({
     birthdays,
     anniversaries,
     custom,
+    expiringQuotes,
     staff,
     customers,
     smsDriver,
@@ -49,6 +56,7 @@ export default function RemindersPage({
     birthdays: OccasionReminder[];
     anniversaries: OccasionReminder[];
     custom: CustomReminder[];
+    expiringQuotes: ExpiringQuote[];
     staff: Staff[];
     customers: { id: number; full_name: string }[];
     smsDriver: string;
@@ -103,6 +111,47 @@ export default function RemindersPage({
                                             )}
                                         </Form>
                                     </div>
+                                </div>
+                            ))
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileText className="size-4" /> Quotations expiring
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {expiringQuotes.length === 0 ? (
+                            <Empty text="No quotations closing in the next 3 days." />
+                        ) : (
+                            expiringQuotes.map((quote) => (
+                                <div
+                                    key={quote.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                                >
+                                    <div>
+                                        <Link
+                                            href={`/invoices/${quote.id}`}
+                                            className="font-medium hover:underline"
+                                        >
+                                            {quote.invoice_number}
+                                        </Link>
+                                        <p className="text-sm text-muted-foreground">
+                                            {quote.customer.full_name} · valid
+                                            until{' '}
+                                            {new Date(
+                                                quote.quotation_valid_until,
+                                            ).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <span className="font-medium">
+                                        {currency.format(
+                                            Number(quote.grand_total),
+                                        )}
+                                    </span>
                                 </div>
                             ))
                         )}

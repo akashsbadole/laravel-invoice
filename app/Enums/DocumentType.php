@@ -33,4 +33,17 @@ enum DocumentType: string
     {
         return $this === self::JewelryInvoice || $this === self::GeneralInvoice;
     }
+
+    /**
+     * Whether this document counts as realised revenue.
+     *
+     * A quotation is a proposal and a delivery challan is a goods movement, so
+     * neither belongs in sales, tax, ageing or salesperson totals. Counting
+     * them is worse than cosmetic: converting a quotation creates a separate
+     * invoice for the same value, so both totals would include the same money.
+     */
+    public function isSale(): bool
+    {
+        return $this === self::JewelryInvoice || $this === self::GeneralInvoice;
+    }
 }

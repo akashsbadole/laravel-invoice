@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
+use App\Enums\QuotationStatus;
 use App\Models\Customer;
 use App\Models\CustomerFollowup;
 use App\Models\Invoice;
 use App\Models\Reminder;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -20,7 +23,7 @@ class ReminderService
     public const OPEN_FOLLOWUP_STATUSES = ['pending', 'contacted', 'waiting_for_response'];
 
     /**
-     * @return array{payments:Collection,followups:Collection,birthdays:Collection,anniversaries:Collection,custom:Collection}
+     * @return array{payments:Collection,followups:Collection,birthdays:Collection,anniversaries:Collection,custom:Collection,expiring_quotes:Collection}
      */
     public function gather(?Carbon $today = null, int $days = 7): array
     {
@@ -58,6 +61,22 @@ class ReminderService
                 ->where('is_done', false)
                 ->whereDate('remind_on', '<=', $today->copy()->addDay())
                 ->orderBy('remind_on')
+                ->get(),
+            // Staff need to chase a quote before its window closes, not after.
+            'expiring_quotes' => Invoice::query()
+                ->with('customer:id,full_name,mobile_number')
+                ->where('document_type', DocumentType::Quotation->value)
+                ->whereNotNull('quotation_valid_until')
+                ->where(function (Builder $query): void {
+                    $query
+                        ->whereNull('quotation_status')
+                        ->orWhereIn('quotation_status', [
+                            QuotationStatus::Draft->value,
+                            QuotationStatus::Sent->value,
+                        ]);
+                })
+                ->whereDate('quotation_valid_until', '<=', $today->copy()->addDays(3))
+                ->orderBy('quotation_valid_until')
                 ->get(),
         ];
     }

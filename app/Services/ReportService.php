@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -16,7 +17,7 @@ use Illuminate\Support\Collection;
 class ReportService
 {
     public const TYPES = [
-        'invoices' => 'Invoice report',
+        'invoices' => 'Document report',
         'paid' => 'Paid invoices',
         'unpaid' => 'Unpaid invoices',
         'outstanding' => 'Outstanding balances',
@@ -44,7 +45,9 @@ class ReportService
             'tax' => $this->tax($filters),
             'salesperson' => $this->salesperson($filters),
             'monthly' => $this->monthly($filters),
-            default => $this->invoiceList('Invoice report', $filters, null),
+            // The one report that is a document listing rather than a money
+            // total, so it keeps quotations and challans and labels the type.
+            default => $this->invoiceList('Document report', $filters, null, includeNonSales: true),
         };
 
         $result['type'] = $type;
@@ -58,12 +61,14 @@ class ReportService
      * @param  array<int,InvoiceStatus>|null  $only
      * @return array<string,mixed>
      */
-    protected function invoiceList(string $title, array $f, ?array $only): array
+    protected function invoiceList(string $title, array $f, ?array $only, bool $includeNonSales = false): array
     {
-        $rows = $this->invoiceQuery($f, $only)->get()->map(fn (Invoice $i) => [
+        $rows = $this->invoiceQuery($f, $only, includeNonSales: $includeNonSales)->get()->map(fn (Invoice $i) => [
             'invoice_number' => $i->invoice_number,
             'invoice_date' => $i->invoice_date->format('Y-m-d'),
             'customer' => $i->customer?->full_name ?? '-',
+            // Only meaningful when non-sales are included; harmless otherwise.
+            'document_type' => $i->document_type->label(),
             'salesperson' => $i->salesperson?->name ?? '-',
             'status' => str_replace('_', ' ', $i->status->value),
             'grand_total' => (float) $i->grand_total,
@@ -76,7 +81,8 @@ class ReportService
             'title' => $title,
             'columns' => [
                 $this->col('invoice_number', 'Invoice'), $this->col('invoice_date', 'Date', 'date'),
-                $this->col('customer', 'Customer'), $this->col('salesperson', 'Salesperson'),
+                $this->col('customer', 'Customer'), $this->col('document_type', 'Document'),
+                $this->col('salesperson', 'Salesperson'),
                 $this->col('status', 'Status'), $this->col('grand_total', 'Total', 'money'),
                 $this->col('tax', 'Tax', 'money'), $this->col('paid', 'Paid', 'money'),
                 $this->col('balance', 'Balance', 'money'),
@@ -308,16 +314,33 @@ class ReportService
     }
 
     /**
+     * Base query for every report.
+     *
+     * Non-sale documents (quotations, delivery challans) are excluded by
+     * default because every report here is about money that actually moved.
+     * A converted quotation in particular would otherwise be counted twice:
+     * once as the quote and once as the invoice it became.
+     *
      * @param  array<string,mixed>  $f
      * @param  array<int,InvoiceStatus>|null  $only
      * @return Builder<Invoice>
      */
-    protected function invoiceQuery(array $f, ?array $only = null, bool $excludeVoid = false): Builder
-    {
+    protected function invoiceQuery(
+        array $f,
+        ?array $only = null,
+        bool $excludeVoid = false,
+        bool $includeNonSales = false,
+    ): Builder {
         $status = $f['status'] ?? 'all';
+
+        $saleTypes = array_values(array_map(
+            fn (DocumentType $type) => $type->value,
+            array_filter(DocumentType::cases(), fn (DocumentType $type) => $type->isSale()),
+        ));
 
         return Invoice::query()
             ->with(['customer:id,full_name,mobile_number,tax_number', 'salesperson:id,name'])
+            ->when($includeNonSales, fn ($q) => null, fn ($q) => $q->whereIn('document_type', $saleTypes))
             ->when($f['from'] ?? null, fn ($q, $v) => $q->whereDate('invoice_date', '>=', $v))
             ->when($f['to'] ?? null, fn ($q, $v) => $q->whereDate('invoice_date', '<=', $v))
             ->when($f['customer_id'] ?? null, fn ($q, $v) => $q->where('customer_id', $v))

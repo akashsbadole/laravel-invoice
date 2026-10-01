@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateBusinessSettingsRequest;
 use App\Models\BusinessSetting;
 use App\Models\ChargeType;
+use App\Support\CatalogField;
 use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +32,10 @@ class BusinessController extends Controller
                     'key' => $key,
                     'label' => $config['label'],
                     'description' => $config['description'],
+                    // The trade-specific fields this industry reveals, so the
+                    // settings page can preview them before saving.
+                    'item_fields' => CatalogField::names($key, $settings->show_all_catalog_fields),
+                    'rate_types' => $config['rate_types'],
                 ])
                 ->values()
                 ->all(),

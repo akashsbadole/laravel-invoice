@@ -63,6 +63,8 @@ class StoreInvoiceRequest extends FormRequest
             'document_type' => ['sometimes', Rule::enum(DocumentType::class)],
             'invoice_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+            // Only a quotation has a validity window; the expiry sweep reads it.
+            'quotation_valid_until' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             'reference_number' => ['nullable', 'string', 'max:255'],
             'salesperson_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'invoice_template_id' => ['nullable', Rule::exists('invoice_templates', 'id')->where('tenant_id', $this->user()->tenant_id)],

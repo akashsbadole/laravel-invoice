@@ -12,6 +12,7 @@ export type RateType =
     | 'per_meter'
     | 'per_kg'
     | 'per_box'
+    | 'per_litre'
     | 'per_unit';
 export type PricingMode = 'manual' | 'jewelry_calculated';
 export type TaxMode = 'single' | 'cgst_sgst' | 'igst';
@@ -119,6 +120,7 @@ export type InvoiceFormData = {
     notes: string;
     terms: string;
     attributes?: Record<string, string>;
+    quotation_valid_until?: string;
     items: InvoiceItemForm[];
     invoice_charges: InvoiceChargeInput[];
 };
