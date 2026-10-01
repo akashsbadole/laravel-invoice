@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Mail\StaffInviteMail;
 use App\Models\StaffInvite;
-use App\Models\User;
 use App\Services\SubscriptionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,18 +25,17 @@ class StaffInviteController extends Controller
             return back()->withErrors(['email' => $error]);
         }
 
+        // Already-registered emails are allowed: accepting the invite
+        // while logged in with that email joins this firm instead.
         $validated = $request->validate([
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'email' => ['required', 'email', 'max:255'],
             'role' => ['required', Rule::enum(UserRole::class)],
         ]);
 
         abort_if($validated['role'] === UserRole::Admin->value && ! $request->user()->isAdmin(), 403);
 
-        if (User::query()->where('email', $validated['email'])->exists()) {
-            return back()->withErrors(['email' => __('This email is already registered.')]);
-        }
-
         // Re-inviting replaces the previous pending invite (new token + expiry).
+        // Inviting an already-registered email lets that login join this firm.
         StaffInvite::query()->where('email', $validated['email'])->whereNull('accepted_at')->delete();
 
         $invite = new StaffInvite([

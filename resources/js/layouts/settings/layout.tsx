@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import { useLocale, type I18nKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import Heading from '@/components/heading';
 
@@ -9,21 +10,22 @@ interface SettingsLayoutProps {
     description?: string;
 }
 
-const settingsNav = [
-    { title: 'Profile', href: '/settings/profile' },
-    { title: 'Business', href: '/settings/business' },
-    { title: 'Security', href: '/settings/security' },
-    { title: 'Appearance', href: '/settings/appearance' },
-    { title: 'Users', href: '/settings/users' },
-    { title: 'Activity Log', href: '/settings/activity-log' },
-    { title: 'Metal Rates', href: '/settings/metal-rates' },
-    { title: 'Catalog', href: '/settings/catalog' },
-    { title: 'Charge Types', href: '/settings/charge-types' },
-    { title: 'Invoice Templates', href: '/settings/invoice-templates' },
+const settingsNav: { titleKey: I18nKey; href: string }[] = [
+    { titleKey: 'nav.profile', href: '/settings/profile' },
+    { titleKey: 'nav.business', href: '/settings/business' },
+    { titleKey: 'nav.security', href: '/settings/security' },
+    { titleKey: 'nav.appearance', href: '/settings/appearance' },
+    { titleKey: 'nav.users', href: '/settings/users' },
+    { titleKey: 'nav.activityLog', href: '/settings/activity-log' },
+    { titleKey: 'nav.metalRates', href: '/settings/metal-rates' },
+    { titleKey: 'nav.catalog', href: '/settings/catalog' },
+    { titleKey: 'nav.chargeTypes', href: '/settings/charge-types' },
+    { titleKey: 'nav.invoiceTemplates', href: '/settings/invoice-templates' },
 ];
 
 export default function SettingsLayout({ children, title, description }: SettingsLayoutProps) {
     const { url } = usePage();
+    const { t } = useLocale();
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 lg:flex-row">
@@ -43,7 +45,7 @@ export default function SettingsLayout({ children, title, description }: Setting
                                         : 'text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground',
                                 )}
                             >
-                                {item.title}
+                                {t(item.titleKey)}
                             </Link>
                         );
                     })}

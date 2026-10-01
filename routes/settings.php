@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FirmSwitchController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BusinessController;
 use App\Http\Controllers\Settings\CatalogItemController;
@@ -37,6 +38,8 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::post('settings/invites', [StaffInviteController::class, 'store'])->name('invites.store');
     Route::delete('settings/invites/{invite}', [StaffInviteController::class, 'destroy'])->name('invites.destroy');
+
+    Route::post('settings/firms/switch', [FirmSwitchController::class, 'switch'])->name('firms.switch');
 
     Route::get('settings/metal-rates', [MetalRateController::class, 'index'])->name('metal-rates.index');
     Route::post('settings/metal-rates', [MetalRateController::class, 'store'])->name('metal-rates.store');

@@ -42,7 +42,5 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
-storage/logs/laravel.log
-storage/logs/laravel.log
-storage/logs/browser.log
-storage/logs/laravel.log
+/storage/logs/*.log
+/storage/framework/views

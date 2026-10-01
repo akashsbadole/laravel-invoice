@@ -33,3 +33,24 @@ export function buildShareMessage(params: {
 }): string {
     return `Hi! Here's your invoice ${params.invoiceNumber} from ${params.businessName} for ₹${params.grandTotal}. View, download, or check payment status here: ${params.publicUrl}`;
 }
+
+export function buildUpiCollectUrl(params: {
+    upiId: string;
+    payeeName: string;
+    amount: number | string;
+    note: string;
+}): string | null {
+    const upiId = params.upiId.trim();
+    const amount = Number(params.amount);
+    if (!upiId || !Number.isFinite(amount) || amount <= 0) return null;
+
+    const query = new URLSearchParams({
+        pa: upiId,
+        pn: params.payeeName.slice(0, 60),
+        am: amount.toFixed(2),
+        cu: 'INR',
+        tn: params.note.slice(0, 80),
+    });
+
+    return `upi://pay?${query.toString()}`;
+}

@@ -30,9 +30,16 @@ export type Tenant = {
     } | null;
 };
 
+export type Firm = {
+    id: number;
+    name: string;
+    slug: string;
+};
+
 export type Auth = {
     user: User;
     tenant: Tenant | null;
+    firms: Firm[];
 };
 
 /* @chisel-passkeys */

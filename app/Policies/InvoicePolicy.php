@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\DocumentType;
 use App\Enums\UserRole;
 use App\Models\Invoice;
 use App\Models\User;
@@ -51,7 +50,7 @@ class InvoicePolicy
     {
         return $this->sameTenant($user, $invoice->tenant_id)
             && $user->role->canWrite()
-            && $invoice->document_type !== DocumentType::Quotation;
+            && $invoice->document_type->isPayable();
     }
 
     public function share(User $user, Invoice $invoice): bool

@@ -44,11 +44,16 @@ class PortalInvoiceController extends Controller
 
         $invoice->load(['items.charges', 'charges', 'payments', 'template']);
 
+        $settings = BusinessSetting::forTenant($invoice->tenant_id);
+
         return Inertia::render('portal/invoices/show', [
             'invoice' => $invoice,
-            'business' => BusinessSetting::forTenant($invoice->tenant_id)->only([
-                'business_name', 'address', 'phone', 'email', 'tax_number',
-            ]),
+            'business' => [
+                ...$settings->only([
+                    'business_name', 'address', 'phone', 'email', 'tax_number',
+                ]),
+                'upi_id' => $settings->bank_details['upi_id'] ?? null,
+            ],
         ]);
     }
 

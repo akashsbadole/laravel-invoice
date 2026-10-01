@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
+import { initializeLocale } from '@/lib/i18n';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
@@ -17,10 +18,10 @@ type Breadcrumb = {
     href?: string;
 };
 
+type PageLayout = ((page: ReactNode) => ReactNode) | { breadcrumbs?: Breadcrumb[] };
+
 type PageWithLayoutData = {
-    layout?: {
-        breadcrumbs?: Breadcrumb[];
-    };
+    layout?: PageLayout;
 };
 
 const appName = import.meta.env.VITE_APP_NAME || 'Jewelry Invoice';
@@ -65,7 +66,8 @@ void createInertiaApp({
         }
 
         const Component = module.default;
-        const breadcrumbs = Component.layout?.breadcrumbs ?? [];
+        const declaredLayout = Component.layout;
+        const breadcrumbs = typeof declaredLayout === 'function' ? [] : (declaredLayout?.breadcrumbs ?? []);
         Component.layout = (page: ReactNode) => applyLayout(name, breadcrumbs, page);
 
         return Component;
@@ -89,6 +91,9 @@ void createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// ...and apply the saved display language.
+initializeLocale();
 
 // ...and register the PWA service worker for offline app-shell caching.
 registerServiceWorker();

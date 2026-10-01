@@ -5,6 +5,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLocale } from '@/lib/i18n';
 
 export default function ResetPassword({
     token,
@@ -13,6 +14,7 @@ export default function ResetPassword({
     token: string;
     email?: string | null;
 }) {
+    const { t } = useLocale();
     const { data, setData, post, processing, errors, reset } = useForm({
         token,
         email: email ?? '',
@@ -29,14 +31,14 @@ export default function ResetPassword({
 
     return (
         <>
-            <Head title="Reset password" />
+            <Head title={t('auth.resetPassword')} />
 
             <div className="space-y-6">
-                <Heading title="Set a new password" description="Choose a strong password for your account." />
+                <Heading title={t('auth.setNewPassword')} description={t('auth.setNewPasswordBlurb')} />
 
                 <form onSubmit={submit} className="space-y-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email">{t('auth.email')}</Label>
                         <Input
                             id="email"
                             type="email"
@@ -48,7 +50,7 @@ export default function ResetPassword({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="password">New password</Label>
+                        <Label htmlFor="password">{t('auth.newPassword')}</Label>
                         <Input
                             id="password"
                             type="password"
@@ -61,7 +63,7 @@ export default function ResetPassword({
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="password_confirmation">Confirm password</Label>
+                        <Label htmlFor="password_confirmation">{t('auth.confirmPassword')}</Label>
                         <Input
                             id="password_confirmation"
                             type="password"
@@ -73,7 +75,7 @@ export default function ResetPassword({
                     </div>
 
                     <Button type="submit" disabled={processing} className="w-full">
-                        Reset password
+                        {t('auth.resetPassword')}
                     </Button>
                 </form>
             </div>

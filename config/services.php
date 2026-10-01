@@ -17,6 +17,11 @@ return [
         'key_secret' => env('RAZORPAY_KEY_SECRET'),
         'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
     ],
+    'einvoice' => [
+        'driver' => env('EINVOICE_DRIVER', 'log'),
+        'api_url' => env('EINVOICE_API_URL'),
+        'api_key' => env('EINVOICE_API_KEY'),
+    ],
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

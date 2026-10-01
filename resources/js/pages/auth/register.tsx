@@ -5,8 +5,10 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLocale } from '@/lib/i18n';
 
 export default function Register() {
+    const { t } = useLocale();
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         business_name: '',
@@ -24,17 +26,14 @@ export default function Register() {
 
     return (
         <>
-            <Head title="Create your account" />
+            <Head title={t('auth.register')} />
 
             <div className="space-y-6">
-                <Heading
-                    title="Start your 14-day trial"
-                    description="Your business, invoices and customers — free for 14 days, no card required."
-                />
+                <Heading title={t('auth.createAccount')} description={t('auth.createBlurb')} />
 
                 <form onSubmit={submit} className="space-y-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="name">Your name</Label>
+                        <Label htmlFor="name">{t('auth.yourName')}</Label>
                         <Input
                             id="name"
                             autoComplete="name"
@@ -46,7 +45,7 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="business_name">Business name</Label>
+                        <Label htmlFor="business_name">{t('auth.businessName')}</Label>
                         <Input
                             id="business_name"
                             autoComplete="organization"
@@ -58,7 +57,7 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="email">Work email</Label>
+                        <Label htmlFor="email">{t('auth.workEmail')}</Label>
                         <Input
                             id="email"
                             type="email"
@@ -70,7 +69,7 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="password">{t('auth.password')}</Label>
                         <Input
                             id="password"
                             type="password"
@@ -82,7 +81,7 @@ export default function Register() {
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="password_confirmation">Confirm password</Label>
+                        <Label htmlFor="password_confirmation">{t('auth.confirmPassword')}</Label>
                         <Input
                             id="password_confirmation"
                             type="password"
@@ -94,13 +93,13 @@ export default function Register() {
                     </div>
 
                     <Button type="submit" disabled={processing} className="w-full">
-                        Create account
+                        {t('auth.register')}
                     </Button>
 
                     <p className="text-center text-sm text-muted-foreground">
-                        Already have an account?{' '}
+                        {t('auth.alreadyHave')}{' '}
                         <Link href="/login" className="hover:text-foreground hover:underline">
-                            Log in
+                            {t('auth.login')}
                         </Link>
                     </p>
                 </form>

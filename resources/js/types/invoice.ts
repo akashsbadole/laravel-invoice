@@ -91,7 +91,6 @@ export type InvoiceFormData = {
     terms: string;
     items: InvoiceItemForm[];
     invoice_charges: InvoiceChargeInput[];
-    [key: string]: unknown;
 };
 
 export type InvoiceItem = {
@@ -160,7 +159,9 @@ export type ChargesSummaryRow = {
     amount: number;
 };
 
-export type DocumentType = 'jewelry_invoice' | 'general_invoice' | 'quotation';
+export type DocumentType = 'jewelry_invoice' | 'general_invoice' | 'quotation' | 'delivery_challan';
+
+export type EInvoiceStatus = 'not_required' | 'pending' | 'generated' | 'failed';
 
 export type Invoice = {
     id: number;
@@ -176,6 +177,11 @@ export type Invoice = {
     invoice_template_id: number | null;
     tax_mode: TaxMode;
     tax_breakdown: { label: string; rate: number; amount: number }[] | null;
+    einvoice_status: EInvoiceStatus;
+    irn: string | null;
+    irn_ack_no: string | null;
+    irn_ack_date: string | null;
+    eway_bill_no: string | null;
     subtotal: string;
     charges_summary: ChargesSummaryRow[] | null;
     discount: string;

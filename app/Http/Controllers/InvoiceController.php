@@ -19,6 +19,7 @@ use App\Models\InvoiceTemplate;
 use App\Models\MetalRate;
 use App\Models\RecurringProfile;
 use App\Models\User;
+use App\Services\EInvoiceService;
 use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
 use App\Services\SubscriptionService;
@@ -81,10 +82,14 @@ class InvoiceController extends Controller
             $invoice = Invoice::create([
                 'customer_id' => $request->validated('customer_id'),
                 'document_type' => $documentType,
-                'status' => $documentType === DocumentType::Quotation->value ? InvoiceStatus::Draft : InvoiceStatus::Unpaid,
-                'invoice_number' => $documentType === DocumentType::Quotation->value
-                    ? $business->nextQuotationNumber()
-                    : $business->nextInvoiceNumber(),
+                'status' => in_array($documentType, [DocumentType::Quotation->value, DocumentType::DeliveryChallan->value], true)
+                    ? InvoiceStatus::Draft
+                    : InvoiceStatus::Unpaid,
+                'invoice_number' => match ($documentType) {
+                    DocumentType::Quotation->value => $business->nextQuotationNumber(),
+                    DocumentType::DeliveryChallan->value => $business->nextChallanNumber(),
+                    default => $business->nextInvoiceNumber(),
+                },
                 'invoice_date' => $request->validated('invoice_date'),
                 'due_date' => $request->validated('due_date'),
                 'reference_number' => $request->validated('reference_number'),
@@ -132,9 +137,14 @@ class InvoiceController extends Controller
             'shareLinks' => fn ($q) => $q->latest(),
         ]);
 
+        $settings = BusinessSetting::current();
+
         return Inertia::render('invoices/show', [
             'invoice' => $invoice,
-            'business' => BusinessSetting::current()->only(['default_currency']),
+            'business' => [
+                ...$settings->only(['default_currency', 'business_name']),
+                'upi_id' => $settings->bank_details['upi_id'] ?? null,
+            ],
             'recurringProfile' => RecurringProfile::query()
                 ->where('source_invoice_id', $invoice->id)
                 ->first(['id', 'frequency', 'next_run_at', 'last_run_at', 'is_active']),
@@ -254,6 +264,24 @@ class InvoiceController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation converted to invoice.')]);
 
         return to_route('invoices.show', $newInvoice);
+    }
+
+    public function generateEInvoice(Request $request, Invoice $invoice, EInvoiceService $einvoice): RedirectResponse
+    {
+        Gate::authorize('update', $invoice);
+        abort_if($invoice->document_type === DocumentType::Quotation, 422, 'Quotations do not need e-invoices.');
+
+        try {
+            $einvoice->generate($invoice, $request->user()->id);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withErrors(['einvoice' => $e->getMessage()]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('E-invoice request recorded.')]);
+
+        return back();
     }
 
     public function sendEmail(Request $request, Invoice $invoice): RedirectResponse

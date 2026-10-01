@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { buildUpiCollectUrl } from '@/lib/share-invoice';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
@@ -49,6 +50,7 @@ type Business = {
     website: string | null;
     tax_number: string | null;
     footer_text: string | null;
+    upi_id: string | null;
 };
 
 type TemplateConfig = {
@@ -110,6 +112,25 @@ export default function PublicInvoicePage({
                             Download PDF
                         </a>
                     </Button>
+                    {business.upi_id && Number(invoice.balance_amount) > 0 && (
+                        <Button
+                            asChild
+                            className="bg-[#25D366] text-white hover:bg-[#1fb955]"
+                        >
+                            <a
+                                href={
+                                    buildUpiCollectUrl({
+                                        upiId: business.upi_id,
+                                        payeeName: business.business_name,
+                                        amount: invoice.balance_amount,
+                                        note: `Invoice ${invoice.invoice_number}`,
+                                    }) ?? '#'
+                                }
+                            >
+                                Pay via UPI
+                            </a>
+                        </Button>
+                    )}
                 </div>
 
                 <Card className="print:border-none print:shadow-none">

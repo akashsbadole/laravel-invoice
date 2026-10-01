@@ -26,6 +26,7 @@ class Invoice extends Model
         'grand_total', 'paid_amount', 'balance_amount',
         'notes', 'terms', 'created_by',
         'tax_mode', 'tax_breakdown', 'last_reminder_sent_at',
+        'einvoice_status', 'irn', 'irn_ack_no', 'irn_ack_date', 'eway_bill_no',
     ];
 
     use SoftDeletes;
@@ -50,6 +51,7 @@ class Invoice extends Model
             'tax_mode' => TaxMode::class,
             'tax_breakdown' => 'array',
             'last_reminder_sent_at' => 'datetime',
+            'irn_ack_date' => 'datetime',
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'tax' => 'decimal:2',

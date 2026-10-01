@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     Bell,
@@ -11,30 +11,55 @@ import {
 } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { NavUser } from '@/components/nav-user';
+import { useLocale, type I18nKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-    { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { title: 'Customers', href: '/customers', icon: Users },
-    { title: 'Invoices', href: '/invoices', icon: FileText },
-    { title: 'Payments', href: '/payments', icon: CreditCard },
-    { title: 'Reports', href: '/reports', icon: BarChart3 },
-    { title: 'Reminders', href: '/reminders', icon: Bell },
+const navItems: { titleKey: I18nKey; href: string; icon: typeof LayoutDashboard }[] = [
+    { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { titleKey: 'nav.customers', href: '/customers', icon: Users },
+    { titleKey: 'nav.invoices', href: '/invoices', icon: FileText },
+    { titleKey: 'nav.payments', href: '/payments', icon: CreditCard },
+    { titleKey: 'nav.reports', href: '/reports', icon: BarChart3 },
+    { titleKey: 'nav.reminders', href: '/reminders', icon: Bell },
 ];
 
-const secondaryItems = [
-    { title: 'Settings', href: '/settings/profile', icon: Settings },
-    { title: 'Billing', href: '/billing', icon: Crown },
+const secondaryItems: { titleKey: I18nKey; href: string; icon: typeof Settings }[] = [
+    { titleKey: 'nav.settings', href: '/settings/profile', icon: Settings },
+    { titleKey: 'nav.billing', href: '/billing', icon: Crown },
 ];
 
 export function AppSidebar() {
-    const { url } = usePage();
+    const { url, props } = usePage<{ auth: { tenant: { id: number; name: string } | null; firms: { id: number; name: string }[] } }>();
+    const { auth } = props;
+    const { t } = useLocale();
+    const firms = auth.firms ?? [];
+    const currentFirmId = auth.tenant?.id;
 
     return (
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-emeraldink-deep text-ivory md:flex">
             <div className="border-b border-ivory/10 px-5 pb-5 pt-6">
                 <AppLogo dark />
-                <div className="gold-rule mt-4" />
+                {firms.length > 1 ? (
+                    <select
+                        aria-label="Switch firm"
+                        value={currentFirmId ?? ''}
+                        onChange={(e) => {
+                            const tenantId = Number(e.target.value);
+                            if (tenantId && tenantId !== currentFirmId) {
+                                router.post('/settings/firms/switch', { tenant_id: tenantId });
+                            }
+                        }}
+                        className="mt-4 w-full cursor-pointer rounded-md border border-ivory/15 bg-ivory/5 px-2 py-1.5 text-sm text-ivory outline-none transition-colors hover:bg-ivory/10 [&>option]:text-foreground"
+                    >
+                        {firms.map((firm) => (
+                            <option key={firm.id} value={firm.id}>
+                                {firm.name}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <div className="gold-rule mt-4" />
+                )}
             </div>
 
             <nav className="flex-1 space-y-1 overflow-auto px-3 py-4">
@@ -59,13 +84,13 @@ export function AppSidebar() {
                                 )}
                             />
                             <Icon className={cn('size-4', isActive ? 'text-gold' : 'text-ivory/50 group-hover:text-gold-light')} />
-                            {item.title}
+                            {t(item.titleKey)}
                         </Link>
                     );
                 })}
 
                 <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ivory/40">
-                    Manage
+                    {t('nav.manage')}
                 </p>
                 {secondaryItems.map((item) => {
                     const isActive = url.startsWith(item.href);
@@ -82,7 +107,7 @@ export function AppSidebar() {
                             )}
                         >
                             <Icon className="size-4 text-ivory/50" />
-                            {item.title}
+                            {t(item.titleKey)}
                         </Link>
                     );
                 })}

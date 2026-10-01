@@ -1,9 +1,11 @@
 import { router, usePage } from '@inertiajs/react';
 import { LogOut } from 'lucide-react';
 import type { Auth } from '@/types/auth';
+import { useLocale } from '@/lib/i18n';
 
 export function NavUser() {
     const { auth } = usePage<{ auth: Auth }>().props;
+    const { t } = useLocale();
 
     if (!auth.user) return null;
 
@@ -22,7 +24,7 @@ export function NavUser() {
             </div>
             <button
                 type="button"
-                title="Log out"
+                title={t('nav.logout')}
                 onClick={() => router.post('/logout')}
                 className="rounded-md p-2 text-ivory/55 transition-colors hover:bg-ivory/10 hover:text-gold-light"
             >

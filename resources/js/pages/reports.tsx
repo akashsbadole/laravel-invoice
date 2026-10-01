@@ -44,6 +44,14 @@ export default function ReportsPage({
         }).url;
     }
 
+    function gstUrl(kind: 'gstr-1' | 'gstr-3b') {
+        const params = new URLSearchParams();
+        if (filters.from) params.append('from', filters.from);
+        if (filters.to) params.append('to', filters.to);
+        const qs = params.toString();
+        return `/reports/${kind}${qs ? `?${qs}` : ''}`;
+    }
+
     return (
         <>
             <Head title="Reports" />
@@ -134,6 +142,16 @@ export default function ReportsPage({
                                                 <a href={exportUrl('pdf')}>
                                                     <Download className="size-4" />
                                                     PDF
+                                                </a>
+                                            </Button>
+                                            <Button type="button" variant="outline" asChild title="GSTR-1 JSON for the GST portal">
+                                                <a href={gstUrl('gstr-1')}>
+                                                    GSTR-1
+                                                </a>
+                                            </Button>
+                                            <Button type="button" variant="outline" asChild title="GSTR-3B summary JSON">
+                                                <a href={gstUrl('gstr-3b')}>
+                                                    GSTR-3B
                                                 </a>
                                             </Button>
                                         </div>

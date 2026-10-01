@@ -293,6 +293,9 @@ export default function InvoiceForm({
                                         General invoice
                                     </SelectItem>
                                     <SelectItem value="quotation">Quotation</SelectItem>
+                                    <SelectItem value="delivery_challan">
+                                        Delivery challan
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

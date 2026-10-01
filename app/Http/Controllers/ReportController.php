@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BusinessSetting;
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\GstExportService;
 use App\Services\ReportService;
 use App\Support\XlsxWriter;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -93,6 +95,39 @@ class ReportController extends Controller
         XlsxWriter::write($path, $report['title'], $report['columns'], $report['rows'], $report['totals']);
 
         return response()->download($path, "{$basename}.xlsx")->deleteFileAfterSend(true);
+    }
+
+    public function gstr1(Request $request, GstExportService $gst): SymfonyResponse
+    {
+        $filters = $this->gstFilters($request);
+        $payload = $gst->gstr1($filters, BusinessSetting::current());
+        $basename = "gstr1-{$payload['fp']}";
+
+        return response()->streamDownload(function () use ($payload) {
+            echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }, "{$basename}.json", ['Content-Type' => 'application/json']);
+    }
+
+    public function gstr3b(Request $request, GstExportService $gst): SymfonyResponse
+    {
+        $filters = $this->gstFilters($request);
+        $payload = $gst->gstr3b($filters, BusinessSetting::current());
+        $basename = "gstr3b-{$payload['fp']}";
+
+        return response()->streamDownload(function () use ($payload) {
+            echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        }, "{$basename}.json", ['Content-Type' => 'application/json']);
+    }
+
+    /**
+     * @return array{from: ?string, to: ?string}
+     */
+    protected function gstFilters(Request $request): array
+    {
+        return [
+            'from' => $request->has('from') ? ($request->query('from') ?: null) : now()->startOfMonth()->toDateString(),
+            'to' => $request->has('to') ? ($request->query('to') ?: null) : today()->toDateString(),
+        ];
     }
 
     /**

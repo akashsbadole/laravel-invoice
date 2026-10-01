@@ -5,8 +5,10 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLocale } from '@/lib/i18n';
 
 export default function ForgotPassword({ status }: { status?: string | null }) {
+    const { t } = useLocale();
     const { data, setData, post, processing, errors } = useForm({
         email: '',
     });
@@ -18,13 +20,10 @@ export default function ForgotPassword({ status }: { status?: string | null }) {
 
     return (
         <>
-            <Head title="Forgot password" />
+            <Head title={t('auth.forgotTitle')} />
 
             <div className="space-y-6">
-                <Heading
-                    title="Forgot password"
-                    description="Enter your account email and we'll send you a reset link."
-                />
+                <Heading title={t('auth.forgotTitle')} description={t('auth.forgotBlurb')} />
 
                 {status && (
                     <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
@@ -34,7 +33,7 @@ export default function ForgotPassword({ status }: { status?: string | null }) {
 
                 <form onSubmit={submit} className="space-y-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email">{t('auth.email')}</Label>
                         <Input
                             id="email"
                             type="email"
@@ -47,12 +46,12 @@ export default function ForgotPassword({ status }: { status?: string | null }) {
                     </div>
 
                     <Button type="submit" disabled={processing} className="w-full">
-                        Email password reset link
+                        {t('auth.emailLink')}
                     </Button>
 
                     <p className="text-center text-sm text-muted-foreground">
                         <Link href="/login" className="hover:text-foreground hover:underline">
-                            Back to log in
+                            {t('auth.backToLogin')}
                         </Link>
                     </p>
                 </form>

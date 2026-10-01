@@ -40,9 +40,12 @@ Route::post('logout', [AuthController::class, 'destroy'])->middleware('auth')->n
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisterController::class, 'create'])->name('register');
     Route::post('register', [RegisterController::class, 'store'])->middleware('throttle:6,1');
-    Route::get('invites/accept/{token}', [InviteAcceptController::class, 'create'])->name('invites.accept');
-    Route::post('invites/accept/{token}', [InviteAcceptController::class, 'store'])->middleware('throttle:6,1');
 });
+
+// Invite links work for guests (new account) and logged-in users (join firm),
+// so they stay outside the guest group; the controller branches on auth state.
+Route::get('invites/accept/{token}', [InviteAcceptController::class, 'create'])->name('invites.accept');
+Route::post('invites/accept/{token}', [InviteAcceptController::class, 'store'])->middleware('throttle:6,1');
 
 Route::post('billing/webhook', [BillingController::class, 'webhook'])->name('billing.webhook');
 
@@ -83,6 +86,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::resource('invoices', InvoiceController::class);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
     Route::post('invoices/{invoice}/convert', [InvoiceController::class, 'convert'])->name('invoices.convert');
+    Route::post('invoices/{invoice}/einvoice', [InvoiceController::class, 'generateEInvoice'])->name('invoices.einvoice');
     Route::post('invoices/{invoice}/recurring', [RecurringInvoiceController::class, 'store'])->name('invoices.recurring.store');
     Route::delete('invoices/{invoice}/recurring/{profile}', [RecurringInvoiceController::class, 'destroy'])->name('invoices.recurring.destroy');
     Route::post('invoices/{invoice}/send-email', [InvoiceController::class, 'sendEmail'])->name('invoices.send-email');
@@ -101,6 +105,8 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/download', [ReportController::class, 'download'])->name('reports.download');
+    Route::get('reports/gstr-1', [ReportController::class, 'gstr1'])->name('reports.gstr1');
+    Route::get('reports/gstr-3b', [ReportController::class, 'gstr3b'])->name('reports.gstr3b');
 
     Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
     Route::get('follow-ups', [ReminderController::class, 'followups'])->name('followups.index');

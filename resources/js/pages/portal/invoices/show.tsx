@@ -4,6 +4,7 @@ import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { buildUpiCollectUrl } from '@/lib/share-invoice';
 import type { Invoice } from '@/types/invoice';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
@@ -19,8 +20,18 @@ export default function PortalInvoiceShow({
         phone: string | null;
         email: string | null;
         tax_number: string | null;
+        upi_id: string | null;
     };
 }) {
+    const upiUrl =
+        business.upi_id && Number(invoice.balance_amount) > 0
+            ? buildUpiCollectUrl({
+                upiId: business.upi_id,
+                payeeName: business.business_name,
+                amount: invoice.balance_amount,
+                note: `Invoice ${invoice.invoice_number}`,
+            })
+            : null;
     return (
         <>
             <Head title={invoice.invoice_number} />
@@ -45,6 +56,11 @@ export default function PortalInvoiceShow({
                                     Download PDF
                                 </a>
                             </Button>
+                            {upiUrl && (
+                                <Button size="sm" asChild className="bg-[#25D366] text-white hover:bg-[#1fb955]">
+                                    <a href={upiUrl}>Pay via UPI</a>
+                                </Button>
+                            )}
                         </div>
                     </div>
 

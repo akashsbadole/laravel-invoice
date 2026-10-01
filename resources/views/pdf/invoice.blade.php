@@ -58,7 +58,7 @@
                     </div>
                 </td>
                 <td style="width: 38%; text-align: right;">
-                    <div class="invoice-title">{{ $invoice->document_type === \App\Enums\DocumentType::Quotation ? 'QUOTATION' : 'INVOICE' }}</div>
+                    <div class="invoice-title">{{ $invoice->document_type?->label() ? mb_strtoupper($invoice->document_type->label()) : 'INVOICE' }}</div>
                     <div class="invoice-no">{{ $invoice->invoice_number }}</div>
                     <div class="muted" style="margin-top: 6px;">Date: {{ $invoice->invoice_date->format('d M Y') }}</div>
                     @if($invoice->due_date)

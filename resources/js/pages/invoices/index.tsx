@@ -37,6 +37,7 @@ const documentLabels: Record<string, string> = {
     jewelry_invoice: 'Jewelry',
     general_invoice: 'General',
     quotation: 'Quotation',
+    delivery_challan: 'Challan',
 };
 
 const documentTabs = [
@@ -44,6 +45,7 @@ const documentTabs = [
     { value: 'jewelry_invoice', label: 'Jewelry' },
     { value: 'general_invoice', label: 'General' },
     { value: 'quotation', label: 'Quotations' },
+    { value: 'delivery_challan', label: 'Challans' },
 ];
 
 export default function InvoicesIndex({

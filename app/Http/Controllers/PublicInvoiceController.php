@@ -36,16 +36,20 @@ class PublicInvoiceController extends Controller
         ])->firstOrFail();
 
         $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
+        $settings = BusinessSetting::forTenant($invoice->tenant_id);
 
         return Inertia::render('invoices/public', [
             'status' => 'ok',
             'token' => $token,
             'invoice' => $invoice,
             'template' => $template->layout_config + InvoiceTemplate::defaultLayoutConfig(),
-            'business' => BusinessSetting::forTenant($invoice->tenant_id)->only([
-                'business_name', 'logo_path', 'address', 'phone', 'email',
-                'website', 'tax_number', 'footer_text',
-            ]),
+            'business' => [
+                ...$settings->only([
+                    'business_name', 'logo_path', 'address', 'phone', 'email',
+                    'website', 'tax_number', 'footer_text',
+                ]),
+                'upi_id' => $settings->bank_details['upi_id'] ?? null,
+            ],
         ]);
     }
 

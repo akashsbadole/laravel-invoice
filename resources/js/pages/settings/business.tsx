@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 type BusinessSettings = {
     business_name: string;
     address: string | null;
+    pincode: string | null;
     phone: string | null;
     email: string | null;
     website: string | null;
@@ -25,6 +26,7 @@ type BusinessSettings = {
     invoice_prefix: string;
     invoice_number_start: number;
     quotation_prefix: string;
+    challan_prefix: string;
     sms_driver: string;
     sms_country_code: string;
     sms_twilio_from: string | null;
@@ -151,6 +153,24 @@ export default function BusinessSettingsPage({
                                         <InputError message={errors.tax_number} />
                                     </div>
                                 </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="pincode">Pincode</Label>
+                                        <Input
+                                            id="pincode"
+                                            name="pincode"
+                                            inputMode="numeric"
+                                            maxLength={6}
+                                            placeholder="380001"
+                                            defaultValue={settings.pincode ?? ''}
+                                        />
+                                        <InputError message={errors.pincode} />
+                                        <p className="text-xs text-muted-foreground">
+                                            Required for e-invoice (IRN) generation.
+                                        </p>
+                                    </div>
+                                </div>
                             </section>
 
                             <section className="space-y-4 border-t pt-6">
@@ -272,6 +292,18 @@ export default function BusinessSettingsPage({
                                             required
                                         />
                                         <InputError message={errors.quotation_prefix} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="challan_prefix">
+                                            Challan prefix
+                                        </Label>
+                                        <Input
+                                            id="challan_prefix"
+                                            name="challan_prefix"
+                                            defaultValue={settings.challan_prefix}
+                                            required
+                                        />
+                                        <InputError message={errors.challan_prefix} />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="default_tax_rate">

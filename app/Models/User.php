@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -64,6 +65,30 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    /**
+     * Firms (tenants) this login can switch between.
+     *
+     * @return BelongsToMany<Tenant, $this>
+     */
+    public function firms(): BelongsToMany
+    {
+        return $this->belongsToMany(Tenant::class, 'tenant_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function isMemberOf(int $tenantId): bool
+    {
+        return $this->firms()->where('tenants.id', $tenantId)->exists();
+    }
+
+    public function membershipRole(int $tenantId): ?UserRole
+    {
+        $role = $this->firms()->where('tenants.id', $tenantId)->value('tenant_user.role');
+
+        return $role ? UserRole::from($role) : null;
     }
 
     /**

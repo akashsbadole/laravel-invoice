@@ -46,7 +46,10 @@ class UserController extends Controller
         ]);
         // Admin-created accounts skip the email verification step.
         $user->email_verified_at = now();
+        $user->tenant_id = $request->user()->tenant_id;
         $user->save();
+
+        $user->firms()->attach($request->user()->tenant_id, ['role' => $user->role->value]);
 
         ActivityLog::record('user.created', $user, "Created user {$user->name} ({$user->role->label()})");
 
@@ -76,6 +79,9 @@ class UserController extends Controller
         }
 
         $user->save();
+
+        // Keep the firm membership roster in sync with the current-firm role.
+        $user->firms()->updateExistingPivot($user->tenant_id, ['role' => $user->role->value]);
 
         ActivityLog::record('user.updated', $user, "Updated user {$user->name}");
 

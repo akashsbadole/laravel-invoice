@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { pdf as pdfRoute, receipt as receiptRoute } from '@/routes/invoices';
-import { buildMailtoUrl, buildPublicInvoiceUrl, buildShareMessage, buildWhatsAppShareUrl } from '@/lib/share-invoice';
+import { buildMailtoUrl, buildPublicInvoiceUrl, buildShareMessage, buildUpiCollectUrl, buildWhatsAppShareUrl } from '@/lib/share-invoice';
 import type { Auth } from '@/types/auth';
 import type { Invoice } from '@/types/invoice';
 
@@ -43,7 +43,16 @@ type RecurringProfile = {
     is_active: boolean;
 } | null;
 
-export default function ShowInvoice({ invoice, recurringProfile }: { invoice: Invoice; recurringProfile: RecurringProfile }) {
+export default function ShowInvoice({ invoice, recurringProfile, business }: { invoice: Invoice; recurringProfile: RecurringProfile; business: { default_currency: string; business_name: string; upi_id: string | null } }) {
+    const upiUrl =
+        business.upi_id && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0
+            ? buildUpiCollectUrl({
+                upiId: business.upi_id,
+                payeeName: business.business_name,
+                amount: invoice.balance_amount,
+                note: `Invoice ${invoice.invoice_number}`,
+            })
+            : null;
     const { auth } = usePage<{ auth: Auth }>().props;
     const isAdmin = auth.user.role === 'admin';
     const activeLink = invoice.share_links.find((link) => link.is_active);
@@ -113,7 +122,11 @@ export default function ShowInvoice({ invoice, recurringProfile }: { invoice: In
                             </Badge>
                             {invoice.document_type !== 'jewelry_invoice' && (
                                 <Badge variant="outline">
-                                    {invoice.document_type === 'quotation' ? 'Quotation' : 'General invoice'}
+                                    {invoice.document_type === 'quotation'
+                                        ? 'Quotation'
+                                        : invoice.document_type === 'delivery_challan'
+                                            ? 'Delivery challan'
+                                            : 'General invoice'}
                                 </Badge>
                             )}
                         </div>
@@ -295,7 +308,7 @@ export default function ShowInvoice({ invoice, recurringProfile }: { invoice: In
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">
                         <CardTitle>Payments</CardTitle>
-                        {canWrite && invoice.document_type !== 'quotation' && Number(invoice.balance_amount) > 0 && (
+                        {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0 && (
                             <RecordPaymentDialog invoiceId={invoice.id} balance={invoice.balance_amount} />
                         )}
                     </CardHeader>
@@ -385,6 +398,31 @@ export default function ShowInvoice({ invoice, recurringProfile }: { invoice: In
                                                 Download PDF
                                             </a>
                                         </Button>
+                                        {upiUrl && (
+                                            <Button variant="outline" asChild title={`Collect ${currency.format(Number(invoice.balance_amount))} via UPI`}>
+                                                <a href={upiUrl}>
+                                                    UPI collect
+                                                </a>
+                                            </Button>
+                                        )}
+                                        {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && (
+                                            invoice.einvoice_status === 'generated' && invoice.irn ? (
+                                                <span className="inline-flex items-center rounded-md border border-gold/50 bg-gold/10 px-2.5 py-1.5 text-xs font-medium text-gold-dark dark:text-gold-light" title={`IRN: ${invoice.irn}`}>
+                                                    IRN generated
+                                                </span>
+                                            ) : (
+                                                <Form {...InvoiceController.einvoice.form(invoice.id)}>
+                                                    {({ processing, errors }) => (
+                                                        <>
+                                                            <Button variant="outline" disabled={processing} title="Generate e-invoice IRN / e-way bill">
+                                                                {processing ? 'Requesting…' : 'E-invoice / IRN'}
+                                                            </Button>
+                                                            <InputError message={errors.einvoice} />
+                                                        </>
+                                                    )}
+                                                </Form>
+                                            )
+                                        )}
                                         <Form
                                             {...InvoiceShareLinkController.deactivate.form({
                                                 invoice: invoice.id,

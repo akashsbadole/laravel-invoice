@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\TenantScope;
 use App\Models\StaffInvite;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,18 @@ class InviteAcceptController extends Controller
         }
 
         if (Auth::check()) {
+            $user = Auth::user();
+
+            // A logged-in user opening their own invite joins that firm immediately.
+            if ($user->email === $invite->email) {
+                $this->attachMembership($user, $invite);
+                $invite->update(['accepted_at' => now()]);
+
+                Inertia::flash('toast', ['type' => 'success', 'message' => __('You joined a new firm.')]);
+
+                return to_route('dashboard');
+            }
+
             return to_route('dashboard');
         }
 
@@ -63,6 +76,8 @@ class InviteAcceptController extends Controller
         $user->email_verified_at = now();
         $user->save();
 
+        $user->firms()->attach($invite->tenant_id, ['role' => $invite->role->value]);
+
         $invite->update(['accepted_at' => now()]);
 
         Auth::login($user);
@@ -75,8 +90,19 @@ class InviteAcceptController extends Controller
 
     protected function findInvite(string $token): ?StaffInvite
     {
-        $invite = StaffInvite::query()->where('token', $token)->first();
+        // Token lookup spans tenants (a user joins a firm they are not
+        // in yet), so it must bypass the tenant scope. The 48-char random
+        // token itself is the capability.
+        $invite = StaffInvite::query()->withoutGlobalScope(TenantScope::class)
+            ->where('token', $token)
+            ->first();
 
         return $invite && $invite->isUsable() ? $invite : null;
+    }
+
+    protected function attachMembership(User $user, StaffInvite $invite): void
+    {
+        $user->firms()->syncWithoutDetaching([$invite->tenant_id => ['role' => $invite->role->value]]);
+        $user->forceFill(['tenant_id' => $invite->tenant_id, 'role' => $invite->role])->save();
     }
 }

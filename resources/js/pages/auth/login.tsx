@@ -5,8 +5,10 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useLocale } from '@/lib/i18n';
 
 export default function Login({ status }: { status?: string | null }) {
+    const { t } = useLocale();
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -22,10 +24,10 @@ export default function Login({ status }: { status?: string | null }) {
 
     return (
         <>
-            <Head title="Log in" />
+            <Head title={t('auth.login')} />
 
             <div className="space-y-6">
-                <Heading title="Welcome back" description="Log in to manage invoices and customers." />
+                <Heading title={t('auth.welcomeBack')} description={t('auth.loginBlurb')} />
 
                 {status && (
                     <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
@@ -35,7 +37,7 @@ export default function Login({ status }: { status?: string | null }) {
 
                 <form onSubmit={submit} className="space-y-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email">{t('auth.email')}</Label>
                         <Input
                             id="email"
                             type="email"
@@ -49,12 +51,12 @@ export default function Login({ status }: { status?: string | null }) {
 
                     <div className="grid gap-2">
                         <div className="flex items-center justify-between">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">{t('auth.password')}</Label>
                             <Link
                                 href="/forgot-password"
                                 className="text-sm text-muted-foreground hover:text-foreground hover:underline"
                             >
-                                Forgot password?
+                                {t('auth.forgot')}
                             </Link>
                         </div>
                         <Input
@@ -74,17 +76,17 @@ export default function Login({ status }: { status?: string | null }) {
                             onChange={(e) => setData('remember', e.target.checked)}
                             className="size-4 rounded border-input"
                         />
-                        Remember me
+                        {t('auth.rememberMe')}
                     </label>
 
                     <Button type="submit" disabled={processing} className="w-full">
-                        Log in
+                        {t('auth.login')}
                     </Button>
 
                     <p className="text-center text-sm text-muted-foreground">
-                        New here?{' '}
+                        {t('auth.newHere')}{' '}
                         <Link href="/register" className="hover:text-foreground hover:underline">
-                            Start your free trial
+                            {t('auth.startTrial')}
                         </Link>
                     </p>
                 </form>

@@ -55,7 +55,13 @@ class DatabaseSeeder extends Seeder
         $existingStaff = User::query()->where('tenant_id', $tenant->id)->where('email', '!=', 'admin@example.com')->count();
 
         if ($existingStaff === 0) {
-            User::factory()->count(3)->create(['tenant_id' => $tenant->id]);
+            $staff = User::factory()->count(3)->create(['tenant_id' => $tenant->id]);
+
+            foreach ($staff as $member) {
+                $member->firms()->attach($tenant->id, ['role' => $member->role->value]);
+            }
         }
+
+        $admin->firms()->syncWithoutDetaching([$tenant->id => ['role' => UserRole::Admin->value]]);
     }
 }

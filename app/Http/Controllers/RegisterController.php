@@ -62,6 +62,8 @@ class RegisterController extends Controller
             $user->email_verified_at = now();
             $user->save();
 
+            $user->firms()->attach($tenant->id, ['role' => UserRole::Admin->value]);
+
             Subscription::create([
                 'tenant_id' => $tenant->id,
                 'plan_id' => Plan::ensureDefaults()['starter']->id,

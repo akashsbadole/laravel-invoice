@@ -19,8 +19,8 @@ class BusinessController extends Controller
         return Inertia::render('settings/business', [
             'settings' => [
                 ...$settings->only([
-                    'id', 'business_name', 'address', 'phone', 'email', 'website',
-                    'tax_number', 'invoice_prefix', 'invoice_number_start', 'quotation_prefix',
+                    'id', 'business_name', 'address', 'pincode', 'phone', 'email', 'website',
+                    'tax_number', 'invoice_prefix', 'invoice_number_start', 'quotation_prefix', 'challan_prefix',
                     'sms_driver', 'sms_country_code',
                     'sms_twilio_from', 'sms_http_url', 'sms_http_to_field', 'sms_http_message_field',
                     'default_tax_rate', 'default_currency', 'invoice_terms', 'footer_text',
