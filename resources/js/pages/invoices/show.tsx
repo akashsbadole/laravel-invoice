@@ -1,4 +1,4 @@
-﻿import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { Bell, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';

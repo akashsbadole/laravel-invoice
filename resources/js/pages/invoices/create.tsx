@@ -1,4 +1,4 @@
-﻿import { Head } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import Heading from '@/components/heading';
 import InvoiceForm, { newInvoiceItem } from '@/components/invoices/invoice-form';
 import { dashboard } from '@/routes';

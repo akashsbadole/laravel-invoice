@@ -1,4 +1,4 @@
-﻿import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerFollowupController from '@/actions/App/Http/Controllers/CustomerFollowupController';

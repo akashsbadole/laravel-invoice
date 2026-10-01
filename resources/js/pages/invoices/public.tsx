@@ -1,4 +1,4 @@
-﻿import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';

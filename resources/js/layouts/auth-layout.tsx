@@ -1,4 +1,4 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { BadgeCheck, FileText, Share2 } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';

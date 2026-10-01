@@ -22,6 +22,7 @@ class PaymentReminderTest extends TestCase
         $customer = $this->customerFor($user, $customerAttributes);
         BusinessSetting::forTenant($user->tenant_id)->update([
             'sms_payment_reminders' => true,
+            'email_payment_reminders' => true,
         ]);
 
         $this->actingAs($user)->post(route('invoices.store'), [
@@ -120,21 +121,55 @@ class PaymentReminderTest extends TestCase
         Mail::assertNothingSent();
     }
 
-    public function test_sms_reminders_respect_the_tenant_toggle(): void
+    public function test_each_channel_is_gated_by_its_own_tenant_toggle(): void
     {
         Mail::fake();
 
         $invoice = $this->unpaidInvoice();
         BusinessSetting::forTenant($invoice->tenant_id)->update([
             'sms_payment_reminders' => false,
+            'email_payment_reminders' => true,
         ]);
 
         $sent = app(PaymentReminderService::class)
             ->sendForInvoice($invoice->refresh()->load('customer'), force: true);
 
-        // Email still goes out; only the SMS channel is off.
         $this->assertArrayNotHasKey('sms', $sent);
         $this->assertSame('sent', $sent['email'] ?? null);
+        Mail::assertSent(PaymentReminderMail::class);
+
+        // And the mirror image: SMS on, email off.
+        Mail::fake();
+        $invoice->forceFill(['last_reminder_sent_at' => null])->saveQuietly();
+        BusinessSetting::forTenant($invoice->tenant_id)->update([
+            'sms_payment_reminders' => true,
+            'email_payment_reminders' => false,
+        ]);
+
+        $sent = app(PaymentReminderService::class)
+            ->sendForInvoice($invoice->refresh()->load('customer'), force: true);
+
+        $this->assertArrayNotHasKey('email', $sent);
+        // The log driver reports 'logged'; real gateways report 'sent'.
+        $this->assertSame('logged', $sent['sms'] ?? null);
+        Mail::assertNothingSent();
+    }
+
+    public function test_both_toggles_off_sends_nothing_even_for_a_staff_nudge(): void
+    {
+        Mail::fake();
+
+        $invoice = $this->unpaidInvoice();
+        BusinessSetting::forTenant($invoice->tenant_id)->update([
+            'sms_payment_reminders' => false,
+            'email_payment_reminders' => false,
+        ]);
+
+        $sent = app(PaymentReminderService::class)
+            ->sendForInvoice($invoice->refresh()->load('customer'), force: true);
+
+        $this->assertSame([], $sent);
+        Mail::assertNothingSent();
     }
 
     public function test_the_nightly_command_skips_recently_reminded_invoices(): void

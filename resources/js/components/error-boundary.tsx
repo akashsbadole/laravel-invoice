@@ -1,4 +1,4 @@
-﻿import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import { Gem, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 

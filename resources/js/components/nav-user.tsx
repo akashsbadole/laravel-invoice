@@ -1,4 +1,4 @@
-﻿import { router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { LogOut } from 'lucide-react';
 import type { Auth } from '@/types/auth';
 import { useLocale } from '@/lib/i18n';

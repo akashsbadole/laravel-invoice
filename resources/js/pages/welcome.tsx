@@ -1,4 +1,4 @@
-﻿import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowRight, FileText, Package, QrCode, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Auth } from '@/types/auth';

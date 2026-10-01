@@ -1,4 +1,4 @@
-﻿import * as React from 'react';
+import * as React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { CreditCard, FileText, LayoutDashboard, Package, Users } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';

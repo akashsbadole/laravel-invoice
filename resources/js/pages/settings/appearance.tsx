@@ -1,4 +1,4 @@
-﻿import { Head } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Check, Languages } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';

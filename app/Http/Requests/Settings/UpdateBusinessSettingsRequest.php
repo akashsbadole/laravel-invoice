@@ -31,6 +31,7 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'state_code' => ['nullable', 'string', 'size:2'],
             'receipt_width' => ['required', 'in:58,80'],
             'sms_payment_reminders' => ['boolean'],
+            'email_payment_reminders' => ['boolean'],
             'sms_birthday_wishes' => ['boolean'],
             'sms_anniversary_wishes' => ['boolean'],
             'quotation_customer_decisions' => ['boolean'],

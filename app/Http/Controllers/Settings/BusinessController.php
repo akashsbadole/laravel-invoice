@@ -36,7 +36,8 @@ class BusinessController extends Controller
                     'sms_driver', 'sms_country_code',
                     'sms_twilio_from', 'sms_http_url', 'sms_http_to_field', 'sms_http_message_field',
                     'default_tax_rate', 'default_currency', 'invoice_terms', 'footer_text',
-                    'state_code', 'receipt_width', 'sms_payment_reminders', 'sms_birthday_wishes', 'sms_anniversary_wishes',
+                    'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
+                    'sms_birthday_wishes', 'sms_anniversary_wishes',
                     'quotation_customer_decisions', 'quotation_show_updates',
                 ]),
                 'logo_url' => $settings->logo_path ? Storage::disk('public')->url($settings->logo_path) : null,
@@ -54,7 +55,16 @@ class BusinessController extends Controller
     public function update(UpdateBusinessSettingsRequest $request): RedirectResponse
     {
         $settings = BusinessSetting::current();
-        $data = $request->safe()->except(['logo', 'signature', 'stamp', 'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'upi_id', 'sms_twilio_sid', 'sms_twilio_token', 'sms_http_token']);
+        // An unchecked checkbox is absent from the payload, so the toggles are
+        // resolved explicitly — otherwise they could never be switched back off.
+        $data = array_merge($request->safe()->except(['logo', 'signature', 'stamp', 'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'upi_id', 'sms_twilio_sid', 'sms_twilio_token', 'sms_http_token']), [
+            'sms_payment_reminders' => $request->boolean('sms_payment_reminders'),
+            'email_payment_reminders' => $request->boolean('email_payment_reminders'),
+            'sms_birthday_wishes' => $request->boolean('sms_birthday_wishes'),
+            'sms_anniversary_wishes' => $request->boolean('sms_anniversary_wishes'),
+            'quotation_customer_decisions' => $request->boolean('quotation_customer_decisions'),
+            'quotation_show_updates' => $request->boolean('quotation_show_updates'),
+        ]);
 
         // Secrets are write-only: blank means "keep the stored value".
         foreach (['sms_twilio_sid', 'sms_twilio_token', 'sms_http_token'] as $secret) {

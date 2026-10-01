@@ -1,4 +1,4 @@
-﻿import type { Staff } from './customer';
+import type { Staff } from './customer';
 
 export type ReminderCustomer = { id: number; full_name: string; mobile_number: string };
 

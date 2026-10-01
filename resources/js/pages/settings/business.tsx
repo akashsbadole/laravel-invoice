@@ -36,6 +36,7 @@ type BusinessSettings = {
     sms_http_to_field: string;
     sms_http_message_field: string;
     sms_payment_reminders: boolean;
+    email_payment_reminders: boolean;
     sms_birthday_wishes: boolean;
     sms_anniversary_wishes: boolean;
     quotation_customer_decisions: boolean;
@@ -550,8 +551,13 @@ export default function BusinessSettingsPage({
                                         [
                                             {
                                                 name: 'sms_payment_reminders',
-                                                label: 'Payment due reminders',
-                                                hint: 'Nudge customers whose invoices are past due.',
+                                                label: 'Payment due reminders (SMS)',
+                                                hint: 'Text customers whose invoices are past due.',
+                                            },
+                                            {
+                                                name: 'email_payment_reminders',
+                                                label: 'Payment due reminders (email)',
+                                                hint: 'Email the same nudge to customers who have an address on file.',
                                             },
                                             {
                                                 name: 'sms_birthday_wishes',

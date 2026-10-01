@@ -1,4 +1,4 @@
-﻿import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Download, FileText, LogOut } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';

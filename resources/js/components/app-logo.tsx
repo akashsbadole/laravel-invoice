@@ -1,4 +1,4 @@
-﻿import { Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { ReceiptText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

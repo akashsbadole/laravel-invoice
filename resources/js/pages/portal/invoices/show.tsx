@@ -1,4 +1,4 @@
-﻿import { Head, Link } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Download, Printer } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';
