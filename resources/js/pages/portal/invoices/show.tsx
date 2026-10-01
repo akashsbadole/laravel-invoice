@@ -94,8 +94,8 @@ export default function PortalInvoiceShow({
                                             <p className="text-xs text-muted-foreground">
                                                 {item.metal_type}
                                                 {item.purity && ` / ${item.purity}`}
-                                                {Number(item.net_weight) > 0 && ` Â· ${item.net_weight}g`}
-                                                {` Â· Qty ${item.quantity}`}
+                                                {Number(item.net_weight) > 0 && ` · ${item.net_weight}g`}
+                                                {` · Qty ${item.quantity}`}
                                             </p>
                                         </div>
                                         <p className="shrink-0 tabular-nums">{currency.format(Number(item.total))}</p>
@@ -133,7 +133,7 @@ export default function PortalInvoiceShow({
                                     <p className="mb-1 font-medium">Payments</p>
                                     {invoice.payments.map((payment) => (
                                         <div key={payment.id} className="flex justify-between py-1 text-muted-foreground">
-                                            <span>{new Date(payment.payment_date).toLocaleDateString()} Â· {String(payment.payment_method).replace('_', ' ')}</span>
+                                            <span>{new Date(payment.payment_date).toLocaleDateString()} · {String(payment.payment_method).replace('_', ' ')}</span>
                                             <span className="tabular-nums">{currency.format(Number(payment.amount))}</span>
                                         </div>
                                     ))}

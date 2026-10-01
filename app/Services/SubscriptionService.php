@@ -43,7 +43,9 @@ class SubscriptionService
 
         $subscription = $this->subscriptionFor($tenant);
 
-        // A tenant with no subscription row has nothing to gate against.
+        // In paid mode a tenant with no subscription row has nothing to gate
+        // against, so they fall back to the free plan rather than being
+        // locked out of their own data.
         if (! $subscription) {
             return $this->defaultPlan();
         }

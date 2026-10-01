@@ -220,6 +220,10 @@ class RolePermissionsTest extends TestCase
 
     public function test_a_paid_plan_stops_granting_access_when_it_lapses(): void
     {
+        // Only meaningful once the paywall is switched back on; see
+        // FreeModeTest for the current behaviour.
+        config(['billing.mode' => 'paid']);
+
         $tenant = Tenant::factory()->create();
         $starter = Plan::ensureDefaults()['starter'];
 
@@ -298,11 +302,20 @@ class RolePermissionsTest extends TestCase
         $tenant = $this->adminFor()->tenant;
         $starter = Plan::ensureDefaults()['starter'];
 
+        // hasPaidPlan reflects the recorded subscription regardless of mode.
+        $this->assertTrue(app(SubscriptionService::class)->hasPaidPlan($tenant->fresh()));
+
+        // In free mode access comes from the free plan, not the paid one.
+        $this->assertTrue(
+            app(SubscriptionService::class)->usablePlan($tenant->fresh())->isFree(),
+        );
+
+        config(['billing.mode' => 'paid']);
+
         $this->assertSame(
             $starter->id,
             app(SubscriptionService::class)->usablePlan($tenant->fresh())->id,
         );
-        $this->assertTrue(app(SubscriptionService::class)->hasPaidPlan($tenant->fresh()));
     }
 
     public function test_a_brand_new_tenant_can_reach_the_dashboard(): void

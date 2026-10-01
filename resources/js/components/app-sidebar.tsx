@@ -31,6 +31,8 @@ const navItems: { titleKey: I18nKey; href: string; icon: typeof LayoutDashboard 
 
 const secondaryItems: { titleKey: I18nKey; href: string; icon: typeof Settings }[] = [
     { titleKey: 'nav.settings', href: '/settings/profile', icon: Settings },
+    // Kept in free mode so usage and plan details stay reachable, but the
+    // page itself offers nothing to buy.
     { titleKey: 'nav.billing', href: '/billing', icon: Crown },
 ];
 

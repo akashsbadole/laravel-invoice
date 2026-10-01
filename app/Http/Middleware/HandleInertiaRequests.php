@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\BusinessSetting;
+use App\Services\SubscriptionService;
 use App\Support\Industry;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -16,6 +17,9 @@ class HandleInertiaRequests extends Middleware
         return array_merge(parent::share($request), [
             'auth' => [
                 'user' => $request->user(),
+                // Lets the UI stop talking about trials and upgrades while
+                // every feature is included.
+                'freeMode' => app(SubscriptionService::class)->isFreeMode(),
                 'firms' => fn () => $request->user()
                     ? $request->user()->firms()->orderBy('tenants.name')->get(['tenants.id', 'tenants.name', 'tenants.slug'])->values()
                     : [],

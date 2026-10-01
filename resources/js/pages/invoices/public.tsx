@@ -209,7 +209,7 @@ export default function PublicInvoicePage({
                                 <p className="text-muted-foreground">
                                     Ack no.: {invoice.irn_ack_no ?? 'â€”'}
                                     {invoice.eway_bill_no &&
-                                        ` Â· E-way bill: ${invoice.eway_bill_no}`}
+                                        ` · E-way bill: ${invoice.eway_bill_no}`}
                                 </p>
                             </div>
                         )}
@@ -231,8 +231,8 @@ export default function PublicInvoicePage({
                                                 {item.item_name}
                                                 <span className="block text-xs text-muted-foreground">
                                                     {item.metal_type} {item.purity}
-                                                    {template?.show_huid && item.huid_number && ` Â· HUID ${item.huid_number}`}
-                                                    {template?.show_hsn && item.hsn_code && ` Â· HSN ${item.hsn_code}`}
+                                                    {template?.show_huid && item.huid_number && ` · HUID ${item.huid_number}`}
+                                                    {template?.show_hsn && item.hsn_code && ` · HSN ${item.hsn_code}`}
                                                 </span>
                                             </td>
                                             <td className="py-2 text-right">{item.net_weight}g</td>
@@ -313,7 +313,7 @@ function QuotationPanel({
                     </p>
                     <p className="text-sm text-muted-foreground">
                         Status: <span className="capitalize">{quotation.status}</span>
-                        {quotation.response && ` Â· ${quotation.response}`}
+                        {quotation.response && ` · ${quotation.response}`}
                     </p>
                 </div>
 

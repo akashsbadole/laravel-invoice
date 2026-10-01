@@ -53,7 +53,7 @@ export default function PortalDashboard({
                         <h1 className="font-display text-2xl">Hi, {customer.full_name}</h1>
                         <p className="text-sm text-muted-foreground">
                             {customer.mobile_number}
-                            {customer.email && ` Â· ${customer.email}`}
+                            {customer.email && ` · ${customer.email}`}
                         </p>
                     </div>
 
@@ -100,7 +100,7 @@ export default function PortalDashboard({
                                         </Link>
                                         <p className="text-xs text-muted-foreground">
                                             {new Date(invoice.invoice_date).toLocaleDateString()}
-                                            {' Â· '}
+                                            {' · '}
                                             <Badge variant="secondary" className="capitalize">
                                                 {invoice.status.replace('_', ' ')}
                                             </Badge>

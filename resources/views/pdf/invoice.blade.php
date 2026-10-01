@@ -52,7 +52,7 @@
                     <div class="muted" style="margin-top: 4px;">
                         {{ $business->address }}<br>
                         @if($business->phone) Phone: {{ $business->phone }} @endif
-                        @if($business->email) &nbsp;Â·&nbsp; {{ $business->email }} @endif
+                        @if($business->email) &nbsp;·&nbsp; {{ $business->email }} @endif
                         <br>
                         @if($business->tax_number) GSTIN: {{ $business->tax_number }} @endif
                     </div>
@@ -78,7 +78,7 @@
                 <div class="muted">Billed to</div>
                 <strong>{{ $invoice->customer->full_name }}</strong><br>
                 {{ $invoice->customer->mobile_number }}
-                @if($invoice->customer->email) &nbsp;Â·&nbsp; {{ $invoice->customer->email }} @endif
+                @if($invoice->customer->email) &nbsp;·&nbsp; {{ $invoice->customer->email }} @endif
                 <br>
                 {{ $invoice->customer->address }}
                 @if($invoice->customer->tax_number)
@@ -126,14 +126,14 @@
                             @if($item->stone_carat > 0)<br><span class="muted">Stone: {{ number_format((float) $item->stone_carat, 3) }} ct {{ $item->stone_clarity }} {{ $item->stone_color }}</span>@endif
                         @endif
                         @if(! empty($item->attributes))
-                            <br><span class="muted">{{ collect($item->attributes)->map(fn ($value, $key) => $key.': '.$value)->implode(' Â· ') }}</span>
+                            <br><span class="muted">{{ collect($item->attributes)->map(fn ($value, $key) => $key.': '.$value)->implode(' · ') }}</span>
                         @endif
                     </td>
                     @if($showWeights)
                         <td>{{ $item->metal_type }} @if($item->purity) / {{ $item->purity }} @endif</td>
                         <td class="right">{{ number_format((float) $item->net_weight, 3) }}</td>
                     @else
-                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' Â· ') ?: 'â€”' }}</td>
+                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' · ') ?: 'â€”' }}</td>
                         <td class="right">
                             @if($item->length && $item->width)
                                 {{ number_format((float) $item->length * (float) $item->width / 929.0304, 2) }}
@@ -185,10 +185,10 @@
                     <span class="muted">
                         Ack no.: {{ $invoice->irn_ack_no ?? 'â€”' }}
                         @if($invoice->irn_ack_date)
-                            Â· Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
+                            · Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
                         @endif
                         @if($invoice->eway_bill_no)
-                            Â· E-way bill: {{ $invoice->eway_bill_no }}
+                            · E-way bill: {{ $invoice->eway_bill_no }}
                         @endif
                     </span>
                 </td>

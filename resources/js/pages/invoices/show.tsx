@@ -121,7 +121,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             <Link href={`/customers/${invoice.customer.id}`} className="hover:underline">
                                 {invoice.customer.full_name}
                             </Link>
-                            <span>Â· {new Date(invoice.invoice_date).toLocaleDateString()}</span>
+                            <span>· {new Date(invoice.invoice_date).toLocaleDateString()}</span>
                             <Badge variant="secondary" className="capitalize">
                                 {invoice.status.replace('_', ' ')}
                             </Badge>
@@ -322,7 +322,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                                 ([key, value]) =>
                                                                     `${key}: ${value}`,
                                                             )
-                                                            .join(' Â· ')}
+                                                            .join(' · ')}
                                                     </div>
                                                 )}
                                         </td>
@@ -341,7 +341,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                 <td className="py-2 pr-2">
                                                     {[item.brand, item.model_number]
                                                         .filter(Boolean)
-                                                        .join(' Â· ') || 'â€”'}
+                                                        .join(' · ') || 'â€”'}
                                                 </td>
                                                 <td className="py-2 pr-2 text-right">
                                                     {area !== null
@@ -553,7 +553,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <p className="text-muted-foreground">
                                         Repeats <span className="font-medium text-foreground capitalize">{recurringProfile.frequency}</span>
-                                        {' Â· '}next run{' '}
+                                        {' · '}next run{' '}
                                         {new Date(recurringProfile.next_run_at).toLocaleDateString()}
                                     </p>
                                     <Form {...InvoiceController.recurringDestroy.form(invoice.id, recurringProfile.id)}>
@@ -773,7 +773,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                         <span className="capitalize">{note.type}</span>
                                         <span>
-                                            {note.creator?.name ?? 'System'} Â·{' '}
+                                            {note.creator?.name ?? 'System'} ·{' '}
                                             {new Date(note.created_at).toLocaleString()}
                                         </span>
                                     </div>

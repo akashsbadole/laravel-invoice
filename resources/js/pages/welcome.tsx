@@ -49,7 +49,7 @@ export default function Welcome() {
 
                 <main className="mx-auto w-full max-w-6xl px-6 pb-20 pt-10 text-center md:pt-16">
                     <p className="rise-in text-xs font-semibold uppercase tracking-[0.24em] text-brand-light">
-                        Estimates Â· GST invoices Â· Payments
+                        Estimates · GST invoices · Payments
                     </p>
                     <h1
                         className="rise-in mx-auto mt-4 max-w-3xl font-display text-4xl font-medium leading-tight md:text-6xl"
@@ -91,7 +91,7 @@ export default function Welcome() {
                     </div>
 
                     <p className="mt-14 text-xs uppercase tracking-[0.2em] text-ivory/40">
-                        No inventory Â· No barcode billing Â· No POS screens
+                        No inventory · No barcode billing · No POS screens
                     </p>
                 </main>
             </div>

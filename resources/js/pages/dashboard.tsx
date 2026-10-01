@@ -210,7 +210,7 @@ export default function Dashboard({
                                         href={showInvoice(inv.id)}
                                         className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                                     >
-                                        <span>{inv.invoice_number} Â· {inv.customer.full_name}</span>
+                                        <span>{inv.invoice_number} · {inv.customer.full_name}</span>
                                         <span className="font-medium">{currency.format(Number(inv.grand_total))}</span>
                                     </Link>
                                 ))
@@ -232,7 +232,7 @@ export default function Dashboard({
                                         href={showInvoice(inv.id)}
                                         className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                                     >
-                                        <span>{inv.invoice_number} Â· {inv.customer.full_name}</span>
+                                        <span>{inv.invoice_number} · {inv.customer.full_name}</span>
                                         <span className="font-medium text-red-600 dark:text-red-400">
                                             {currency.format(Number(inv.balance_amount))}
                                         </span>
@@ -319,7 +319,7 @@ export default function Dashboard({
                                                 {item.brand && (
                                                     <span className="text-muted-foreground">
                                                         {' '}
-                                                        Â· {item.brand}
+                                                        · {item.brand}
                                                     </span>
                                                 )}
                                             </span>

@@ -94,7 +94,7 @@ export default function ShowCustomer({
                         <Heading title={customer.full_name} />
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                             <span>{customer.mobile_number}</span>
-                            {customer.email && <span>Â· {customer.email}</span>}
+                            {customer.email && <span>· {customer.email}</span>}
                             <Badge variant="outline" className="capitalize">
                                 {customer.customer_type}
                             </Badge>
@@ -235,7 +235,7 @@ export default function ShowCustomer({
                                             {followup.assignee && (
                                                 <span className="font-normal text-muted-foreground">
                                                     {' '}
-                                                    Â· {followup.assignee.name}
+                                                    · {followup.assignee.name}
                                                 </span>
                                             )}
                                         </p>
@@ -322,7 +322,7 @@ export default function ShowCustomer({
                                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                         <span className="capitalize">{note.type}</span>
                                         <span>
-                                            {note.creator?.name ?? 'Unknown'} Â·{' '}
+                                            {note.creator?.name ?? 'Unknown'} ·{' '}
                                             {new Date(note.created_at).toLocaleDateString()}
                                         </span>
                                     </div>
@@ -373,7 +373,7 @@ export default function ShowCustomer({
                                             )}
                                             <span className="block text-xs text-muted-foreground">
                                                 {event.detail && (
-                                                    <>{event.detail} Â· </>
+                                                    <>{event.detail} · </>
                                                 )}
                                                 {new Date(
                                                     event.at,
