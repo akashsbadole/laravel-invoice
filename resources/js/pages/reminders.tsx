@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import ReminderController from '@/actions/App/Http/Controllers/ReminderController';
 import { dashboard } from '@/routes';
 import { index as remindersIndex } from '@/routes/reminders';
+import { update as updateFollowup } from '@/routes/customers/followups';
 import type { Staff } from '@/types/customer';
 import type { CustomReminder, DueFollowup, DueInvoiceReminder, OccasionReminder } from '@/types/reminder';
 
@@ -119,20 +120,39 @@ export default function RemindersPage({
                             <Empty text="No follow-ups due." />
                         ) : (
                             followups.map((f) => (
-                                <Link
+                                <div
                                     key={f.id}
-                                    href={`/customers/${f.customer.id}`}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 hover:bg-muted/30"
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
                                 >
-                                    <div>
+                                    <Link
+                                        href={`/customers/${f.customer.id}`}
+                                        className="min-w-0 flex-1 hover:underline"
+                                    >
                                         <span className="font-medium">{f.customer.full_name}</span>
                                         {f.notes && <p className="text-sm text-muted-foreground">{f.notes}</p>}
-                                    </div>
+                                    </Link>
                                     <div className="text-right text-sm text-muted-foreground">
                                         <div>{new Date(f.followup_date).toLocaleDateString()}</div>
                                         {f.assignee && <div>{f.assignee.name}</div>}
                                     </div>
-                                </Link>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.put(
+                                                updateFollowup({
+                                                    customer: f.customer.id,
+                                                    followup: f.id,
+                                                }).url,
+                                                { status: 'completed' },
+                                                { preserveScroll: true },
+                                            )
+                                        }
+                                    >
+                                        Mark done
+                                    </Button>
+                                </div>
                             ))
                         )}
                     </CardContent>

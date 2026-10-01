@@ -51,6 +51,20 @@ export type ComputedItem = {
     total: number;
 };
 
+/** Mirror of App\Services\InvoiceCalculationService::areaOf(). */
+export function computeArea(item: InvoiceItemForm): number {
+    const length = item.length || 0;
+    const width = item.width || 0;
+
+    if (length <= 0 || width <= 0) return 0;
+
+    if (item.rate_type === 'per_sqft') return (length * width) / 929.0304;
+
+    if (item.rate_type === 'per_sqm') return (length / 100) * (width / 100);
+
+    return 0;
+}
+
 export function computeItem(
     item: InvoiceItemForm,
     pricingMode: PricingMode,
@@ -61,20 +75,42 @@ export function computeItem(
     const netWeight = item.net_weight || 0;
     const stoneCarat = item.stone_carat || 0;
 
+    const area = computeArea(item);
+    const wastagePercent = item.wastage_percent || 0;
+    const billableArea = wastagePercent > 0 ? area * (1 + wastagePercent / 100) : area;
+    const boxes = item.boxes || 0;
+    const length = item.length || 0;
+
     const baseValuePerUnit =
-        pricingMode === 'manual'
-            ? rate
-            : item.rate_type === 'per_gram'
-              ? rate * netWeight
-              : item.rate_type === 'per_carat'
-                ? rate * stoneCarat
-                : rate; // per_piece or fixed
+        // Mirror of InvoiceCalculationService: jewelry weight/carat pricing
+        // honours manual mode; area/box/metre/kg always multiply.
+        item.rate_type === 'per_gram'
+            ? pricingMode === 'manual'
+                ? rate
+                : rate * netWeight
+            : item.rate_type === 'per_carat'
+              ? pricingMode === 'manual'
+                  ? rate
+                  : rate * stoneCarat
+              : item.rate_type === 'per_sqft'
+                ? rate * billableArea
+                : item.rate_type === 'per_sqm'
+                  ? rate * billableArea
+                  : item.rate_type === 'per_meter'
+                    ? rate * length
+                    : item.rate_type === 'per_kg'
+                      ? rate * netWeight
+                      : item.rate_type === 'per_box'
+                        ? rate * Math.max(boxes, 1)
+                        : rate; // per_piece, per_unit or fixed
 
     let chargesPerUnit = 0;
     let taxableBasePerUnit = baseValuePerUnit;
     const charges: ItemChargeComputed[] = [];
 
-    if (pricingMode === 'jewelry_calculated') {
+    const isExchange = item.line_type === 'exchange_credit';
+
+    if (pricingMode === 'jewelry_calculated' && !isExchange) {
         for (const chargeInput of item.charges) {
             const chargeType = chargeTypesById.get(chargeInput.charge_type_id);
             const computed = computeItemCharge(chargeInput, chargeType, baseValuePerUnit, netWeight, stoneCarat);
@@ -85,10 +121,13 @@ export function computeItem(
         }
     }
 
-    const discount = item.discount || 0;
-    const taxRate = item.tax_rate || 0;
+    // Exchange credit is the customer's own metal handed back — not a
+    // taxable supply, so no discount and no GST either.
+    const discount = isExchange ? 0 : item.discount || 0;
+    const taxRate = isExchange ? 0 : item.tax_rate || 0;
 
-    const baseValue = round2(baseValuePerUnit * quantity);
+    const rawBaseValue = round2(baseValuePerUnit * quantity);
+    const baseValue = isExchange ? -Math.abs(rawBaseValue) : rawBaseValue;
     const chargesTotal = round2(chargesPerUnit * quantity);
     const taxableAmount = Math.max(round2(taxableBasePerUnit * quantity - discount), 0);
     const tax = round2(taxableAmount * (taxRate / 100));
@@ -105,7 +144,10 @@ export function computeInvoiceCharge(
     if (!chargeType || chargeType.applies_to !== 'invoice') return null;
 
     const rate = chargeInput.rate ?? Number(chargeType.default_rate ?? 0);
-    const amount = chargeType.calculation_type === 'percentage' ? subtotal * (rate / 100) : rate;
+    const amount =
+        chargeType.calculation_type === 'percentage'
+            ? Math.max(subtotal, 0) * (rate / 100)
+            : rate;
 
     return {
         charge_type_id: chargeType.id,
@@ -216,7 +258,8 @@ export function computeInvoice(
             : round2(itemsTax + invoiceLevelTax);
 
     const beforeRounding = round2(subtotal + invoiceChargesTotal + tax - invoiceDiscount);
-    const grandTotal = Math.round(beforeRounding);
+    // An exchange credit can outweigh the goods — never go negative.
+    const grandTotal = Math.max(Math.round(beforeRounding), 0);
     const roundOff = round2(grandTotal - beforeRounding);
 
     const summary = new Map<string, ChargeSummaryRow>();

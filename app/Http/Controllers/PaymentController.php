@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\InvoiceEventType;
+use App\Enums\InstallmentStatus;
 use App\Http\Requests\Invoices\StorePaymentRequest;
 use App\Models\Invoice;
-use App\Models\InvoiceEvent;
 use App\Models\Payment;
+use App\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentController extends Controller
 {
+    public function __construct(private readonly PaymentService $payments) {}
+
     public function index(Request $request): Response
     {
         $filters = $request->only(['search', 'method', 'from', 'to']);
@@ -41,26 +42,36 @@ class PaymentController extends Controller
     {
         Gate::authorize('recordPayment', $invoice);
 
-        DB::transaction(function () use ($request, $invoice) {
-            $invoice->payments()->create([
-                ...$request->validated(),
-                'received_by' => $request->user()->id,
-            ]);
+        $payment = $this->payments->record($invoice, $request->validated(), $request->user());
 
-            $invoice->load('payments');
-            $invoice->recalculatePaymentStatus();
-            $invoice->save();
-
-            InvoiceEvent::log(
-                $invoice,
-                InvoiceEventType::PaymentRecorded,
-                ['amount' => $request->validated('amount')],
-                $request->user()->id,
-            );
-        });
+        // Collecting against an agreed plan settles the oldest unpaid slice.
+        $this->settleMatchingInstallments($invoice, $payment);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
 
         return back();
+    }
+
+    /**
+     * Mark any pending installment the payment fully covers, oldest first, so
+     * the plan and the payment ledger never disagree.
+     */
+    protected function settleMatchingInstallments(Invoice $invoice, Payment $payment): void
+    {
+        $remaining = (float) $payment->amount;
+
+        foreach ($invoice->installments()->where('status', 'pending')->get() as $installment) {
+            if ($remaining + 0.005 < (float) $installment->amount) {
+                break;
+            }
+
+            $installment->update([
+                'status' => InstallmentStatus::Paid,
+                'payment_id' => $payment->id,
+                'paid_at' => now(),
+            ]);
+
+            $remaining -= (float) $installment->amount;
+        }
     }
 }

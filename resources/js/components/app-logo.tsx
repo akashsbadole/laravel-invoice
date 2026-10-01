@@ -1,12 +1,12 @@
 import { Link } from '@inertiajs/react';
-import { Gem } from 'lucide-react';
+import { ReceiptText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function AppLogo({ dark = false, className }: { dark?: boolean; className?: string }) {
     return (
         <Link href="/" className={cn('group flex items-center gap-2.5', className)}>
             <span className="flex size-9 items-center justify-center rounded-full border border-gold/60 bg-gold/10 text-gold">
-                <Gem className="size-4" />
+                <ReceiptText className="size-4" />
             </span>
             <span
                 className={cn(
@@ -14,7 +14,7 @@ export function AppLogo({ dark = false, className }: { dark?: boolean; className
                     dark ? 'text-ivory' : 'text-foreground',
                 )}
             >
-                Jewelry Invoice
+                Invoice CRM
             </span>
         </Link>
     );

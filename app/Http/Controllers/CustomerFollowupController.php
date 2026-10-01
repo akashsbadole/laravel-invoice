@@ -8,6 +8,7 @@ use App\Http\Requests\Customers\UpdateCustomerFollowupRequest;
 use App\Models\Customer;
 use App\Models\CustomerFollowup;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class CustomerFollowupController extends Controller
@@ -32,6 +33,19 @@ class CustomerFollowupController extends Controller
         $followup->update($request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Follow-up updated.')]);
+
+        return back();
+    }
+
+    public function destroy(Customer $customer, CustomerFollowup $followup): RedirectResponse
+    {
+        abort_unless($followup->customer_id === $customer->id, 404);
+
+        Gate::authorize('update', $customer);
+
+        $followup->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Follow-up deleted.')]);
 
         return back();
     }

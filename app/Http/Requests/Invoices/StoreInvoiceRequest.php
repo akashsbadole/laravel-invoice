@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Invoices;
 
 use App\Enums\DocumentType;
+use App\Enums\LineType;
+use App\Support\Industry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -38,6 +40,18 @@ class StoreInvoiceRequest extends FormRequest
     }
 
     /**
+     * Rate types are an industry capability (config/industries.php): a tiles
+     * shop may bill per sq ft, a jeweller per gram. Rejecting anything the
+     * tenant's industry cannot compute keeps the calculator in range.
+     *
+     * @return list<string>
+     */
+    public function allowedRateTypes(): array
+    {
+        return Industry::rateTypes($this->user()->tenant?->industry);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -59,9 +73,27 @@ class StoreInvoiceRequest extends FormRequest
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_name' => ['required', 'string', 'max:255'],
+            'items.*.line_type' => ['nullable', Rule::enum(LineType::class)],
             'items.*.description' => ['nullable', 'string', 'max:1000'],
             'items.*.item_code' => ['nullable', 'string', 'max:100'],
+            'items.*.catalog_item_id' => ['nullable', Rule::exists('catalog_items', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'items.*.hsn_code' => ['nullable', 'string', 'max:20'],
+            'items.*.brand' => ['nullable', 'string', 'max:100'],
+            'items.*.model_number' => ['nullable', 'string', 'max:100'],
+            'items.*.serial_number' => ['nullable', 'string', 'max:100'],
+            'items.*.warranty_months' => ['nullable', 'integer', 'min:0', 'max:600'],
+            'items.*.size_label' => ['nullable', 'string', 'max:50'],
+            'items.*.finish' => ['nullable', 'string', 'max:50'],
+            'items.*.grade' => ['nullable', 'string', 'max:50'],
+            'items.*.specification' => ['nullable', 'string', 'max:255'],
+            'items.*.batch_number' => ['nullable', 'string', 'max:100'],
+            'items.*.length' => ['nullable', 'numeric', 'min:0'],
+            'items.*.width' => ['nullable', 'numeric', 'min:0'],
+            'items.*.height' => ['nullable', 'numeric', 'min:0'],
+            'items.*.wastage_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.boxes' => ['nullable', 'numeric', 'min:0'],
+            'items.*.attributes' => ['nullable', 'array'],
+            'items.*.attributes.*' => ['nullable', 'string', 'max:255'],
             'items.*.metal_type' => ['nullable', 'string', 'max:50'],
             'items.*.purity' => ['nullable', 'string', 'max:20'],
             'items.*.huid_number' => ['nullable', 'string', 'max:50'],
@@ -73,7 +105,7 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.gross_weight' => ['nullable', 'numeric', 'min:0'],
             'items.*.net_weight' => ['nullable', 'numeric', 'min:0'],
             'items.*.stone_weight' => ['nullable', 'numeric', 'min:0'],
-            'items.*.rate_type' => ['required', 'in:per_gram,per_carat,per_piece,fixed'],
+            'items.*.rate_type' => ['required', Rule::in($this->allowedRateTypes())],
             'items.*.rate' => ['required', 'numeric', 'min:0'],
             'items.*.discount' => ['nullable', 'numeric', 'min:0'],
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],

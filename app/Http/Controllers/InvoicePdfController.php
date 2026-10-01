@@ -6,6 +6,7 @@ use App\Models\BusinessSetting;
 use App\Models\Invoice;
 use App\Models\InvoiceShareLink;
 use App\Models\InvoiceTemplate;
+use App\Support\Industry;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,10 +45,19 @@ class InvoicePdfController extends Controller
         $token = $invoice->shareLinks()->where('is_active', true)->latest()->value('token');
         $publicUrl = $token ? route('invoices.public.show', $token) : null;
 
+        $business = BusinessSetting::forTenant($invoice->tenant_id);
+        $industry = $business->industryKey();
+
         $pdf = Pdf::loadView('pdf.invoice', [
             'invoice' => $invoice,
-            'business' => BusinessSetting::forTenant($invoice->tenant_id),
+            'business' => $business,
             'template' => $template,
+            'industry' => $industry,
+            'showWeights' => Industry::usesWeightFields($industry),
+            'showStones' => Industry::usesStoneFields($industry),
+            'hasAreaItems' => $invoice->items->contains(
+                fn ($item) => $item->length !== null && $item->width !== null
+            ),
             'publicUrl' => $publicUrl,
             'qrSvg' => $publicUrl && $template->config('show_qr_code') ? $this->qrSvg($publicUrl) : null,
         ])->setPaper('a4');

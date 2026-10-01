@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
+use Database\Factories\CustomerFactory;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +14,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Customer extends Model
 {
     use BelongsToTenant;
+    use HasFactory;
+
+    /**
+     * @return array<string, class-string<Factory>>
+     */
+    protected static function newFactory(): CustomerFactory
+    {
+        return CustomerFactory::new();
+    }
 
     /** @var list<string> */
     protected $fillable = [

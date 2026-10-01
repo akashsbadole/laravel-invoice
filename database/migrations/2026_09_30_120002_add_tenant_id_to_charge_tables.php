@@ -23,9 +23,30 @@ return new class extends Migration
             });
         }
 
-        // Backfill from the parent invoice's tenant.
-        DB::statement('UPDATE invoice_charges ic JOIN invoices i ON i.id = ic.invoice_id SET ic.tenant_id = i.tenant_id WHERE ic.tenant_id IS NULL');
-        DB::statement('UPDATE invoice_item_charges iic JOIN invoice_items ii ON ii.id = iic.invoice_item_id JOIN invoices i ON i.id = ii.invoice_id SET iic.tenant_id = i.tenant_id WHERE iic.tenant_id IS NULL');
+        // Backfill from the parent invoice's tenant. MySQL's UPDATE ... JOIN has no
+        // SQLite equivalent, so this walks the invoices instead — portable
+        // across both drivers and cheap at these table sizes.
+        DB::table('invoices')
+            ->select('id', 'tenant_id')
+            ->whereNotNull('tenant_id')
+            ->orderBy('id')
+            ->each(function ($invoice) {
+                DB::table('invoice_charges')
+                    ->where('invoice_id', $invoice->id)
+                    ->whereNull('tenant_id')
+                    ->update(['tenant_id' => $invoice->tenant_id]);
+
+                $itemIds = DB::table('invoice_items')
+                    ->where('invoice_id', $invoice->id)
+                    ->pluck('id');
+
+                if ($itemIds->isNotEmpty()) {
+                    DB::table('invoice_item_charges')
+                        ->whereIn('invoice_item_id', $itemIds)
+                        ->whereNull('tenant_id')
+                        ->update(['tenant_id' => $invoice->tenant_id]);
+                }
+            });
     }
 
     public function down(): void

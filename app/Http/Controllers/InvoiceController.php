@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
+use App\Enums\QuotationStatus;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceRequest;
 use App\Mail\InvoicePdfMail;
@@ -22,7 +23,9 @@ use App\Models\User;
 use App\Services\EInvoiceService;
 use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
+use App\Services\QuotationService;
 use App\Services\SubscriptionService;
+use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +34,14 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class InvoiceController extends Controller
 {
-    public function __construct(private readonly InvoiceCalculationService $calculator) {}
+    public function __construct(
+        private readonly InvoiceCalculationService $calculator,
+        private readonly QuotationService $quotations,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -58,6 +65,8 @@ class InvoiceController extends Controller
         return Inertia::render('invoices/index', [
             'invoices' => $invoices,
             'filters' => $filters,
+            'usesJewelryDocuments' => Industry::usesWeightFields(),
+            'catalogProducts' => app(QuotationController::class)->products(),
         ]);
     }
 
@@ -65,7 +74,40 @@ class InvoiceController extends Controller
     {
         Gate::authorize('create', Invoice::class);
 
-        return Inertia::render('invoices/create', $this->formProps($request));
+        // A catalog selection from the quotation builder seeds the form; the
+        // draft is single-use so it cannot leak into a later invoice.
+        $draft = $request->session()->pull('quotation_draft', []);
+
+        return Inertia::render('invoices/create', [
+            ...$this->formProps($request),
+            'draftItems' => $draft,
+        ]);
+    }
+
+    public function quotationStatus(Request $request, Invoice $invoice): RedirectResponse
+    {
+        Gate::authorize('update', $invoice);
+        abort_unless($invoice->document_type->isQuotation(), 404);
+
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(QuotationStatus::class)],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->quotations->transition(
+                $invoice,
+                QuotationStatus::from($validated['status']),
+                $request->user(),
+                $validated['note'] ?? null,
+            );
+        } catch (RuntimeException $e) {
+            return back()->withErrors(['status' => $e->getMessage()]);
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation updated.')]);
+
+        return back();
     }
 
     public function store(StoreInvoiceRequest $request): RedirectResponse
@@ -135,6 +177,8 @@ class InvoiceController extends Controller
             'charges',
             'payments' => fn ($q) => $q->with('receiver:id,name')->latest('payment_date'),
             'shareLinks' => fn ($q) => $q->latest(),
+            'notesLog' => fn ($q) => $q->with('creator:id,name')->latest(),
+            'installments' => fn ($q) => $q->with('payment:id,amount,payment_date'),
         ]);
 
         $settings = BusinessSetting::current();
@@ -144,6 +188,11 @@ class InvoiceController extends Controller
             'business' => [
                 ...$settings->only(['default_currency', 'business_name']),
                 'upi_id' => $settings->bank_details['upi_id'] ?? null,
+            ],
+            'installmentPlan' => [
+                'planned_total' => (float) $invoice->installments->where('status', '!=', 'waived')->sum('amount'),
+                'collected_total' => (float) $invoice->installments->where('status', 'paid')->sum('amount'),
+                'count' => $invoice->installments->count(),
             ],
             'recurringProfile' => RecurringProfile::query()
                 ->where('source_invoice_id', $invoice->id)
@@ -177,6 +226,7 @@ class InvoiceController extends Controller
 
             $invoice->update([
                 'customer_id' => $request->validated('customer_id'),
+                'document_type' => $request->validated('document_type', $invoice->document_type->value),
                 'invoice_date' => $request->validated('invoice_date'),
                 'due_date' => $request->validated('due_date'),
                 'reference_number' => $request->validated('reference_number'),
@@ -259,6 +309,9 @@ class InvoiceController extends Controller
 
         $invoice->update(['status' => InvoiceStatus::Converted, 'converted_to_id' => $newInvoice->id]);
 
+        // Close the quotation out in the lifecycle too.
+        $this->quotations->transition($invoice, QuotationStatus::Converted, $request->user());
+
         ActivityLog::record('invoice.converted', $newInvoice, "Converted quotation {$invoice->invoice_number} to {$newInvoice->invoice_number}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation converted to invoice.')]);
@@ -331,6 +384,27 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Which document a "New…" link should open. A tenant's industry decides
+     * the default, but ?document_type= lets an explicit button (New
+     * quotation, New delivery challan) preselect it. A jewelry-only document
+     * type is never preselected for a non-jewelry tenant.
+     */
+    protected function requestedDocumentType(Request $request, string $industry): DocumentType
+    {
+        $requested = DocumentType::tryFrom((string) $request->query('document_type', ''));
+
+        if ($requested !== null) {
+            if ($requested === DocumentType::JewelryInvoice && ! Industry::usesWeightFields($industry)) {
+                return DocumentType::from(Industry::defaultDocumentType($industry));
+            }
+
+            return $requested;
+        }
+
+        return DocumentType::from(Industry::defaultDocumentType($industry));
+    }
+
+    /**
      * Shared reference data for the create/edit invoice form.
      *
      * @return array<string, mixed>
@@ -338,8 +412,32 @@ class InvoiceController extends Controller
     protected function formProps(Request $request): array
     {
         $business = BusinessSetting::current();
+        $industry = $business->industryKey();
 
         return [
+            'industry' => $industry,
+            'industryConfig' => [
+                'key' => $industry,
+                'label' => Industry::label($industry),
+                'description' => (string) Industry::config($industry)['description'],
+                'uses_metal_rates' => Industry::usesMetalRates($industry),
+                'uses_weight_fields' => Industry::usesWeightFields($industry),
+                'uses_stone_fields' => Industry::usesStoneFields($industry),
+                'document_type' => Industry::defaultDocumentType($industry),
+                'pricing_mode' => Industry::defaultPricingMode($industry),
+                'rate_types' => Industry::rateTypes($industry),
+                'item_fields' => Industry::itemFields($industry),
+                'template_flags' => Industry::templateFlags($industry),
+                'charge_types' => Industry::config($industry)['charge_types'],
+            ],
+            'industries' => collect(Industry::all())
+                ->map(fn (array $config, string $key) => [
+                    'key' => $key,
+                    'label' => $config['label'],
+                    'description' => $config['description'],
+                ])
+                ->values()
+                ->all(),
             'customers' => Customer::query()
                 ->orderBy('full_name')
                 ->get(['id', 'full_name', 'mobile_number', 'state_code']),
@@ -351,7 +449,14 @@ class InvoiceController extends Controller
             'catalogItems' => CatalogItem::query()
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'item_code', 'hsn_code', 'metal_type', 'purity', 'rate_type', 'default_rate', 'default_net_weight', 'default_gross_weight', 'description']),
+                ->get([
+                    'id', 'name', 'brand', 'item_code', 'model_number', 'hsn_code',
+                    'size_label', 'finish', 'grade', 'specification', 'unit_label',
+                    'metal_type', 'purity', 'rate_type', 'default_rate',
+                    'default_net_weight', 'default_gross_weight',
+                    'default_length', 'default_width', 'default_wastage_percent',
+                    'attributes', 'description',
+                ]),
             'invoiceTemplates' => InvoiceTemplate::query()
                 ->orderByDesc('is_default')
                 ->orderBy('name')
@@ -364,6 +469,7 @@ class InvoiceController extends Controller
                 'rate_per_gram' => $r->rate_per_gram,
             ])->values(),
             'preselectedCustomerId' => $request->integer('customer_id') ?: null,
+            'requestedDocumentType' => $this->requestedDocumentType($request, $industry),
             'defaults' => [
                 'default_tax_rate' => (float) $business->default_tax_rate,
                 'default_currency' => $business->default_currency,

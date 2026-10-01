@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     <Gem className="size-5" />
                 </span>
                 <div className="space-y-1">
-                    <h1 className="font-display text-2xl">Something went sparkle-sideways.</h1>
+                    <h1 className="font-display text-2xl">Something went sideways.</h1>
                     <p className="max-w-sm text-sm text-ivory/70">
                         The page hit an unexpected error. Reloading usually fixes it —
                         especially after an update.

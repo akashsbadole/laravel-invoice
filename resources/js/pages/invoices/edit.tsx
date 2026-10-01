@@ -4,6 +4,7 @@ import InvoiceForm from '@/components/invoices/invoice-form';
 import { dashboard } from '@/routes';
 import { index } from '@/routes/invoices';
 import type { Customer, Staff } from '@/types/customer';
+import type { IndustryConfig } from '@/lib/industries';
 import type {
     CatalogItem,
     ChargeType,
@@ -18,9 +19,26 @@ function toFormItem(item: Invoice['items'][number]): InvoiceItemForm {
     return {
         key: crypto.randomUUID(),
         item_name: item.item_name,
+        line_type: item.line_type ?? 'sale',
         description: item.description ?? '',
         item_code: item.item_code ?? '',
+        catalog_item_id: item.catalog_item_id,
         hsn_code: item.hsn_code ?? '',
+        brand: item.brand ?? '',
+        model_number: item.model_number ?? '',
+        serial_number: item.serial_number ?? '',
+        warranty_months: item.warranty_months,
+        size_label: item.size_label ?? '',
+        finish: item.finish ?? '',
+        grade: item.grade ?? '',
+        specification: item.specification ?? '',
+        batch_number: item.batch_number ?? '',
+        length: item.length === null ? null : Number(item.length),
+        width: item.width === null ? null : Number(item.width),
+        height: item.height === null ? null : Number(item.height),
+        wastage_percent: item.wastage_percent === null ? null : Number(item.wastage_percent),
+        boxes: item.boxes === null ? null : Number(item.boxes),
+        attributes: item.attributes ?? {},
         metal_type: item.metal_type ?? '',
         purity: item.purity ?? '',
         huid_number: item.huid_number ?? '',
@@ -48,6 +66,7 @@ export default function EditInvoice({
     catalogItems,
     invoiceTemplates,
     metalRates,
+    industryConfig,
     defaults,
 }: {
     invoice: Invoice;
@@ -57,6 +76,7 @@ export default function EditInvoice({
     catalogItems: CatalogItem[];
     invoiceTemplates: InvoiceTemplateOption[];
     metalRates: MetalRate[];
+    industryConfig: IndustryConfig;
     defaults: {
         default_tax_rate: number;
         default_currency: string;
@@ -105,6 +125,7 @@ export default function EditInvoice({
                     catalogItems={catalogItems}
                     invoiceTemplates={invoiceTemplates}
                     metalRates={metalRates}
+                    industryConfig={industryConfig}
                     businessStateCode={defaults.business_state_code}
                     invoiceNumberPreview={invoice.invoice_number}
                     defaultItemTaxRate={defaults.default_tax_rate}

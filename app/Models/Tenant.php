@@ -2,14 +2,27 @@
 
 namespace App\Models;
 
+use Database\Factories\TenantFactory;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tenant extends Model
 {
+    use HasFactory;
+
+    /**
+     * @return array<string, class-string<Factory>>
+     */
+    protected static function newFactory(): TenantFactory
+    {
+        return TenantFactory::new();
+    }
+
     /** @var list<string> */
-    protected $fillable = ['name', 'slug', 'status', 'trial_ends_at'];
+    protected $fillable = ['name', 'industry', 'slug', 'status', 'trial_ends_at'];
 
     protected function casts(): array
     {

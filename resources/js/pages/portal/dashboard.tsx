@@ -145,7 +145,7 @@ export default function PortalDashboard({
 
                     <p className="flex items-center justify-center gap-1.5 pt-4 text-xs text-muted-foreground">
                         <FileText className="size-3" />
-                        Powered by Jewelry Invoice
+                        Powered by Invoice CRM
                     </p>
                 </main>
             </div>

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\BusinessSetting;
+use App\Support\Industry;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -47,6 +49,24 @@ class HandleInertiaRequests extends Middleware
                 'toast' => fn () => $request->session()->get('toast'),
                 'status' => fn () => $request->session()->get('status'),
             ],
+            // What this tenant's trade can actually use — mirrors
+            // EnsureIndustryAllows so nav and routes stay in sync.
+            'capabilities' => fn (): array => $request->user()
+                ? [
+                    'metal_rates' => Industry::usesMetalRates($this->industryKey($request)),
+                ]
+                : [],
         ]);
+    }
+
+    protected function industryKey(Request $request): ?string
+    {
+        $tenantId = $request->user()?->tenant_id;
+
+        if ($tenantId === null) {
+            return null;
+        }
+
+        return BusinessSetting::forTenant($tenantId)->industryKey();
     }
 }

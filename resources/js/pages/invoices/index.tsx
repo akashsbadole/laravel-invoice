@@ -1,5 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
+import { QuotationBuilderDialog } from '@/components/quotations/quotation-builder-dialog';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import {
 import { dashboard } from '@/routes';
 import { create, index, show } from '@/routes/invoices';
 import type { Paginated } from '@/types/customer';
-import type { Invoice, InvoiceStatus } from '@/types/invoice';
+import type { Invoice, InvoiceStatus, QuotationProduct } from '@/types/invoice';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -35,27 +36,33 @@ const statusColors: Record<InvoiceStatus, string> = {
 
 const documentLabels: Record<string, string> = {
     jewelry_invoice: 'Jewelry',
-    general_invoice: 'General',
+    general_invoice: 'Sales invoice',
     quotation: 'Quotation',
     delivery_challan: 'Challan',
 };
 
-const documentTabs = [
-    { value: 'all', label: 'All' },
-    { value: 'jewelry_invoice', label: 'Jewelry' },
-    { value: 'general_invoice', label: 'General' },
-    { value: 'quotation', label: 'Quotations' },
-    { value: 'delivery_challan', label: 'Challans' },
-];
-
 export default function InvoicesIndex({
     invoices,
     filters,
+    usesJewelryDocuments,
+    catalogProducts,
 }: {
     invoices: Paginated<Invoice>;
     filters: { search?: string; status?: string; document_type?: string };
+    usesJewelryDocuments: boolean;
+    catalogProducts: QuotationProduct[];
 }) {
     const activeTab = filters.document_type || 'all';
+
+    // A tenant that never sells jewelry has no jewelry documents to filter.
+    const documentTabs = [
+        { value: 'all', label: 'All' },
+        ...(usesJewelryDocuments ? [{ value: 'jewelry_invoice', label: 'Jewelry' }] : []),
+        { value: 'general_invoice', label: 'Sales invoices' },
+        { value: 'quotation', label: 'Quotations' },
+        { value: 'delivery_challan', label: 'Challans' },
+    ];
+
     return (
         <>
             <Head title="Invoices" />
@@ -63,12 +70,21 @@ export default function InvoicesIndex({
             <div className="space-y-6 p-4 md:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Heading title="Invoices" description="Every invoice you've created." />
-                    <Button asChild className="w-full sm:w-auto">
-                        <Link href={create()}>
-                            <Plus className="size-4" />
-                            New invoice
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <QuotationBuilderDialog products={catalogProducts} />
+                        <Button asChild variant="outline" className="w-full sm:w-auto">
+                            <Link href={`${create()}?document_type=quotation`}>
+                                <FileText className="size-4" />
+                                Blank quotation
+                            </Link>
+                        </Button>
+                        <Button asChild className="w-full sm:w-auto">
+                            <Link href={create()}>
+                                <Plus className="size-4" />
+                                New invoice
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1">

@@ -36,11 +36,20 @@ class ReminderService
                 ->whereDate('due_date', '<=', $today->copy()->addDays(3))
                 ->orderBy('due_date')
                 ->get(),
+            // A follow-up surfaces when EITHER its scheduled date has arrived or its
+            // explicit reminder_at has passed — reminder_at lets staff be
+            // pinged ahead of the actual call.
             'followups' => CustomerFollowup::query()
                 ->with(['customer:id,full_name,mobile_number', 'assignee:id,name'])
                 ->whereIn('status', self::OPEN_FOLLOWUP_STATUSES)
-                ->whereDate('followup_date', '<=', $today->copy()->addDay())
-                ->orderBy('followup_date')
+                ->where(function ($query) use ($today): void {
+                    $deadline = $today->copy()->addDay();
+
+                    $query
+                        ->whereDate('followup_date', '<=', $deadline)
+                        ->orWhere('reminder_at', '<=', $deadline);
+                })
+                ->orderByRaw('COALESCE(reminder_at, followup_date)')
                 ->get(),
             'birthdays' => $this->upcoming('birthday', $today, $days),
             'anniversaries' => $this->upcoming('anniversary', $today, $days),

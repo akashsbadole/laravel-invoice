@@ -6,6 +6,7 @@ use App\Concerns\BelongsToTenant;
 use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
 use App\Enums\PricingMode;
+use App\Enums\QuotationStatus;
 use App\Enums\TaxMode;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,7 +22,7 @@ class Invoice extends Model
     protected $fillable = [
         'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
         'document_type', 'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
-        'converted_to_id',
+        'converted_to_id', 'quotation_status', 'quotation_response', 'quotation_responded_at', 'quotation_valid_until',
         'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
         'grand_total', 'paid_amount', 'balance_amount',
         'notes', 'terms', 'created_by',
@@ -46,6 +47,9 @@ class Invoice extends Model
             'document_type' => DocumentType::class,
             'status' => InvoiceStatus::class,
             'pricing_mode' => PricingMode::class,
+            'quotation_status' => QuotationStatus::class,
+            'quotation_responded_at' => 'datetime',
+            'quotation_valid_until' => 'date',
             'cancelled_at' => 'datetime',
             'charges_summary' => 'array',
             'tax_mode' => TaxMode::class,
@@ -122,6 +126,16 @@ class Invoice extends Model
     }
 
     /**
+     * Agreed payment plan for this invoice's balance, if one was set.
+     *
+     * @return HasMany<Installment, $this>
+     */
+    public function installments(): HasMany
+    {
+        return $this->hasMany(Installment::class)->orderBy('sequence');
+    }
+
+    /**
      * @return HasMany<InvoiceShareLink, $this>
      */
     public function shareLinks(): HasMany
@@ -138,11 +152,25 @@ class Invoice extends Model
     }
 
     /**
+     * Notes recorded against this specific invoice. CustomerNote also carries
+     * a customer_id, so the constraint must be explicit — an unconstrained
+     * hasMany would return every note in the tenant.
+     *
      * @return HasMany<CustomerNote, $this>
      */
     public function notesLog(): HasMany
     {
-        return $this->hasMany(CustomerNote::class);
+        return $this->hasMany(CustomerNote::class, 'invoice_id');
+    }
+
+    /**
+     * The invoice this quotation was converted into, if any.
+     *
+     * @return BelongsTo<Invoice, $this>
+     */
+    public function convertedTo(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'converted_to_id');
     }
 
     /**

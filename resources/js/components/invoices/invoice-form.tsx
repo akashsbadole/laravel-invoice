@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { computeInvoice } from '@/lib/invoice-calculations';
+import type { IndustryConfig } from '@/lib/industries';
 import type { Customer, Staff } from '@/types/customer';
 import type {
     CatalogItem,
@@ -24,17 +25,35 @@ import type {
     InvoiceItemForm,
     InvoiceTemplateOption,
     MetalRate,
+    RateType,
 } from '@/types/invoice';
 
 const currency = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 
-function blankItem(defaultTaxRate = 0): InvoiceItemForm {
+function blankItem(defaultTaxRate = 0, rateType: RateType = 'per_gram'): InvoiceItemForm {
     return {
         key: crypto.randomUUID(),
         item_name: '',
+        line_type: 'sale',
         description: '',
         item_code: '',
+        catalog_item_id: null,
         hsn_code: '',
+        brand: '',
+        model_number: '',
+        serial_number: '',
+        warranty_months: null,
+        size_label: '',
+        finish: '',
+        grade: '',
+        specification: '',
+        batch_number: '',
+        length: null,
+        width: null,
+        height: null,
+        wastage_percent: null,
+        boxes: null,
+        attributes: {},
         metal_type: '',
         purity: '',
         huid_number: '',
@@ -46,7 +65,7 @@ function blankItem(defaultTaxRate = 0): InvoiceItemForm {
         gross_weight: 0,
         net_weight: 0,
         stone_weight: 0,
-        rate_type: 'per_gram',
+        rate_type: rateType,
         rate: 0,
         discount: 0,
         tax_rate: defaultTaxRate,
@@ -54,8 +73,11 @@ function blankItem(defaultTaxRate = 0): InvoiceItemForm {
     };
 }
 
-export function newInvoiceItem(defaultTaxRate = 0): InvoiceItemForm {
-    return blankItem(defaultTaxRate);
+export function newInvoiceItem(
+    defaultTaxRate = 0,
+    rateType: RateType = 'per_gram',
+): InvoiceItemForm {
+    return blankItem(defaultTaxRate, rateType);
 }
 
 export default function InvoiceForm({
@@ -70,6 +92,7 @@ export default function InvoiceForm({
     invoiceNumberPreview,
     defaultItemTaxRate = 0,
     metalRates,
+    industryConfig,
     businessStateCode,
 }: {
     mode: 'create' | 'edit';
@@ -83,6 +106,7 @@ export default function InvoiceForm({
     invoiceNumberPreview: string;
     defaultItemTaxRate?: number;
     metalRates: MetalRate[];
+    industryConfig: IndustryConfig;
     businessStateCode?: string | null;
 }) {
     const { data, setData, post, put, processing, errors } = useForm<InvoiceFormData>(initialData);
@@ -100,6 +124,21 @@ export default function InvoiceForm({
         () => chargeTypes.filter((ct) => ct.applies_to === 'invoice'),
         [chargeTypes],
     );
+
+    // A jewelry tenant can still issue a general invoice, so "jewelry invoice"
+    // is offered to everyone but only highlighted for jewelry tenants.
+    const documentTypes = useMemo(() => {
+        const options = [
+            { value: 'jewelry_invoice' as const, label: 'Jewelry invoice' },
+            { value: 'general_invoice' as const, label: 'Sales invoice' },
+            { value: 'quotation' as const, label: 'Quotation' },
+            { value: 'delivery_challan' as const, label: 'Delivery challan' },
+        ];
+
+        return industryConfig.uses_weight_fields
+            ? options
+            : options.filter((option) => option.value !== 'jewelry_invoice');
+    }, [industryConfig.uses_weight_fields]);
 
     const totals = useMemo(
         () =>
@@ -133,7 +172,10 @@ export default function InvoiceForm({
     }
 
     function addItem() {
-        setData('items', [...data.items, blankItem(defaultItemTaxRate)]);
+        setData('items', [
+            ...data.items,
+            blankItem(defaultItemTaxRate, industryConfig.rate_types[0] ?? 'per_piece'),
+        ]);
     }
 
     function removeItem(index: number) {
@@ -286,38 +328,40 @@ export default function InvoiceForm({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="jewelry_invoice">
-                                        Jewelry invoice
-                                    </SelectItem>
-                                    <SelectItem value="general_invoice">
-                                        General invoice
-                                    </SelectItem>
-                                    <SelectItem value="quotation">Quotation</SelectItem>
-                                    <SelectItem value="delivery_challan">
-                                        Delivery challan
-                                    </SelectItem>
+                                    {documentTypes.map((type) => (
+                                        <SelectItem key={type.value} value={type.value}>
+                                            {type.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="grid gap-1.5">
-                            <Label>Pricing mode</Label>
-                            <Select
-                                value={data.pricing_mode}
-                                onValueChange={(value) =>
-                                    setData('pricing_mode', value as InvoiceFormData['pricing_mode'])
-                                }
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="jewelry_calculated">
-                                        Jewelry calculation
-                                    </SelectItem>
-                                    <SelectItem value="manual">Manual amount</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {industryConfig.pricing_mode === 'jewelry_calculated' && (
+                            <div className="grid gap-1.5">
+                                <Label>Pricing mode</Label>
+                                <Select
+                                    value={data.pricing_mode}
+                                    onValueChange={(value) =>
+                                        setData(
+                                            'pricing_mode',
+                                            value as InvoiceFormData['pricing_mode'],
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="jewelry_calculated">
+                                            Calculated
+                                        </SelectItem>
+                                        <SelectItem value="manual">
+                                            Manual amount
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -332,6 +376,7 @@ export default function InvoiceForm({
                         itemChargeTypes={itemChargeTypes}
                         catalogItems={catalogItems}
                         metalRates={metalRates}
+                        industry={industryConfig}
                         errors={itemErrors(index)}
                         onChange={updateItem}
                         onRemove={removeItem}

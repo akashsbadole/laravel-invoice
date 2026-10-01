@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreInvoiceTemplateRequest;
 use App\Http\Requests\Settings\UpdateInvoiceTemplateRequest;
 use App\Models\InvoiceTemplate;
+use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -19,6 +20,9 @@ class InvoiceTemplateController extends Controller
 
         return Inertia::render('settings/invoice-templates', [
             'templates' => InvoiceTemplate::query()->orderByDesc('is_default')->orderBy('name')->get(),
+            // Jewelry-only switches (HUID, stone details) are hidden for
+            // tenants whose industry has no use for them.
+            'industryTemplateFlags' => Industry::templateFlags(),
         ]);
     }
 

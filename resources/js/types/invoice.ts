@@ -1,8 +1,18 @@
-import type { Customer, Staff } from './customer';
+import type { Customer, CustomerNote, Staff } from './customer';
 
 export type ChargeCalculationType = 'fixed' | 'percentage' | 'per_gram' | 'per_carat';
 export type ChargeAppliesTo = 'item' | 'invoice';
-export type RateType = 'per_gram' | 'per_carat' | 'per_piece' | 'fixed';
+export type RateType =
+    | 'per_gram'
+    | 'per_carat'
+    | 'per_piece'
+    | 'fixed'
+    | 'per_sqft'
+    | 'per_sqm'
+    | 'per_meter'
+    | 'per_kg'
+    | 'per_box'
+    | 'per_unit';
 export type PricingMode = 'manual' | 'jewelry_calculated';
 export type TaxMode = 'single' | 'cgst_sgst' | 'igst';
 export type InvoiceStatus =
@@ -46,12 +56,31 @@ export type ItemChargeComputed = {
     amount: number;
 };
 
+export type LineType = 'sale' | 'exchange_credit';
+
 export type InvoiceItemForm = {
     key: string;
     item_name: string;
+    line_type: LineType;
     description: string;
     item_code: string;
+    catalog_item_id: number | null;
     hsn_code: string;
+    brand: string;
+    model_number: string;
+    serial_number: string;
+    warranty_months: number | null;
+    size_label: string;
+    finish: string;
+    grade: string;
+    specification: string;
+    batch_number: string;
+    length: number | null;
+    width: number | null;
+    height: number | null;
+    wastage_percent: number | null;
+    boxes: number | null;
+    attributes: Record<string, string>;
     metal_type: string;
     purity: string;
     huid_number: string;
@@ -96,9 +125,26 @@ export type InvoiceFormData = {
 export type InvoiceItem = {
     id: number;
     item_name: string;
+    line_type: LineType;
     description: string | null;
     item_code: string | null;
+    catalog_item_id: number | null;
     hsn_code: string | null;
+    brand: string | null;
+    model_number: string | null;
+    serial_number: string | null;
+    warranty_months: number | null;
+    size_label: string | null;
+    finish: string | null;
+    grade: string | null;
+    specification: string | null;
+    batch_number: string | null;
+    length: string | null;
+    width: string | null;
+    height: string | null;
+    wastage_percent: string | null;
+    boxes: string | null;
+    attributes: Record<string, string> | null;
     metal_type: string | null;
     purity: string | null;
     huid_number: string | null;
@@ -118,6 +164,38 @@ export type InvoiceItem = {
     tax: string;
     total: string;
     charges: ItemChargeComputed[];
+};
+
+/** A catalog product offered by the quotation builder. */
+export type QuotationProduct = {
+    id: number;
+    name: string;
+    brand: string | null;
+    item_code: string | null;
+    rate_type: RateType;
+    default_rate: string | null;
+    unit_label: string | null;
+    description: string | null;
+};
+
+export type QuotationStatus =
+    | 'draft'
+    | 'sent'
+    | 'accepted'
+    | 'rejected'
+    | 'expired'
+    | 'converted';
+
+export type Installment = {
+    id: number;
+    invoice_id: number;
+    sequence: number;
+    due_date: string;
+    amount: string;
+    status: 'pending' | 'paid' | 'waived';
+    paid_at: string | null;
+    notes: string | null;
+    payment?: { id: number; amount: string; payment_date: string } | null;
 };
 
 export type InvoiceChargeRow = {
@@ -172,6 +250,10 @@ export type Invoice = {
     reference_number: string | null;
     document_type: DocumentType;
     converted_to_id: number | null;
+    quotation_status: QuotationStatus | null;
+    quotation_response: string | null;
+    quotation_responded_at: string | null;
+    quotation_valid_until: string | null;
     status: InvoiceStatus;
     pricing_mode: PricingMode;
     invoice_template_id: number | null;
@@ -200,19 +282,32 @@ export type Invoice = {
     charges: InvoiceChargeRow[];
     payments: Payment[];
     share_links: ShareLink[];
+    notes_log: CustomerNote[];
+    installments: Installment[];
 };
 
 export type CatalogItem = {
     id: number;
     name: string;
+    brand: string | null;
     item_code: string | null;
+    model_number: string | null;
     hsn_code: string | null;
+    size_label: string | null;
+    finish: string | null;
+    grade: string | null;
+    specification: string | null;
+    unit_label: string | null;
     metal_type: string | null;
     purity: string | null;
     rate_type: RateType;
     default_rate: string | null;
     default_net_weight: string | null;
     default_gross_weight: string | null;
+    default_length: string | null;
+    default_width: string | null;
+    default_wastage_percent: string | null;
+    attributes: Record<string, string> | null;
     description: string | null;
     is_active?: boolean;
 };

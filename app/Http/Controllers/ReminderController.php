@@ -35,11 +35,6 @@ class ReminderController extends Controller
         ]);
     }
 
-    public function followups(ReminderService $service): Response
-    {
-        return $this->index($service);
-    }
-
     public function store(StoreReminderRequest $request): RedirectResponse
     {
         Reminder::create([...$request->validated(), 'created_by' => $request->user()->id]);

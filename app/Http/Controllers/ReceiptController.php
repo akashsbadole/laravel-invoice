@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Support\Industry;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -24,7 +25,13 @@ class ReceiptController extends Controller
         $invoice->load(['customer', 'items.charges', 'payments']);
         $business = BusinessSetting::current();
         $width = $this->width($request, $business);
-        $data = ['invoice' => $invoice, 'business' => $business, 'width' => $width, 'isPdf' => $request->boolean('pdf')];
+        $data = [
+            'invoice' => $invoice,
+            'business' => $business,
+            'width' => $width,
+            'isPdf' => $request->boolean('pdf'),
+            'showWeights' => Industry::usesWeightFields($business->industryKey()),
+        ];
 
         if (! $request->boolean('pdf')) {
             return view('receipts.invoice', $data);

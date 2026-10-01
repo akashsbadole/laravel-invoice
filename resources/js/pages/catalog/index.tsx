@@ -1,8 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Download, Plus, Upload } from 'lucide-react';
+import { Download, FileDown, Plus, Upload } from 'lucide-react';
 import { useState } from 'react';
-import CatalogItemController from '@/actions/App/Http/Controllers/Settings/CatalogItemController';
-import CatalogItemImportController from '@/actions/App/Http/Controllers/Settings/CatalogItemImportController';
+import CatalogItemController from '@/actions/App/Http/Controllers/CatalogItemController';
+import CatalogItemImportController from '@/actions/App/Http/Controllers/CatalogItemImportController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -27,34 +27,49 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { template as catalogTemplate } from '@/routes/catalog';
+import { download as catalogDownload, template as catalogTemplate } from '@/routes/catalog';
+import { dashboard } from '@/routes';
+import {
+    GENERIC_CATALOG_FIELDS,
+    itemFieldLabel,
+    rateTypeLabel,
+} from '@/lib/industries';
+import type { IndustryConfig } from '@/lib/industries';
 import type { Paginated } from '@/types/customer';
 import type { CatalogItem } from '@/types/invoice';
 
 export default function CatalogPage({
     items,
     filters,
+    industry,
 }: {
     items: Paginated<CatalogItem>;
     filters: { search?: string };
+    industry: IndustryConfig;
 }) {
     return (
         <>
-            <Head title="Item catalog" />
+            <Head title="Product catalog" />
 
-            <div className="space-y-6">
+            <div className="space-y-6 p-4 md:p-6">
                 <Heading
                     variant="small"
-                    title="Item catalog"
-                    description="Saved designs you can pick from when building an invoice. This is not stock — no quantities are tracked."
+                    title="Product catalog"
+                    description="What you sell, at what price. Build quotations straight from these products. This is not stock — no quantities are tracked."
                 />
 
                 <div className="flex flex-wrap gap-2">
-                    <AddItemDialog />
+                    <AddItemDialog industry={industry} />
                     <ImportDialog />
                     <Button size="sm" variant="outline" asChild>
-                        <a href={catalogTemplate().url}>
+                        <a href={catalogDownload()}>
                             <Download className="size-4" />
+                            Export CSV
+                        </a>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                        <a href={catalogTemplate()}>
+                            <FileDown className="size-4" />
                             CSV template
                         </a>
                     </Button>
@@ -106,12 +121,19 @@ export default function CatalogPage({
                                             )}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            {[item.metal_type, item.purity].filter(Boolean).join(' · ')}
-                                            {item.default_rate && ` · ₹${item.default_rate}/${item.rate_type.replace('per_', '')}`}
+                                            {(
+                                                industry.uses_weight_fields
+                                                    ? [item.metal_type, item.purity]
+                                                    : [item.brand, item.model_number, item.size_label]
+                                            )
+                                                .filter(Boolean)
+                                                .join(' · ')}
+                                            {item.default_rate &&
+                                                ` · ₹${item.default_rate}/${item.rate_type.replace('per_', '')}`}
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <EditItemDialog item={item} />
+                                        <EditItemDialog item={item} industry={industry} />
                                         <Form {...CatalogItemController.destroy.form(item.id)}>
                                             {({ processing }) => (
                                                 <Button size="sm" variant="ghost" disabled={processing}>
@@ -152,11 +174,19 @@ function ItemFields({
     item,
     errors,
     idPrefix,
+    industry,
 }: {
     item?: CatalogItem;
     errors: Record<string, string>;
     idPrefix: string;
+    industry: IndustryConfig;
 }) {
+    const usesWeights = industry.uses_weight_fields;
+    const isArea = industry.rate_types.some((t) => t === 'per_sqft' || t === 'per_sqm');
+    const generic = GENERIC_CATALOG_FIELDS.filter((f) =>
+        industry.item_fields.includes(f),
+    );
+
     return (
         <div className="space-y-3">
             <div className="grid gap-2">
@@ -175,30 +205,62 @@ function ItemFields({
                     <Input id={`${idPrefix}-hsn`} name="hsn_code" defaultValue={item?.hsn_code ?? ''} />
                 </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-metal`}>Metal</Label>
-                    <Input id={`${idPrefix}-metal`} name="metal_type" defaultValue={item?.metal_type ?? ''} />
+
+            {usesWeights ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-metal`}>Metal</Label>
+                        <Input id={`${idPrefix}-metal`} name="metal_type" defaultValue={item?.metal_type ?? ''} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-purity`}>Purity</Label>
+                        <Input id={`${idPrefix}-purity`} name="purity" defaultValue={item?.purity ?? ''} />
+                    </div>
                 </div>
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-purity`}>Purity</Label>
-                    <Input id={`${idPrefix}-purity`} name="purity" defaultValue={item?.purity ?? ''} />
+            ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    {generic.map((field) => (
+                        <div key={field} className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-${field}`}>
+                                {itemFieldLabel(field)}
+                            </Label>
+                            <Input
+                                id={`${idPrefix}-${field}`}
+                                name={field}
+                                defaultValue={item?.[field] ?? ''}
+                            />
+                        </div>
+                    ))}
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-model`}>Model no.</Label>
+                        <Input
+                            id={`${idPrefix}-model`}
+                            name="model_number"
+                            defaultValue={item?.model_number ?? ''}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-2">
                     <Label htmlFor={`${idPrefix}-ratetype`}>Rate basis</Label>
-                    <Select name="rate_type" defaultValue={item?.rate_type ?? 'per_gram'}>
+                    <Select
+                        name="rate_type"
+                        defaultValue={item?.rate_type ?? industry.rate_types[0] ?? 'per_piece'}
+                    >
                         <SelectTrigger id={`${idPrefix}-ratetype`} className="w-full">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="per_gram">Per gram</SelectItem>
-                            <SelectItem value="per_carat">Per carat</SelectItem>
-                            <SelectItem value="per_piece">Per piece</SelectItem>
-                            <SelectItem value="fixed">Fixed</SelectItem>
+                            {industry.rate_types.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                    {rateTypeLabel(type)}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
+                    <InputError message={errors.rate_type} />
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor={`${idPrefix}-rate`}>Default rate</Label>
@@ -212,30 +274,73 @@ function ItemFields({
                     />
                 </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-net`}>Typical net wt (g)</Label>
-                    <Input
-                        id={`${idPrefix}-net`}
-                        name="default_net_weight"
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        defaultValue={item?.default_net_weight ?? ''}
-                    />
+
+            {usesWeights ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-net`}>Typical net wt (g)</Label>
+                        <Input
+                            id={`${idPrefix}-net`}
+                            name="default_net_weight"
+                            type="number"
+                            step="0.001"
+                            min={0}
+                            defaultValue={item?.default_net_weight ?? ''}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-gross`}>Typical gross wt (g)</Label>
+                        <Input
+                            id={`${idPrefix}-gross`}
+                            name="default_gross_weight"
+                            type="number"
+                            step="0.001"
+                            min={0}
+                            defaultValue={item?.default_gross_weight ?? ''}
+                        />
+                    </div>
                 </div>
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-gross`}>Typical gross wt (g)</Label>
-                    <Input
-                        id={`${idPrefix}-gross`}
-                        name="default_gross_weight"
-                        type="number"
-                        step="0.001"
-                        min={0}
-                        defaultValue={item?.default_gross_weight ?? ''}
-                    />
-                </div>
-            </div>
+            ) : (
+                isArea && (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-len`}>Typical length (cm)</Label>
+                            <Input
+                                id={`${idPrefix}-len`}
+                                name="default_length"
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                defaultValue={item?.default_length ?? ''}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-wid`}>Typical width (cm)</Label>
+                            <Input
+                                id={`${idPrefix}-wid`}
+                                name="default_width"
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                defaultValue={item?.default_width ?? ''}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-wastage`}>Typical wastage %</Label>
+                            <Input
+                                id={`${idPrefix}-wastage`}
+                                name="default_wastage_percent"
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                max={100}
+                                defaultValue={item?.default_wastage_percent ?? ''}
+                            />
+                        </div>
+                    </div>
+                )
+            )}
+
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-desc`}>Description</Label>
                 <Textarea id={`${idPrefix}-desc`} name="description" rows={2} defaultValue={item?.description ?? ''} />
@@ -244,7 +349,7 @@ function ItemFields({
     );
 }
 
-function AddItemDialog() {
+function AddItemDialog({ industry }: { industry: IndustryConfig }) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -267,7 +372,7 @@ function AddItemDialog() {
                 >
                     {({ processing, errors }) => (
                         <>
-                            <ItemFields errors={errors} idPrefix="new" />
+                            <ItemFields errors={errors} idPrefix="new" industry={industry} />
                             <DialogFooter>
                                 <DialogClose asChild>
                                     <Button variant="secondary" type="button">Cancel</Button>
@@ -282,7 +387,13 @@ function AddItemDialog() {
     );
 }
 
-function EditItemDialog({ item }: { item: CatalogItem }) {
+function EditItemDialog({
+    item,
+    industry,
+}: {
+    item: CatalogItem;
+    industry: IndustryConfig;
+}) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -301,7 +412,12 @@ function EditItemDialog({ item }: { item: CatalogItem }) {
                 >
                     {({ processing, errors }) => (
                         <>
-                            <ItemFields item={item} errors={errors} idPrefix={`edit-${item.id}`} />
+                            <ItemFields
+                                item={item}
+                                errors={errors}
+                                idPrefix={`edit-${item.id}`}
+                                industry={industry}
+                            />
                             <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
@@ -380,3 +496,7 @@ function ImportDialog() {
         </Dialog>
     );
 }
+
+CatalogPage.layout = {
+    breadcrumbs: [{ title: 'Dashboard', href: dashboard() }],
+};

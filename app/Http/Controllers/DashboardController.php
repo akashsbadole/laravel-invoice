@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
+use App\Models\CatalogItem;
 use App\Models\Customer;
 use App\Models\CustomerFollowup;
 use App\Models\Invoice;
 use App\Models\MetalRate;
 use App\Models\Payment;
 use App\Services\ReminderService;
+use App\Support\Industry;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -76,7 +78,17 @@ class DashboardController extends Controller
                 ->orderBy('followup_date')->limit(6)->get(),
             'overdueInvoices' => $overdue()->with('customer:id,full_name')->orderBy('due_date')->limit(5)
                 ->get(['id', 'customer_id', 'invoice_number', 'due_date', 'balance_amount']),
-            'rates' => MetalRate::latestRates()->take(8)->values(),
+            // Metal rates only mean something to a jewelry tenant.
+            'rates' => Industry::usesMetalRates()
+                ? MetalRate::latestRates()->take(8)->values()
+                : collect(),
+            // The catalog is the entry point for quotations, so surface how
+            // stocked it is rather than hiding it in Settings.
+            'catalog' => [
+                'total' => CatalogItem::query()->count(),
+                'active' => CatalogItem::query()->where('is_active', true)->count(),
+                'recent' => CatalogItem::query()->latest('id')->limit(5)->get(['id', 'name', 'brand', 'rate_type', 'default_rate']),
+            ],
             'reminderCount' => $due['payments']->count() + $due['followups']->count() + $due['birthdays']->count()
                 + $due['anniversaries']->count() + $due['custom']->count(),
         ]);

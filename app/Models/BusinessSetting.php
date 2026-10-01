@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
 use App\Concerns\TenantScope;
+use App\Support\Industry;
 use Illuminate\Database\Eloquent\Model;
 
 class BusinessSetting extends Model
@@ -12,13 +13,14 @@ class BusinessSetting extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'business_name', 'logo_path', 'address', 'pincode', 'phone', 'email', 'website',
+        'business_name', 'industry', 'unit_label', 'logo_path', 'address', 'pincode', 'phone', 'email', 'website',
         'tax_number', 'bank_details', 'invoice_prefix', 'invoice_number_start',
         'quotation_prefix', 'next_quotation_sequence',
         'challan_prefix', 'next_challan_sequence',
         'next_invoice_sequence', 'default_tax_rate', 'default_currency',
         'invoice_terms', 'footer_text', 'signature_image_path', 'stamp_image_path',
-        'state_code', 'receipt_width', 'sms_payment_reminders', 'sms_birthday_wishes',
+        'state_code', 'receipt_width', 'sms_payment_reminders', 'sms_birthday_wishes', 'sms_anniversary_wishes',
+        'quotation_customer_decisions', 'quotation_show_updates',
         'sms_driver', 'sms_country_code',
         'sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from',
         'sms_http_url', 'sms_http_token', 'sms_http_to_field', 'sms_http_message_field',
@@ -35,6 +37,9 @@ class BusinessSetting extends Model
             'default_tax_rate' => 'decimal:2',
             'sms_payment_reminders' => 'boolean',
             'sms_birthday_wishes' => 'boolean',
+            'sms_anniversary_wishes' => 'boolean',
+            'quotation_customer_decisions' => 'boolean',
+            'quotation_show_updates' => 'boolean',
         ];
     }
 
@@ -48,10 +53,33 @@ class BusinessSetting extends Model
 
     public static function forTenant(?int $tenantId): self
     {
-        return static::query()->withoutGlobalScope(TenantScope::class)->firstOrCreate(
+        $tenant = Tenant::query()->find($tenantId);
+
+        $settings = static::query()->withoutGlobalScope(TenantScope::class)->firstOrCreate(
             ['tenant_id' => $tenantId],
-            ['business_name' => Tenant::query()->find($tenantId)?->name ?? 'My Jewellery Store'],
+            [
+                'business_name' => $tenant?->name ?? 'My Store',
+                'industry' => $tenant?->industry ?? Industry::default(),
+            ],
         );
+
+        // Outside a request (console commands, queued jobs) the BelongsToTenant
+        // hook has no tenant context to read, so stamp it explicitly.
+        if ($settings->tenant_id === null && $tenantId !== null) {
+            $settings->tenant_id = $tenantId;
+            $settings->saveQuietly();
+        }
+
+        return $settings;
+    }
+
+    /**
+     * The configured industry key, normalized to one that actually exists
+     * in config/industries.php.
+     */
+    public function industryKey(): string
+    {
+        return Industry::normalize($this->industry);
     }
 
     /**

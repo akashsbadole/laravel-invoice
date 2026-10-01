@@ -3,8 +3,6 @@
 use App\Http\Controllers\FirmSwitchController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BusinessController;
-use App\Http\Controllers\Settings\CatalogItemController;
-use App\Http\Controllers\Settings\CatalogItemImportController;
 use App\Http\Controllers\Settings\ChargeTypeController;
 use App\Http\Controllers\Settings\InvoiceTemplateController;
 use App\Http\Controllers\Settings\MetalRateController;
@@ -12,6 +10,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StaffInviteController;
 use App\Http\Controllers\Settings\UserController;
+use App\Http\Middleware\EnsureIndustryAllows;
 use App\Http\Middleware\EnsureSubscribed;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
@@ -41,16 +40,11 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::post('settings/firms/switch', [FirmSwitchController::class, 'switch'])->name('firms.switch');
 
-    Route::get('settings/metal-rates', [MetalRateController::class, 'index'])->name('metal-rates.index');
-    Route::post('settings/metal-rates', [MetalRateController::class, 'store'])->name('metal-rates.store');
-    Route::delete('settings/metal-rates/{metalRate}', [MetalRateController::class, 'destroy'])->name('metal-rates.destroy');
-
-    Route::get('settings/catalog', [CatalogItemController::class, 'index'])->name('catalog.index');
-    Route::post('settings/catalog', [CatalogItemController::class, 'store'])->name('catalog.store');
-    Route::get('settings/catalog/template', [CatalogItemImportController::class, 'template'])->name('catalog.template');
-    Route::post('settings/catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload');
-    Route::put('settings/catalog/{catalogItem}', [CatalogItemController::class, 'update'])->name('catalog.update');
-    Route::delete('settings/catalog/{catalogItem}', [CatalogItemController::class, 'destroy'])->name('catalog.destroy');
+    Route::middleware(EnsureIndustryAllows::class.':metal_rates')->group(function () {
+        Route::get('settings/metal-rates', [MetalRateController::class, 'index'])->name('metal-rates.index');
+        Route::post('settings/metal-rates', [MetalRateController::class, 'store'])->name('metal-rates.store');
+        Route::delete('settings/metal-rates/{metalRate}', [MetalRateController::class, 'destroy'])->name('metal-rates.destroy');
+    });
 
     Route::get('settings/invoice-templates', [InvoiceTemplateController::class, 'index'])->name('invoice-templates.index');
     Route::post('settings/invoice-templates', [InvoiceTemplateController::class, 'store'])->name('invoice-templates.store');

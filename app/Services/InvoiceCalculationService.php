@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ChargeAppliesTo;
 use App\Enums\ChargeCalculationType;
+use App\Enums\LineType;
 use App\Enums\PricingMode;
 use App\Enums\RateType;
 use App\Enums\TaxMode;
@@ -31,7 +32,12 @@ class InvoiceCalculationService
     {
         $pricingMode = PricingMode::from($input['pricing_mode'] ?? PricingMode::JewelryCalculated->value);
         $taxMode = TaxMode::tryFrom($input['tax_mode'] ?? '') ?? TaxMode::Single;
-        $chargeTypes = ChargeType::query()->get()->keyBy('id');
+
+        // Only load the charge catalogue when the submission actually
+        // references charges — a charge-free invoice needs no query at all.
+        $chargeTypes = $this->referencesCharges($input)
+            ? ChargeType::query()->get()->keyBy('id')
+            : new Collection;
 
         $items = [];
         $subtotal = 0.0;      // base + item charges - item discounts (base for % invoice charges)
@@ -79,7 +85,9 @@ class InvoiceCalculationService
             : round($itemsTaxTotal + $invoiceLevelTax, 2);
 
         $beforeRounding = round($subtotal + $invoiceChargesTotal + $tax - $discount, 2);
-        $grandTotal = round($beforeRounding, 0);
+        // An exchange credit can outweigh the goods; the customer then owes
+        // nothing (or is owed change) rather than a negative invoice.
+        $grandTotal = max((float) round($beforeRounding, 0), 0.0);
         $roundOff = round($grandTotal - $beforeRounding, 2);
 
         return [
@@ -109,10 +117,30 @@ class InvoiceCalculationService
         $stoneCarat = (float) ($itemInput['stone_carat'] ?? 0);
         $rateType = RateType::from($itemInput['rate_type'] ?? RateType::PerGram->value);
 
+        // Area-priced lines (tiles, marble, flooring) bill on length × width,
+        // plus any wastage the trade adds on top.
+        $area = $this->areaOf($itemInput, $rateType);
+        $wastage = (float) ($itemInput['wastage_percent'] ?? 0);
+        $billableArea = $wastage > 0 ? $area * (1 + ($wastage / 100)) : $area;
+        $boxes = (float) ($itemInput['boxes'] ?? 0);
+        $metres = (float) ($itemInput['length'] ?? 0);
+
+        $lineType = LineType::tryFrom($itemInput['line_type'] ?? '') ?? LineType::Sale;
+
         $baseValuePerUnit = match (true) {
-            $pricingMode === PricingMode::Manual => $rate,
-            $rateType === RateType::PerGram => $rate * $netWeight,
-            $rateType === RateType::PerCarat => $rate * $stoneCarat,
+            // Jewelry weight/carat pricing historically honours the manual
+            // pricing mode: the typed rate IS the amount per unit. Every other
+            // trade bills from a measure (area, box, metre, kg), so those rate
+            // types always multiply regardless of pricing mode.
+            $rateType === RateType::PerGram,
+            $rateType === RateType::PerCarat => $pricingMode === PricingMode::Manual
+                ? $rate
+                : ($rateType === RateType::PerGram ? $rate * $netWeight : $rate * $stoneCarat),
+            $rateType === RateType::PerSqft => $rate * $billableArea,
+            $rateType === RateType::PerSqm => $rate * $billableArea,
+            $rateType === RateType::PerMeter => $rate * $metres,
+            $rateType === RateType::PerKg => $rate * $netWeight,
+            $rateType === RateType::PerBox => $rate * max($boxes, 1),
             default => $rate,
         };
 
@@ -120,7 +148,7 @@ class InvoiceCalculationService
         $chargesPerUnit = 0.0;
         $taxableBasePerUnit = $baseValuePerUnit;
 
-        if ($pricingMode === PricingMode::JewelryCalculated) {
+        if ($pricingMode === PricingMode::JewelryCalculated && $lineType->supportsCharges()) {
             foreach ($itemInput['charges'] ?? [] as $chargeInput) {
                 $charge = $this->calculateItemCharge($chargeInput, $chargeTypes, $baseValuePerUnit, $netWeight, $stoneCarat);
                 if ($charge === null) {
@@ -134,10 +162,17 @@ class InvoiceCalculationService
             }
         }
 
-        $discount = (float) ($itemInput['discount'] ?? 0);
-        $taxRate = (float) ($itemInput['tax_rate'] ?? 0);
+        $discount = $lineType->isTaxable() ? (float) ($itemInput['discount'] ?? 0) : 0.0;
+        // Exchange credit is the customer's own metal handed back, not a
+        // supply — charging GST on it would be wrong.
+        $taxRate = $lineType->isTaxable() ? (float) ($itemInput['tax_rate'] ?? 0) : 0.0;
 
         $baseValue = round($baseValuePerUnit * $quantity, 2);
+
+        if ($lineType === LineType::ExchangeCredit) {
+            $baseValue = -abs($baseValue);
+        }
+
         $chargesTotal = round($chargesPerUnit * $quantity, 2);
         $taxableAmount = round(($taxableBasePerUnit * $quantity) - $discount, 2);
         $tax = round(max($taxableAmount, 0) * ($taxRate / 100), 2);
@@ -145,10 +180,29 @@ class InvoiceCalculationService
 
         return [
             'sort_order' => $sortOrder,
+            'line_type' => $lineType->value,
             'item_name' => $itemInput['item_name'] ?? '',
             'description' => $itemInput['description'] ?? null,
             'item_code' => $itemInput['item_code'] ?? null,
+            'catalog_item_id' => $itemInput['catalog_item_id'] ?? null,
             'hsn_code' => $itemInput['hsn_code'] ?? null,
+            'brand' => $itemInput['brand'] ?? null,
+            'model_number' => $itemInput['model_number'] ?? null,
+            'serial_number' => $itemInput['serial_number'] ?? null,
+            'warranty_months' => isset($itemInput['warranty_months']) && $itemInput['warranty_months'] !== ''
+                ? (int) $itemInput['warranty_months']
+                : null,
+            'size_label' => $itemInput['size_label'] ?? null,
+            'finish' => $itemInput['finish'] ?? null,
+            'grade' => $itemInput['grade'] ?? null,
+            'specification' => $itemInput['specification'] ?? null,
+            'batch_number' => $itemInput['batch_number'] ?? null,
+            'length' => $this->nullableFloat($itemInput, 'length'),
+            'width' => $this->nullableFloat($itemInput, 'width'),
+            'height' => $this->nullableFloat($itemInput, 'height'),
+            'wastage_percent' => $this->nullableFloat($itemInput, 'wastage_percent'),
+            'boxes' => $this->nullableFloat($itemInput, 'boxes'),
+            'attributes' => $this->normalizeAttributes($itemInput['attributes'] ?? null),
             'metal_type' => $itemInput['metal_type'] ?? null,
             'purity' => $itemInput['purity'] ?? null,
             'huid_number' => $itemInput['huid_number'] ?? null,
@@ -170,6 +224,103 @@ class InvoiceCalculationService
             'charges' => $charges,
             'charges_total' => $chargesTotal,
         ];
+    }
+
+    /**
+     * @param  array<string,mixed>  $input
+     */
+    protected function referencesCharges(array $input): bool
+    {
+        if (($input['invoice_charges'] ?? []) !== []) {
+            return true;
+        }
+
+        foreach ($input['items'] ?? [] as $item) {
+            if (($item['charges'] ?? []) !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Billable surface area for area-priced lines.
+     *
+     * Sq ft converts from cm dimensions (the usual way a tiles shop measures),
+     * so 100cm × 100cm = 1 sq ft. Sq m uses metres directly.
+     *
+     * @param  array<string,mixed>  $itemInput
+     */
+    protected function areaOf(array $itemInput, RateType $rateType): float
+    {
+        if (! $rateType->isAreaBased()) {
+            return 0.0;
+        }
+
+        $length = (float) ($itemInput['length'] ?? 0);
+        $width = (float) ($itemInput['width'] ?? 0);
+
+        // No dimensions entered yet: the caller must still bill something
+        // sensible, so fall back to the rate as a flat per-unit amount
+        // rather than silently zeroing the line.
+        if ($length <= 0 || $width <= 0) {
+            return 1.0;
+        }
+
+        return $rateType === RateType::PerSqft
+            ? ($length * $width) / 929.0304
+            : ($length / 100) * ($width / 100);
+    }
+
+    /**
+     * Absent, null and empty-string all mean "not recorded" for the nullable
+     * numeric item fields.
+     *
+     * @param  array<string,mixed>  $itemInput
+     */
+    protected function nullableFloat(array $itemInput, string $key): ?float
+    {
+        $value = $itemInput[$key] ?? null;
+
+        return ($value === null || $value === '') ? null : (float) $value;
+    }
+
+    /**
+     * Free-form item attributes arrive as either a JSON string or an array
+     * depending on how the client sent them; store a clean key => value map.
+     *
+     * @return array<string,string>|null
+     */
+    protected function normalizeAttributes(mixed $attributes): ?array
+    {
+        if (is_string($attributes)) {
+            $attributes = json_decode($attributes, true);
+        }
+
+        if (! is_array($attributes) || $attributes === []) {
+            return null;
+        }
+
+        $clean = [];
+
+        foreach ($attributes as $key => $value) {
+            $key = trim((string) $key);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $stringValue = is_scalar($value) ? (string) $value : (json_encode($value) ?: '');
+
+            if (trim($stringValue) === '') {
+                continue;
+            }
+
+            $clean[mb_substr($key, 0, 50)] = mb_substr(trim($stringValue), 0, 255);
+        }
+
+        return $clean === [] ? null : $clean;
     }
 
     /**
@@ -213,7 +364,7 @@ class InvoiceCalculationService
         $rate = (float) ($chargeInput['rate'] ?? $chargeType->default_rate ?? 0);
 
         $amount = $chargeType->calculation_type === ChargeCalculationType::Percentage
-            ? $subtotal * ($rate / 100)
+            ? max($subtotal, 0.0) * ($rate / 100)
             : $rate;
 
         return $this->chargeRow($chargeType, $rate, $amount);

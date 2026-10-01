@@ -1,10 +1,10 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowRight, FileText, Gem, QrCode, Send } from 'lucide-react';
+import { ArrowRight, FileText, Package, QrCode, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Auth } from '@/types/auth';
 
 const steps = [
-    { icon: FileText, title: 'Create', text: 'Customers & jewelry invoices with weight-rate math' },
+    { icon: FileText, title: 'Create', text: 'Customers, quotations & GST invoices from your product catalog' },
     { icon: QrCode, title: 'Share', text: 'Secure links & PDFs with QR verification' },
     { icon: Send, title: 'Collect', text: 'Payments, receipts & reminders on autopilot' },
 ];
@@ -20,10 +20,10 @@ export default function Welcome() {
                 <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
                     <span className="flex items-center gap-2.5">
                         <span className="flex size-9 items-center justify-center rounded-full border border-gold/60 bg-gold/10 text-gold">
-                            <Gem className="size-4" />
+                            <Package className="size-4" />
                         </span>
                         <span className="font-display text-xl font-semibold tracking-wide">
-                            Jewelry Invoice
+                            Invoice CRM
                         </span>
                     </span>
                     <div className="flex items-center gap-2">
@@ -55,11 +55,12 @@ export default function Welcome() {
                         className="rise-in mx-auto mt-4 max-w-3xl font-display text-4xl font-medium leading-tight md:text-6xl"
                         style={{ animationDelay: '80ms' }}
                     >
-                        Invoices worthy of the jewels they bill.
+                        Invoicing built for the way you sell.
                     </h1>
                     <p className="rise-in mx-auto mt-5 max-w-xl text-ivory/70" style={{ animationDelay: '160ms' }}>
-                        Create customers, build jewelry invoices, share secure PDF links,
-                        and track every rupee — without POS clutter.
+                        Jewelry by the gram, tiles by the square foot, hardware by
+                        the piece. Create customers, build quotations and invoices,
+                        share secure PDF links, and track every rupee.
                     </p>
                     {!auth.user && (
                         <div className="rise-in mt-8 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: '240ms' }}>

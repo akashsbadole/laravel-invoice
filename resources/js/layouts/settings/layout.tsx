@@ -10,29 +10,51 @@ interface SettingsLayoutProps {
     description?: string;
 }
 
-const settingsNav: { titleKey: I18nKey; href: string }[] = [
+type SettingsNavItem = {
+    titleKey: I18nKey;
+    href: string;
+    /** Capability gate — matches App\Http\Middleware\EnsureIndustryAllows. */
+    capability?: string;
+};
+
+const settingsNav: SettingsNavItem[] = [
     { titleKey: 'nav.profile', href: '/settings/profile' },
     { titleKey: 'nav.business', href: '/settings/business' },
     { titleKey: 'nav.security', href: '/settings/security' },
     { titleKey: 'nav.appearance', href: '/settings/appearance' },
     { titleKey: 'nav.users', href: '/settings/users' },
     { titleKey: 'nav.activityLog', href: '/settings/activity-log' },
-    { titleKey: 'nav.metalRates', href: '/settings/metal-rates' },
-    { titleKey: 'nav.catalog', href: '/settings/catalog' },
+    { titleKey: 'nav.metalRates', href: '/settings/metal-rates', capability: 'metal_rates' },
     { titleKey: 'nav.chargeTypes', href: '/settings/charge-types' },
     { titleKey: 'nav.invoiceTemplates', href: '/settings/invoice-templates' },
 ];
 
+type Capabilities = {
+    metal_rates: boolean;
+};
+
+const CAPABILITY_DEFAULTS: Capabilities = { metal_rates: true };
+
 export default function SettingsLayout({ children, title, description }: SettingsLayoutProps) {
-    const { url } = usePage();
+    // `url` lives on the Inertia page object, not in props — reading it from
+    // props leaves it undefined and `url.startsWith` throws.
+    const page = usePage<{ capabilities?: Capabilities }>();
+    const { url } = page;
+    const { capabilities } = page.props;
     const { t } = useLocale();
+
+    const resolved = { ...CAPABILITY_DEFAULTS, ...capabilities };
+    const visibleNav = settingsNav.filter((item) => {
+        if (!item.capability) return true;
+        return resolved[item.capability as keyof Capabilities] !== false;
+    });
 
     return (
         <div className="flex flex-col gap-6 p-4 md:p-6 lg:flex-row">
             <aside className="w-full shrink-0 space-y-4 lg:w-56">
                 {title && <Heading title={title} description={description} />}
                 <nav className="flex flex-row flex-wrap gap-1 lg:flex-col">
-                    {settingsNav.map((item) => {
+                    {visibleNav.map((item) => {
                         const isActive = url.startsWith(item.href);
                         return (
                             <Link

@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerFollowupController from '@/actions/App/Http/Controllers/CustomerFollowupController';
 import CustomerNoteController from '@/actions/App/Http/Controllers/CustomerNoteController';
@@ -32,6 +32,7 @@ import { edit as editCustomer, index } from '@/routes/customers';
 import { update as updateFollowup } from '@/routes/customers/followups';
 import type { Auth } from '@/types/auth';
 import type { Customer, CustomerFollowup, Staff } from '@/types/customer';
+import { cn } from '@/lib/utils';
 
 const currency = new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -61,14 +62,24 @@ type Stats = {
     last_invoice_date: string | null;
 };
 
+type TimelineEvent = {
+    at: string;
+    kind: 'invoice' | 'payment' | 'note' | 'followup' | 'message' | 'activity';
+    label: string;
+    detail: string | null;
+    href: string | null;
+};
+
 export default function ShowCustomer({
     customer,
     stats,
     staff,
+    timeline,
 }: {
     customer: Customer;
     stats: Stats;
     staff: Staff[];
+    timeline: TimelineEvent[];
 }) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isAdmin = auth.user.role === 'admin';
@@ -160,12 +171,20 @@ export default function ShowCustomer({
                 <Card>
                     <CardHeader className="flex-row items-center justify-between">
                         <CardTitle>Invoices</CardTitle>
-                        <Button size="sm" variant="outline" asChild>
-                            <Link href={`/invoices/create?customer_id=${customer.id}`}>
-                                <Plus className="size-4" />
-                                New invoice
-                            </Link>
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={`/invoices/create?customer_id=${customer.id}&document_type=quotation`}>
+                                    <FileText className="size-4" />
+                                    Quotation
+                                </Link>
+                            </Button>
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={`/invoices/create?customer_id=${customer.id}`}>
+                                    <Plus className="size-4" />
+                                    New invoice
+                                </Link>
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {!customer.invoices || customer.invoices.length === 0 ? (
@@ -220,36 +239,67 @@ export default function ShowCustomer({
                                                 </span>
                                             )}
                                         </p>
+                                        {followup.reminder_at && (
+                                            <p className="text-xs text-gold-dark dark:text-gold-light">
+                                                Reminder{' '}
+                                                {new Date(
+                                                    followup.reminder_at,
+                                                ).toLocaleString()}
+                                            </p>
+                                        )}
                                         {followup.notes && (
                                             <p className="truncate text-sm text-muted-foreground">
                                                 {followup.notes}
                                             </p>
                                         )}
                                     </div>
+                                    <div className="flex items-center gap-2">
+                                        {followup.status !== 'completed' && (
+                                            <Form
+                                                {...CustomerFollowupController.destroy.form(
+                                                    customer.id,
+                                                    followup.id,
+                                                )}
+                                            >
+                                                {({ processing }) => (
+                                                    <Button
+                                                        type="submit"
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        disabled={processing}
+                                                        title="Delete follow-up"
+                                                        className="text-muted-foreground hover:text-destructive"
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                )}
+                                            </Form>
+                                        )}
                                     <Select
-                                        defaultValue={followup.status}
-                                        onValueChange={(value) =>
-                                            router.put(
-                                                updateFollowup({
-                                                    customer: customer.id,
-                                                    followup: followup.id,
-                                                }).url,
-                                                { status: value },
-                                                { preserveScroll: true },
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger className="w-full sm:w-48">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {statusOptions.map((status) => (
-                                                <SelectItem key={status} value={status}>
-                                                    {statusLabel(status)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                            defaultValue={followup.status}
+                                            onValueChange={(value) =>
+                                                router.put(
+                                                    updateFollowup({
+                                                        customer: customer.id,
+                                                        followup: followup.id,
+                                                    }).url,
+                                                    { status: value },
+                                                    { preserveScroll: true },
+                                                )
+                                            }
+                                        >
+                                            <SelectTrigger className="w-full sm:w-48">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {statusOptions.map((status) => (
+                                                    <SelectItem key={status} value={status}>
+                                                        {statusLabel(status)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -279,6 +329,60 @@ export default function ShowCustomer({
                                     <p className="text-sm whitespace-pre-wrap">{note.note}</p>
                                 </div>
                             ))
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {timeline.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                Nothing recorded yet.
+                            </p>
+                        ) : (
+                            <ol className="space-y-3">
+                                {timeline.map((event, index) => (
+                                    <li key={index} className="flex gap-3 text-sm">
+                                        <span
+                                            className={cn(
+                                                'mt-1 size-2 shrink-0 rounded-full',
+                                                event.kind === 'payment'
+                                                    ? 'bg-emerald-500'
+                                                    : event.kind === 'invoice'
+                                                      ? 'bg-gold'
+                                                      : event.kind === 'message'
+                                                        ? 'bg-sky-500'
+                                                        : 'bg-muted-foreground/40',
+                                            )}
+                                        />
+                                        <div className="min-w-0">
+                                            {event.href ? (
+                                                <Link
+                                                    href={event.href}
+                                                    className="block hover:underline"
+                                                >
+                                                    {event.label}
+                                                </Link>
+                                            ) : (
+                                                <span className="block">
+                                                    {event.label}
+                                                </span>
+                                            )}
+                                            <span className="block text-xs text-muted-foreground">
+                                                {event.detail && (
+                                                    <>{event.detail} · </>
+                                                )}
+                                                {new Date(
+                                                    event.at,
+                                                ).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ol>
                         )}
                     </CardContent>
                 </Card>
@@ -403,6 +507,22 @@ function AddFollowupDialog({
                                     required
                                 />
                                 <InputError message={errors.followup_date} />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="reminder_at">
+                                    Remind me on (optional)
+                                </Label>
+                                <Input
+                                    id="reminder_at"
+                                    name="reminder_at"
+                                    type="datetime-local"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Shows on the reminders page when this time
+                                    passes, even before the follow-up date.
+                                </p>
+                                <InputError message={errors.reminder_at} />
                             </div>
 
                             <div className="grid gap-2">

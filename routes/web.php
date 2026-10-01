@@ -2,18 +2,23 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\CatalogItemController;
+use App\Http\Controllers\CatalogItemImportController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerFollowupController;
 use App\Http\Controllers\CustomerNoteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InstallmentController;
 use App\Http\Controllers\InviteAcceptController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InvoicePdfController;
 use App\Http\Controllers\InvoiceShareLinkController;
+use App\Http\Controllers\MessageLogController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalInvoiceController;
 use App\Http\Controllers\PublicInvoiceController;
+use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\RecurringInvoiceController;
 use App\Http\Controllers\RegisterController;
@@ -82,10 +87,25 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::post('customers/{customer}/followups', [CustomerFollowupController::class, 'store'])->name('customers.followups.store');
     Route::put('customers/{customer}/followups/{followup}', [CustomerFollowupController::class, 'update'])->name('customers.followups.update');
+    Route::delete('customers/{customer}/followups/{followup}', [CustomerFollowupController::class, 'destroy'])->name('customers.followups.destroy');
+
+    // The product catalog is a day-to-day working surface (quotations are
+    // built from it), so it is a top-level section rather than a settings
+    // screen.
+    Route::get('catalog', [CatalogItemController::class, 'index'])->name('catalog.index');
+    Route::post('catalog', [CatalogItemController::class, 'store'])->name('catalog.store');
+    Route::get('catalog/template', [CatalogItemImportController::class, 'template'])->name('catalog.template');
+    Route::get('catalog/export', [CatalogItemImportController::class, 'exportCsv'])->name('catalog.export');
+    Route::post('catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload');
+    Route::put('catalog/{catalogItem}', [CatalogItemController::class, 'update'])->name('catalog.update');
+    Route::delete('catalog/{catalogItem}', [CatalogItemController::class, 'destroy'])->name('catalog.destroy');
+
+    Route::post('quotations/draft', [QuotationController::class, 'draft'])->name('quotations.draft');
 
     Route::resource('invoices', InvoiceController::class);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
     Route::post('invoices/{invoice}/convert', [InvoiceController::class, 'convert'])->name('invoices.convert');
+    Route::post('invoices/{invoice}/quotation-status', [InvoiceController::class, 'quotationStatus'])->name('invoices.quotation-status');
     Route::post('invoices/{invoice}/einvoice', [InvoiceController::class, 'generateEInvoice'])->name('invoices.einvoice');
     Route::post('invoices/{invoice}/recurring', [RecurringInvoiceController::class, 'store'])->name('invoices.recurring.store');
     Route::delete('invoices/{invoice}/recurring/{profile}', [RecurringInvoiceController::class, 'destroy'])->name('invoices.recurring.destroy');
@@ -96,6 +116,9 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('payments/{payment}/receipt', [ReceiptController::class, 'payment'])->name('payments.receipt');
+    Route::post('invoices/{invoice}/installments', [InstallmentController::class, 'store'])->name('invoices.installments.store');
+    Route::post('invoices/{invoice}/installments/{installment}/collect', [InstallmentController::class, 'collect'])->name('invoices.installments.collect');
+    Route::delete('invoices/{invoice}/installments/{installment}', [InstallmentController::class, 'destroy'])->name('invoices.installments.destroy');
     Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('invoices.payments.store');
 
     Route::post('invoices/{invoice}/share-links', [InvoiceShareLinkController::class, 'store'])->name('invoices.share-links.store');
@@ -103,13 +126,17 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::post('invoices/{invoice}/share-links/{shareLink}/mark-sent', [InvoiceShareLinkController::class, 'markSent'])->name('invoices.share-links.mark-sent');
     Route::post('invoices/{invoice}/share-links/{shareLink}/sms', [InvoiceShareLinkController::class, 'sendSms'])->name('invoices.share-links.sms');
 
+    Route::post('invoice/view/{token}/decide', [PublicInvoiceController::class, 'decide'])->name('invoices.public.decide');
+
+    Route::get('message-logs', [MessageLogController::class, 'index'])->name('message-logs.index');
+
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/download', [ReportController::class, 'download'])->name('reports.download');
     Route::get('reports/gstr-1', [ReportController::class, 'gstr1'])->name('reports.gstr1');
     Route::get('reports/gstr-3b', [ReportController::class, 'gstr3b'])->name('reports.gstr3b');
 
     Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
-    Route::get('follow-ups', [ReminderController::class, 'followups'])->name('followups.index');
+
     Route::post('reminders', [ReminderController::class, 'store'])->name('reminders.store');
     Route::post('reminders/{reminder}/done', [ReminderController::class, 'done'])->name('reminders.done');
     Route::delete('reminders/{reminder}', [ReminderController::class, 'destroy'])->name('reminders.destroy');

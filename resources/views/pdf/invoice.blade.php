@@ -100,8 +100,13 @@
         <thead>
             <tr>
                 <th>Item</th>
-                <th>Metal / Purity</th>
-                <th class="right">Weight (g)</th>
+                @if($showWeights)
+                    <th>Metal / Purity</th>
+                    <th class="right">Weight (g)</th>
+                @else
+                    <th>{{ $hasAreaItems ? 'Brand / Model' : 'Brand / Spec' }}</th>
+                    <th class="right">{{ $hasAreaItems ? 'Area (sq ft)' : 'Size' }}</th>
+                @endif
                 <th class="right">Qty</th>
                 <th class="right">Rate</th>
                 <th class="right">Charges</th>
@@ -113,15 +118,30 @@
                 <tr>
                     <td>
                         <strong>{{ $item->item_name }}</strong>
-                        @if($template->config('show_huid') && $item->huid_number)<br><span class="muted">HUID: {{ $item->huid_number }}</span>@endif
+                        @if($item->line_type === 'exchange_credit')<br><span class="muted">Exchange credit (old gold)</span>@endif
+                        @if($showWeights && $template->config('show_huid') && $item->huid_number)<br><span class="muted">HUID: {{ $item->huid_number }}</span>@endif
                         @if($template->config('show_hsn') && $item->hsn_code)<br><span class="muted">HSN: {{ $item->hsn_code }}</span>@endif
-                        @if($template->config('show_stone_details'))
+                        @if($showStones && $template->config('show_stone_details'))
                             @if($item->certificate_number)<br><span class="muted">Cert: {{ $item->certificate_number }}</span>@endif
                             @if($item->stone_carat > 0)<br><span class="muted">Stone: {{ number_format((float) $item->stone_carat, 3) }} ct {{ $item->stone_clarity }} {{ $item->stone_color }}</span>@endif
                         @endif
+                        @if(! empty($item->attributes))
+                            <br><span class="muted">{{ collect($item->attributes)->map(fn ($value, $key) => $key.': '.$value)->implode(' · ') }}</span>
+                        @endif
                     </td>
-                    <td>{{ $item->metal_type }} @if($item->purity) / {{ $item->purity }} @endif</td>
-                    <td class="right">{{ number_format((float) $item->net_weight, 3) }}</td>
+                    @if($showWeights)
+                        <td>{{ $item->metal_type }} @if($item->purity) / {{ $item->purity }} @endif</td>
+                        <td class="right">{{ number_format((float) $item->net_weight, 3) }}</td>
+                    @else
+                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' · ') ?: '—' }}</td>
+                        <td class="right">
+                            @if($item->length && $item->width)
+                                {{ number_format((float) $item->length * (float) $item->width / 929.0304, 2) }}
+                            @else
+                                {{ $item->size_label ?? '—' }}
+                            @endif
+                        </td>
+                    @endif
                     <td class="right">{{ $item->quantity }}</td>
                     <td class="right">Rs. {{ number_format((float) $item->rate, 2) }}</td>
                     <td class="right">Rs. {{ number_format((float) $item->charges->sum('amount') * $item->quantity, 2) }}</td>
@@ -156,6 +176,25 @@
             </td>
         </tr>
     </table>
+
+    @if($invoice->irn)
+        <table style="margin-top: 14px; border: 1px solid #c9a227; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 6px 10px;">
+                    <strong>IRN</strong>: {{ $invoice->irn }}<br>
+                    <span class="muted">
+                        Ack no.: {{ $invoice->irn_ack_no ?? '—' }}
+                        @if($invoice->irn_ack_date)
+                            · Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
+                        @endif
+                        @if($invoice->eway_bill_no)
+                            · E-way bill: {{ $invoice->eway_bill_no }}
+                        @endif
+                    </span>
+                </td>
+            </tr>
+        </table>
+    @endif
 
     @if($invoice->notes)
         <h2>Notes</h2>

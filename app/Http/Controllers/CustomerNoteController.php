@@ -11,7 +11,7 @@ class CustomerNoteController extends Controller
 {
     public function store(StoreCustomerNoteRequest $request, Customer $customer): RedirectResponse
     {
-        $customer->notes()->create([
+        $customer->notesLog()->create([
             ...$request->validated(),
             'created_by' => $request->user()->id,
         ]);

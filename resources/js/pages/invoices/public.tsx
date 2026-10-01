@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
@@ -7,6 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { buildUpiCollectUrl } from '@/lib/share-invoice';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
@@ -27,6 +35,9 @@ type PublicInvoice = {
     balance_amount: string;
     notes: string | null;
     terms: string | null;
+    irn: string | null;
+    irn_ack_no: string | null;
+    eway_bill_no: string | null;
     customer: { full_name: string; mobile_number: string; email: string | null; address: string | null };
     items: {
         id: number;
@@ -60,18 +71,28 @@ type TemplateConfig = {
     footer_note: string | null;
 };
 
+type QuotationState = {
+    status: string;
+    is_open: boolean;
+    can_decide: boolean;
+    response: string | null;
+    updates: { label: string; detail: string | null; at: string }[];
+};
+
 export default function PublicInvoicePage({
     status,
     token,
     invoice,
     business,
     template,
+    quotation,
 }: {
     status: 'ok' | 'password_required' | 'unavailable';
     token?: string;
     invoice?: PublicInvoice;
     business?: Business;
     template?: TemplateConfig;
+    quotation?: QuotationState | null;
 }) {
     if (status === 'unavailable') {
         return (
@@ -101,7 +122,22 @@ export default function PublicInvoicePage({
             <Head title={invoice.invoice_number} />
 
             <div className="mx-auto max-w-2xl space-y-4 px-4">
-                <div className="flex justify-end gap-2 print:hidden">
+                <div className="flex flex-wrap justify-end gap-2 print:hidden">
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="bg-[#25D366] text-white hover:bg-[#1fb955]"
+                    >
+                        <a
+                            href={`https://wa.me/?text=${encodeURIComponent(
+                                `${business.business_name} — ${invoice.invoice_number}: ${window.location.href}`,
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            Share on WhatsApp
+                        </a>
+                    </Button>
                     <Button variant="outline" onClick={() => window.print()}>
                         <Printer className="size-4" />
                         Print
@@ -163,6 +199,20 @@ export default function PublicInvoicePage({
                             <p className="font-medium">{invoice.customer.full_name}</p>
                             <p className="text-sm text-muted-foreground">{invoice.customer.mobile_number}</p>
                         </div>
+
+                        {invoice.irn && (
+                            <div className="mt-4 rounded-md border border-gold/40 bg-gold/5 p-3 text-xs">
+                                <p className="font-medium">GST e-invoice (IRN)</p>
+                                <p className="break-all text-muted-foreground">
+                                    {invoice.irn}
+                                </p>
+                                <p className="text-muted-foreground">
+                                    Ack no.: {invoice.irn_ack_no ?? '—'}
+                                    {invoice.eway_bill_no &&
+                                        ` · E-way bill: ${invoice.eway_bill_no}`}
+                                </p>
+                            </div>
+                        )}
 
                         <div className="overflow-x-auto border-t pt-4">
                             <table className="w-full min-w-[420px] text-sm">
@@ -226,8 +276,148 @@ export default function PublicInvoicePage({
                         )}
                     </CardContent>
                 </Card>
+
+                {quotation && <QuotationPanel token={token!} quotation={quotation} />}
             </div>
         </div>
+    );
+}
+
+/**
+ * What the customer can do with a shared quotation: accept it, decline it,
+ * and see what changed since it was sent.
+ */
+function QuotationPanel({
+    token,
+    quotation,
+}: {
+    token: string;
+    quotation: QuotationState;
+}) {
+    const { data, setData, post, processing, errors, wasSuccessful } = useForm({
+        decision: 'accepted',
+        response: '',
+        name: '',
+    });
+
+    const { flash } = usePage<{ flash: { message?: string } }>().props;
+    const accepted = quotation.status === 'accepted';
+    const rejected = quotation.status === 'rejected';
+
+    return (
+        <Card className="print:hidden">
+            <CardContent className="space-y-4 p-6">
+                <div>
+                    <p className="font-medium">
+                        This document is a quotation
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Status: <span className="capitalize">{quotation.status}</span>
+                        {quotation.response && ` · ${quotation.response}`}
+                    </p>
+                </div>
+
+                {quotation.can_decide && !wasSuccessful && (
+                    <>
+                        {flash.message && (
+                            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+                                {flash.message}
+                            </p>
+                        )}
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="decision">Your decision</Label>
+                                <Select
+                                    value={data.decision}
+                                    onValueChange={(value) =>
+                                        setData('decision', value)
+                                    }
+                                >
+                                    <SelectTrigger id="decision">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="accepted">
+                                            Accept this quotation
+                                        </SelectItem>
+                                        <SelectItem value="rejected">
+                                            Decline / discuss changes
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="name">Your name (optional)</Label>
+                                <Input
+                                    id="name"
+                                    value={data.name}
+                                    onChange={(e) => setData('name', e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="response">
+                                Message (optional)
+                            </Label>
+                            <Textarea
+                                id="response"
+                                rows={2}
+                                value={data.response}
+                                onChange={(e) =>
+                                    setData('response', e.target.value)
+                                }
+                                placeholder="Anything you would like us to change?"
+                            />
+                            <InputError message={errors.response} />
+                            <InputError message={errors.decision} />
+                        </div>
+
+                        <Button
+                            disabled={processing}
+                            onClick={() =>
+                                post(`/invoice/view/${token}/decide`)
+                            }
+                        >
+                            {processing ? 'Sending…' : 'Send my response'}
+                        </Button>
+                    </>
+                )}
+
+                {(accepted || rejected) && (
+                    <p className="rounded-md bg-muted px-3 py-2 text-sm">
+                        {accepted
+                            ? 'You accepted this quotation. We will be in touch to confirm.'
+                            : 'You declined this quotation. We will get back to you shortly.'}
+                    </p>
+                )}
+
+                {quotation.updates.length > 0 && (
+                    <div className="border-t pt-3">
+                        <p className="mb-2 text-sm font-medium">Updates</p>
+                        <ol className="space-y-1.5">
+                            {quotation.updates.map((update, i) => (
+                                <li
+                                    key={i}
+                                    className="text-sm text-muted-foreground"
+                                >
+                                    <span className="text-foreground">
+                                        {update.label}
+                                    </span>{' '}
+                                    — {new Date(update.at).toLocaleString()}
+                                    {update.detail && (
+                                        <span className="block text-xs">
+                                            {update.detail}
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 

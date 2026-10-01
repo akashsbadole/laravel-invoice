@@ -6,6 +6,7 @@ import {
     Crown,
     FileText,
     LayoutDashboard,
+    Package,
     Settings,
     Users,
 } from 'lucide-react';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 const navItems: { titleKey: I18nKey; href: string; icon: typeof LayoutDashboard }[] = [
     { titleKey: 'nav.dashboard', href: '/dashboard', icon: LayoutDashboard },
     { titleKey: 'nav.customers', href: '/customers', icon: Users },
+    { titleKey: 'nav.catalog', href: '/catalog', icon: Package },
     { titleKey: 'nav.invoices', href: '/invoices', icon: FileText },
     { titleKey: 'nav.payments', href: '/payments', icon: CreditCard },
     { titleKey: 'nav.reports', href: '/reports', icon: BarChart3 },

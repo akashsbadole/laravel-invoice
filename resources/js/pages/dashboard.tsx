@@ -5,9 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
+import { index as catalogIndex } from '@/routes/catalog';
 import { create as createCustomer } from '@/routes/customers';
 import { create as createInvoice, show as showInvoice } from '@/routes/invoices';
 import { index as remindersIndex } from '@/routes/reminders';
+import { rateTypeLabel } from '@/lib/industries';
 import type { MetalRate } from '@/types/invoice';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -64,6 +66,7 @@ export default function Dashboard({
     overdueInvoices,
     rates,
     reminderCount,
+    catalog,
 }: {
     stats: Stats;
     months: MonthPoint[];
@@ -73,6 +76,17 @@ export default function Dashboard({
     overdueInvoices: OverdueInvoice[];
     rates: MetalRate[];
     reminderCount: number;
+    catalog: {
+        total: number;
+        active: number;
+        recent: {
+            id: number;
+            name: string;
+            brand: string | null;
+            rate_type: string;
+            default_rate: string | null;
+        }[];
+    };
 }) {
     const maxSales = Math.max(...months.map((m) => Math.max(m.sales, m.collected)), 1);
 
@@ -161,25 +175,21 @@ export default function Dashboard({
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Today's metal rates</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            {rates.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    No rates set yet — add one in Settings → Metal rates.
-                                </p>
-                            ) : (
-                                rates.map((r) => (
+                    {rates.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Today's metal rates</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {rates.map((r) => (
                                     <div key={r.id} className="flex justify-between text-sm">
                                         <span>{r.metal_type} {r.purity}</span>
                                         <span className="font-medium">₹{r.rate_per_gram}/g</span>
                                     </div>
-                                ))
-                            )}
-                        </CardContent>
-                    </Card>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -257,6 +267,85 @@ export default function Dashboard({
                                     </Link>
                                 ))
                             )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex-row items-center justify-between">
+                            <CardTitle>Product catalog</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" asChild>
+                                    <Link href={catalogIndex()}>
+                                        Manage
+                                    </Link>
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex gap-4 text-sm">
+                                <span>
+                                    <span className="text-muted-foreground">
+                                        Products
+                                    </span>{' '}
+                                    <span className="font-semibold">
+                                        {catalog.total}
+                                    </span>
+                                </span>
+                                <span>
+                                    <span className="text-muted-foreground">
+                                        Active
+                                    </span>{' '}
+                                    <span className="font-semibold">
+                                        {catalog.active}
+                                    </span>
+                                </span>
+                            </div>
+
+                            {catalog.total === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    No products yet. Add what you sell, then
+                                    build quotations straight from the catalog.
+                                </p>
+                            ) : (
+                                <div className="space-y-1">
+                                    {catalog.recent.map((item) => (
+                                        <Link
+                                            key={item.id}
+                                            href={catalogIndex()}
+                                            className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                                        >
+                                            <span className="truncate">
+                                                {item.name}
+                                                {item.brand && (
+                                                    <span className="text-muted-foreground">
+                                                        {' '}
+                                                        · {item.brand}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            {item.default_rate && (
+                                                <span className="shrink-0 font-medium">
+                                                    {currency.format(
+                                                        Number(
+                                                            item.default_rate,
+                                                        ),
+                                                    )}
+                                                    /{rateTypeLabel(
+                                                        item.rate_type,
+                                                    ).replace('Per ', '').toLowerCase()}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+
+                            <Button size="sm" variant="outline" asChild className="w-full">
+                                <Link href={catalogIndex()}>
+                                    <Plus className="size-4" />
+                                    Add product
+                                </Link>
+                            </Button>
                         </CardContent>
                     </Card>
 

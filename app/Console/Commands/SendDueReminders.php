@@ -66,6 +66,15 @@ class SendDueReminders extends Command
             if ($business->sms_birthday_wishes) {
                 $this->smsBirthdays($reminders->upcoming('birthday', today(), 0), $sms, $business->business_name);
             }
+
+            if ($business->sms_anniversary_wishes) {
+                $this->smsOccasions(
+                    $reminders->upcoming('anniversary', today(), 0),
+                    $sms,
+                    $business->business_name,
+                    'Happy Anniversary'
+                );
+            }
         }
     }
 
@@ -107,12 +116,22 @@ class SendDueReminders extends Command
      */
     protected function smsBirthdays(Collection $customers, SmsService $sms, string $businessName): void
     {
+        $this->smsOccasions($customers, $sms, $businessName, 'Happy Birthday');
+    }
+
+    /**
+     * @param  Collection<int,array<string,mixed>>  $customers
+     */
+    protected function smsOccasions(Collection $customers, SmsService $sms, string $businessName, string $greeting): void
+    {
         foreach ($customers as $customer) {
-            $sms->send((string) $customer['mobile_number'], "Happy Birthday {$customer['full_name']}! Wishing you a wonderful year ahead. - {$businessName}", [
-                'customer_id' => $customer['id'],
-            ]);
+            $sms->send(
+                (string) $customer['mobile_number'],
+                "{$greeting} {$customer['full_name']}! Wishing you a wonderful day ahead. - {$businessName}",
+                ['customer_id' => $customer['id']],
+            );
         }
 
-        $this->info($customers->count().' birthday SMS processed.');
+        $this->info($customers->count()." {$greeting} SMS processed.");
     }
 }

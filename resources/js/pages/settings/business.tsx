@@ -14,9 +14,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import type { IndustryOption } from '@/lib/industries';
 
 type BusinessSettings = {
     business_name: string;
+    industry: string;
     address: string | null;
     pincode: string | null;
     phone: string | null;
@@ -33,6 +35,11 @@ type BusinessSettings = {
     sms_http_url: string | null;
     sms_http_to_field: string;
     sms_http_message_field: string;
+    sms_payment_reminders: boolean;
+    sms_birthday_wishes: boolean;
+    sms_anniversary_wishes: boolean;
+    quotation_customer_decisions: boolean;
+    quotation_show_updates: boolean;
     default_tax_rate: string;
     default_currency: string;
     invoice_terms: string | null;
@@ -49,8 +56,10 @@ type BusinessSettings = {
 
 export default function BusinessSettingsPage({
     settings,
+    industries,
 }: {
     settings: BusinessSettings;
+    industries: IndustryOption[];
 }) {
     return (
         <>
@@ -94,6 +103,34 @@ export default function BusinessSettingsPage({
                                     error={errors.logo}
                                     hint="PNG or JPG, up to 2MB"
                                 />
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="industry">
+                                        Industry
+                                    </Label>
+                                    <Select name="industry" defaultValue={settings.industry}>
+                                        <SelectTrigger id="industry" className="w-full">
+                                            <SelectValue placeholder="Select your trade" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {industries.map((option) => (
+                                                <SelectItem
+                                                    key={option.key}
+                                                    value={option.key}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">
+                                        Controls which modules and item fields
+                                        appear — metal rates and hallmarking for
+                                        jewelry, per sq ft pricing for tiles,
+                                        and so on.
+                                    </p>
+                                    <InputError message={errors.industry} />
+                                </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="address">Address</Label>
@@ -497,6 +534,107 @@ export default function BusinessSettingsPage({
                                         />
                                         <InputError message={errors.sms_http_message_field} />
                                     </div>
+                                </div>
+
+                                <div className="space-y-3 rounded-md border p-4">
+                                    <p className="text-sm font-medium">
+                                        Automatic messages
+                                    </p>
+                                    <p className="-mt-1 text-xs text-muted-foreground">
+                                        Run daily by the <code>reminders:send</code>{' '}
+                                        scheduler. Messages are always recorded in
+                                        message history.
+                                    </p>
+
+                                    {(
+                                        [
+                                            {
+                                                name: 'sms_payment_reminders',
+                                                label: 'Payment due reminders',
+                                                hint: 'Nudge customers whose invoices are past due.',
+                                            },
+                                            {
+                                                name: 'sms_birthday_wishes',
+                                                label: 'Birthday wishes',
+                                                hint: 'Sent on the day of their birthday.',
+                                            },
+                                            {
+                                                name: 'sms_anniversary_wishes',
+                                                label: 'Anniversary wishes',
+                                                hint: 'Sent on the customer’s anniversary.',
+                                            },
+                                        ] as const
+                                    ).map((option) => (
+                                        <label
+                                            key={option.name}
+                                            className="flex cursor-pointer items-start gap-3"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                name={option.name}
+                                                value="1"
+                                                defaultChecked={
+                                                    settings[option.name]
+                                                }
+                                                className="mt-1 size-4"
+                                            />
+                                            <span>
+                                                <span className="block text-sm">
+                                                    {option.label}
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {option.hint}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            <div className="space-y-3 rounded-md border p-4">
+                                    <p className="text-sm font-medium">
+                                        Quotations
+                                    </p>
+                                    <p className="-mt-1 text-xs text-muted-foreground">
+                                        What customers can do on a shared
+                                        quotation link.
+                                    </p>
+
+                                    {(
+                                        [
+                                            {
+                                                name: 'quotation_customer_decisions',
+                                                label: 'Let customers accept or decline',
+                                                hint: 'Shows Accept / Decline buttons on the shared quotation.',
+                                            },
+                                            {
+                                                name: 'quotation_show_updates',
+                                                label: 'Show an updates feed',
+                                                hint: 'Customers see every change made to a shared quotation.',
+                                            },
+                                        ] as const
+                                    ).map((option) => (
+                                        <label
+                                            key={option.name}
+                                            className="flex cursor-pointer items-start gap-3"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                name={option.name}
+                                                value="1"
+                                                defaultChecked={
+                                                    settings[option.name]
+                                                }
+                                                className="mt-1 size-4"
+                                            />
+                                            <span>
+                                                <span className="block text-sm">
+                                                    {option.label}
+                                                </span>
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {option.hint}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    ))}
                                 </div>
                             </section>
 

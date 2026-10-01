@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import type { InvoiceTemplate } from '@/types/invoice';
 
-const toggles: { name: keyof InvoiceTemplate['layout_config']; label: string }[] = [
+const allToggles: { name: keyof InvoiceTemplate['layout_config']; label: string }[] = [
     { name: 'show_huid', label: 'Show HUID (hallmark ID)' },
     { name: 'show_hsn', label: 'Show HSN code' },
     { name: 'show_stone_details', label: 'Show stone / certificate details' },
@@ -37,7 +37,19 @@ const toggles: { name: keyof InvoiceTemplate['layout_config']; label: string }[]
     { name: 'show_qr_code', label: 'Show QR code (needs simple-qrcode package)' },
 ];
 
-export default function InvoiceTemplatesPage({ templates }: { templates: InvoiceTemplate[] }) {
+export default function InvoiceTemplatesPage({
+    templates,
+    industryTemplateFlags,
+}: {
+    templates: InvoiceTemplate[];
+    industryTemplateFlags: string[];
+}) {
+    // Jewelry-only toggles are meaningless for a tiles or hardware template.
+    const toggles = allToggles.filter(
+        (toggle) =>
+            industryTemplateFlags.length === 0 ||
+            industryTemplateFlags.includes(toggle.name),
+    );
     return (
         <>
             <Head title="Invoice templates" />
@@ -50,7 +62,7 @@ export default function InvoiceTemplatesPage({ templates }: { templates: Invoice
                 />
 
                 <div className="flex justify-end">
-                    <TemplateDialog mode="create" />
+                    <TemplateDialog mode="create" toggles={toggles} />
                 </div>
 
                 <div className="space-y-2">
@@ -75,7 +87,7 @@ export default function InvoiceTemplatesPage({ templates }: { templates: Invoice
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    <TemplateDialog mode="edit" template={template} />
+                                    <TemplateDialog mode="edit" template={template} toggles={toggles} />
                                     {!template.is_default && (
                                         <>
                                             <Form {...InvoiceTemplateController.setDefault.form(template.id)}>
@@ -104,7 +116,15 @@ export default function InvoiceTemplatesPage({ templates }: { templates: Invoice
     );
 }
 
-function TemplateDialog({ mode, template }: { mode: 'create' | 'edit'; template?: InvoiceTemplate }) {
+function TemplateDialog({
+    mode,
+    template,
+    toggles,
+}: {
+    mode: 'create' | 'edit';
+    template?: InvoiceTemplate;
+    toggles: typeof allToggles;
+}) {
     const [open, setOpen] = useState(false);
     const config = template?.layout_config;
     const formProps =
@@ -152,7 +172,7 @@ function TemplateDialog({ mode, template }: { mode: 'create' | 'edit'; template?
                             {mode === 'create' && (
                                 <div className="grid gap-2">
                                     <Label htmlFor="tpl-slug">Slug</Label>
-                                    <Input id="tpl-slug" name="slug" placeholder="wedding-gold" required />
+                                    <Input id="tpl-slug" name="slug" placeholder="standard" required />
                                     <InputError message={errors.slug} />
                                 </div>
                             )}

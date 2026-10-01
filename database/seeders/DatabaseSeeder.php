@@ -18,9 +18,10 @@ class DatabaseSeeder extends Seeder
         Plan::ensureDefaults();
 
         $tenant = Tenant::query()->firstOrCreate(
-            ['slug' => 'my-jewellery-store'],
+            ['slug' => 'demo-jewelry-store'],
             [
-                'name' => 'My Jewellery Store',
+                'name' => 'Demo Jewelry Store',
+                'industry' => 'jewelry',
                 'status' => 'active',
                 'trial_ends_at' => now()->addDays(14),
             ],

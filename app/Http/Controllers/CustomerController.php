@@ -6,6 +6,8 @@ use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Http\Requests\Customers\UpdateCustomerRequest;
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use App\Models\MessageLog;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,6 +82,7 @@ class CustomerController extends Controller
 
         return Inertia::render('customers/show', [
             'customer' => $customer,
+            'timeline' => $this->timeline($customer),
             'stats' => [
                 'total_invoiced' => (float) $customer->totalInvoiced(),
                 'total_paid' => (float) $customer->totalPaid(),
@@ -122,6 +125,87 @@ class CustomerController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Customer deleted.')]);
 
         return to_route('customers.index');
+    }
+
+    /**
+     * A merged, reverse-chronological history for one customer: invoices,
+     * payments, notes, follow-ups, messages and the shared activity log.
+     *
+     * @return list<array{at:string,kind:string,label:string,detail:string|null,href:string|null}>
+     */
+    public function timeline(Customer $customer): array
+    {
+        $events = [];
+
+        foreach ($customer->invoices()->latest('invoice_date')->get() as $invoice) {
+            $events[] = [
+                'at' => (string) $invoice->invoice_date,
+                'kind' => 'invoice',
+                'label' => "{$invoice->invoice_number} · ".number_format((float) $invoice->grand_total, 2),
+                'detail' => $invoice->document_type->value,
+                'href' => route('invoices.show', $invoice),
+            ];
+        }
+
+        foreach (Payment::query()->whereIn('invoice_id', $customer->invoices()->select('id'))->latest('payment_date')->get() as $payment) {
+            $events[] = [
+                'at' => (string) $payment->payment_date,
+                'kind' => 'payment',
+                'label' => 'Payment received '.number_format((float) $payment->amount, 2),
+                'detail' => $payment->payment_method->value,
+                'href' => route('invoices.show', $payment->invoice_id),
+            ];
+        }
+
+        foreach ($customer->notesLog()->with('creator:id,name')->latest()->get() as $note) {
+            $events[] = [
+                'at' => (string) $note->created_at,
+                'kind' => 'note',
+                'label' => $note->note,
+                'detail' => $note->creator?->name,
+                'href' => null,
+            ];
+        }
+
+        foreach ($customer->followups()->with('assignee:id,name')->latest('followup_date')->get() as $followup) {
+            $events[] = [
+                'at' => (string) $followup->followup_date,
+                'kind' => 'followup',
+                'label' => 'Follow-up · '.$followup->status->value,
+                'detail' => $followup->notes,
+                'href' => null,
+            ];
+        }
+
+        foreach (MessageLog::query()->where('customer_id', $customer->id)->latest()->limit(20)->get() as $log) {
+            $events[] = [
+                'at' => (string) $log->created_at,
+                'kind' => 'message',
+                'label' => "{$log->channel} to {$log->to} · {$log->status}",
+                'detail' => $log->body,
+                'href' => null,
+            ];
+        }
+
+        foreach (ActivityLog::query()
+            ->where('subject_type', $customer->getMorphClass())
+            ->where('subject_id', $customer->id)
+            ->with('user:id,name')
+            ->latest()
+            ->limit(20)
+            ->get() as $entry) {
+            $events[] = [
+                'at' => (string) $entry->created_at,
+                'kind' => 'activity',
+                'label' => $entry->description ?? $entry->action,
+                'detail' => $entry->user?->name,
+                'href' => null,
+            ];
+        }
+
+        usort($events, fn (array $a, array $b) => strcmp($b['at'], $a['at']));
+
+        return array_slice($events, 0, 50);
     }
 
     public function exportCsv(Request $request): HttpResponse

@@ -1,7 +1,7 @@
 {
-  "name": "Jewelry Invoice & CRM",
-  "short_name": "JewelInvoice",
-  "description": "Create customers, generate jewelry invoices, share PDFs, and track payments.",
+  "name": "Invoice CRM",
+  "short_name": "InvoiceCRM",
+  "description": "Create customers, generate quotations and GST invoices, share PDFs, and track payments.",
   "start_url": "/dashboard",
   "scope": "/",
   "id": "/dashboard",

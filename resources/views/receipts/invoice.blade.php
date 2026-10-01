@@ -30,10 +30,16 @@
         <div class="item">
             <div class="b">{{ $item->item_name }}</div>
             <div class="row small">
-                <span>{{ rtrim(rtrim(number_format((float) $item->net_weight, 3), '0'), '.') }}g {{ $item->metal_type }} {{ $item->purity }} x{{ $item->quantity }}</span>
+                @if($showWeights)
+                    <span>{{ rtrim(rtrim(number_format((float) $item->net_weight, 3), '0'), '.') }}g {{ $item->metal_type }} {{ $item->purity }} x{{ $item->quantity }}</span>
+                @elseif($item->length && $item->width)
+                    <span>{{ number_format((float) $item->length * (float) $item->width / 929.0304, 2) }} sq ft {{ $item->size_label }} {{ $item->brand }} x{{ $item->quantity }}</span>
+                @else
+                    <span>{{ collect([$item->brand, $item->size_label, $item->specification])->filter()->implode(' ') }} x{{ $item->quantity }}</span>
+                @endif
                 <span>{{ number_format((float) $item->base_value, 2) }}</span>
             </div>
-            @if($item->huid_number)<div class="small">HUID {{ $item->huid_number }}</div>@endif
+            @if($showWeights && $item->huid_number)<div class="small">HUID {{ $item->huid_number }}</div>@endif
         </div>
     @endforeach
     <hr>

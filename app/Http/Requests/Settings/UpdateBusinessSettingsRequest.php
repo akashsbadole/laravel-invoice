@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Support\Industry;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateBusinessSettingsRequest extends FormRequest
 {
@@ -18,6 +20,7 @@ class UpdateBusinessSettingsRequest extends FormRequest
     {
         return [
             'business_name' => ['required', 'string', 'max:255'],
+            'industry' => ['required', 'string', Rule::in(array_keys(Industry::all()))],
             'logo' => ['nullable', 'image', 'max:2048'],
             'address' => ['nullable', 'string', 'max:1000'],
             'pincode' => ['nullable', 'string', 'size:6'],
@@ -29,6 +32,9 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'receipt_width' => ['required', 'in:58,80'],
             'sms_payment_reminders' => ['boolean'],
             'sms_birthday_wishes' => ['boolean'],
+            'sms_anniversary_wishes' => ['boolean'],
+            'quotation_customer_decisions' => ['boolean'],
+            'quotation_show_updates' => ['boolean'],
             'sms_driver' => ['required', 'in:log,twilio,http'],
             'sms_country_code' => ['required', 'string', 'max:5'],
             'sms_twilio_sid' => ['nullable', 'string', 'max:255'],

@@ -9,8 +9,8 @@ interface AuthLayoutProps {
 }
 
 const highlights = [
-    { icon: FileText, text: 'Jewelry invoices with weight, rate & making-charge math' },
-    { icon: Share2, text: 'Secure customer links with PDF download & tracking' },
+    { icon: FileText, text: 'Jewelry by the gram, tiles by area, hardware by the piece' },
+    { icon: Share2, text: 'Quotations, invoices & secure customer links with PDF tracking' },
     { icon: BadgeCheck, text: 'Payments, receipts & reports — no POS clutter' },
 ];
 
@@ -21,12 +21,12 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
                 <AppLogo dark />
                 <div className="rise-in space-y-6">
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-gold-light">
-                        Jewelry invoicing, refined
+                        Invoicing for any trade
                     </p>
                     <h1 className="font-display text-4xl font-medium leading-tight xl:text-5xl">
-                        Invoices worthy of
+                        Quote it, bill it,
                         <br />
-                        the jewels they bill.
+                        collect it.
                     </h1>
                     <ul className="space-y-3">
                         {highlights.map((item) => (
@@ -38,7 +38,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
                     </ul>
                 </div>
                 <p className="text-xs text-ivory/50">
-                    Trusted by jewelers for estimates, GST invoices & payment tracking.
+                    Built for jewelers, hardware dealers, tile showrooms and general traders.
                 </p>
             </div>
 

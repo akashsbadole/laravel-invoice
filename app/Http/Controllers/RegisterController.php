@@ -8,11 +8,14 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\ChargeTypeSeeder;
+use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,7 +28,9 @@ class RegisterController extends Controller
             return to_route('dashboard');
         }
 
-        return Inertia::render('auth/register');
+        return Inertia::render('auth/register', [
+            'industries' => $this->industries(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -33,6 +38,7 @@ class RegisterController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'business_name' => ['required', 'string', 'max:255'],
+            'industry' => ['required', 'string', Rule::in(array_keys(Industry::all()))],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
@@ -42,14 +48,22 @@ class RegisterController extends Controller
         $user = DB::transaction(function () use ($validated, $trialDays) {
             $tenant = Tenant::create([
                 'name' => $validated['business_name'],
+                'industry' => $validated['industry'],
                 'slug' => $this->uniqueSlug($validated['business_name']),
                 'status' => 'active',
                 'trial_ends_at' => now()->addDays($trialDays),
             ]);
 
-            $settings = new BusinessSetting(['business_name' => $validated['business_name']]);
+            $settings = new BusinessSetting([
+                'business_name' => $validated['business_name'],
+                'industry' => $validated['industry'],
+            ]);
             $settings->tenant_id = $tenant->id;
             $settings->save();
+
+            // A new tenant starts with the charge catalogue for its trade —
+            // otherwise its invoices could carry no charges at all.
+            app(ChargeTypeSeeder::class)->seedForTenant($tenant->id, $validated['industry']);
 
             $user = new User([
                 'name' => $validated['name'],
@@ -81,6 +95,21 @@ class RegisterController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Welcome! Your 14-day trial has started.')]);
 
         return redirect()->intended(route('dashboard'));
+    }
+
+    /**
+     * @return list<array{key:string,label:string,description:string}>
+     */
+    protected function industries(): array
+    {
+        return collect(Industry::all())
+            ->map(fn (array $config, string $key) => [
+                'key' => $key,
+                'label' => $config['label'],
+                'description' => $config['description'],
+            ])
+            ->values()
+            ->all();
     }
 
     protected function uniqueSlug(string $businessName): string

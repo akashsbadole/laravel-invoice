@@ -127,7 +127,7 @@ function AddChargeTypeDialog() {
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Name</Label>
-                                <Input id="name" name="name" placeholder="e.g. Rhodium Plating" required />
+                                <Input id="name" name="name" placeholder="e.g. Installation" required />
                                 <InputError message={errors.name} />
                             </div>
                             <div className="grid gap-2">

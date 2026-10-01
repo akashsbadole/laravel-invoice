@@ -6,12 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLocale } from '@/lib/i18n';
+import type { IndustryOption } from '@/lib/industries';
+import { cn } from '@/lib/utils';
 
-export default function Register() {
+export default function Register({
+    industries,
+}: {
+    industries: IndustryOption[];
+}) {
     const { t } = useLocale();
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         business_name: '',
+        industry: 'jewelry',
         email: '',
         password: '',
         password_confirmation: '',
@@ -49,11 +56,48 @@ export default function Register() {
                         <Input
                             id="business_name"
                             autoComplete="organization"
-                            placeholder="Sharma Jewellers"
+                            placeholder="Sharma Traders"
                             value={data.business_name}
                             onChange={(e) => setData('business_name', e.target.value)}
                         />
                         <InputError message={errors.business_name} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>What do you sell?</Label>
+                        <div className="space-y-2">
+                            {industries.map((option) => (
+                                <label
+                                    key={option.key}
+                                    className={cn(
+                                        'flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors',
+                                        data.industry === option.key
+                                            ? 'border-gold bg-gold/5'
+                                            : 'hover:bg-muted/40',
+                                    )}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="industry"
+                                        value={option.key}
+                                        checked={data.industry === option.key}
+                                        onChange={(e) =>
+                                            setData('industry', e.target.value)
+                                        }
+                                        className="mt-1"
+                                    />
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-medium">
+                                            {option.label}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground">
+                                            {option.description}
+                                        </span>
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        <InputError message={errors.industry} />
                     </div>
 
                     <div className="grid gap-2">

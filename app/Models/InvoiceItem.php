@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
+use App\Enums\LineType;
 use App\Enums\RateType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,10 @@ class InvoiceItem extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'invoice_id', 'sort_order', 'item_name', 'description', 'item_code', 'hsn_code',
+        'invoice_id', 'sort_order', 'item_name', 'line_type', 'description', 'item_code', 'catalog_item_id', 'hsn_code',
+        'brand', 'model_number', 'serial_number', 'warranty_months',
+        'size_label', 'finish', 'grade', 'specification', 'batch_number',
+        'length', 'width', 'height', 'wastage_percent', 'boxes', 'attributes',
         'metal_type', 'purity', 'huid_number',
         'stone_clarity', 'stone_color', 'stone_carat', 'certificate_number',
         'quantity', 'gross_weight', 'net_weight', 'stone_weight',
@@ -24,8 +28,16 @@ class InvoiceItem extends Model
     protected function casts(): array
     {
         return [
+            'line_type' => LineType::class,
             'rate_type' => RateType::class,
             'quantity' => 'integer',
+            'warranty_months' => 'integer',
+            'attributes' => 'array',
+            'length' => 'decimal:3',
+            'width' => 'decimal:3',
+            'height' => 'decimal:3',
+            'boxes' => 'decimal:2',
+            'wastage_percent' => 'decimal:2',
             'gross_weight' => 'decimal:3',
             'net_weight' => 'decimal:3',
             'stone_weight' => 'decimal:3',
@@ -45,6 +57,16 @@ class InvoiceItem extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * The catalog product this line was built from, if any.
+     *
+     * @return BelongsTo<CatalogItem, $this>
+     */
+    public function catalogItem(): BelongsTo
+    {
+        return $this->belongsTo(CatalogItem::class, 'catalog_item_id');
     }
 
     /**
