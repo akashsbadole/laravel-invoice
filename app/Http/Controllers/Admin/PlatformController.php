@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Plan;
+use App\Models\PlatformActivityLog;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
@@ -191,6 +192,14 @@ class PlatformController extends Controller
 
         $tenant->update(['status' => $suspended ? 'active' : 'suspended']);
 
+        PlatformActivityLog::record(
+            $suspended ? 'tenant.reactivated' : 'tenant.suspended',
+            $tenant,
+            $suspended
+                ? "Reactivated {$tenant->name}"
+                : "Suspended {$tenant->name} — its staff can no longer sign in",
+        );
+
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => $suspended
@@ -212,12 +221,32 @@ class PlatformController extends Controller
 
         $subscription = Subscription::query()->firstOrNew(['tenant_id' => $tenant->id]);
 
+        $before = [
+            'plan_id' => $subscription->exists ? $subscription->plan_id : null,
+            'status' => $subscription->exists ? $subscription->status : null,
+        ];
+
         $subscription->fill([
             'plan_id' => $validated['plan_id'],
             'status' => $validated['status'],
             'trial_ends_at' => $validated['trial_ends_at'] ?? null,
             'current_period_ends_at' => $validated['current_period_ends_at'] ?? null,
         ])->save();
+
+        PlatformActivityLog::record(
+            'subscription.updated',
+            $tenant,
+            sprintf(
+                '%s moved to %s (%s)',
+                $tenant->name,
+                Plan::query()->findOrFail($validated['plan_id'])->name,
+                $validated['status'],
+            ),
+            ['tenant_id' => $tenant->id, 'from' => $before, 'to' => [
+                'plan_id' => (int) $validated['plan_id'],
+                'status' => $validated['status'],
+            ]],
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Subscription updated.')]);
 
@@ -262,14 +291,23 @@ class PlatformController extends Controller
     {
         abort_if($user->isSuperAdmin(), 422, 'Super admins cannot be deactivated from here.');
 
-        $user->update(['is_active' => ! $user->is_active]);
+        $activating = ! $user->is_active;
+
+        $user->update(['is_active' => $activating]);
+
+        PlatformActivityLog::record(
+            $activating ? 'user.activated' : 'user.deactivated',
+            $user,
+            ($activating ? 'Reactivated ' : 'Deactivated ').$user->name.' ('.$user->email.')',
+            ['tenant_id' => $user->tenant_id],
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('User updated.')]);
 
         return back();
     }
 
-    public function plans(): Response
+    public function plans(Request $request): Response
     {
         return Inertia::render('admin/plans', [
             'plans' => Plan::query()->withCount('subscriptions')->orderBy('sort_order')->get()
@@ -292,6 +330,87 @@ class PlatformController extends Controller
     }
 
     /**
+     * Edit a plan's commercial terms and visibility.
+     */
+    public function updatePlan(Request $request, Plan $plan): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'max_staff' => ['required', 'integer', 'min:1'],
+            // Blank means unlimited, which is how the column stores it.
+            'max_invoices_per_month' => ['nullable', 'integer', 'min:1'],
+            // Deliberately not `required`: an unchecked checkbox is simply
+            // absent from the payload, which must mean "hide this plan".
+            'is_active' => ['boolean'],
+        ]);
+
+        $isActive = $request->boolean('is_active');
+
+        // The free plan is what every tenant falls back to, so it must stay
+        // active and stay free.
+        abort_if(
+            $plan->isFree() && (! $isActive || (float) $validated['price'] > 0),
+            422,
+            'The free plan must stay active and free.',
+        );
+
+        $before = ['price' => $plan->price, 'max_staff' => $plan->max_staff, 'is_active' => $plan->is_active];
+
+        $plan->update([
+            'name' => $validated['name'],
+            'price' => $validated['price'],
+            'max_staff' => $validated['max_staff'],
+            'max_invoices_per_month' => $validated['max_invoices_per_month'] ?? null,
+            'is_active' => $isActive,
+        ]);
+
+        PlatformActivityLog::record(
+            'plan.updated',
+            $plan,
+            "Updated the {$plan->name} plan",
+            ['tenant_id' => null, 'from' => $before, 'to' => [
+                'price' => (float) $validated['price'],
+                'max_staff' => (int) $validated['max_staff'],
+                'is_active' => $isActive,
+            ]],
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Plan updated.')]);
+
+        return back();
+    }
+
+    /**
+     * The platform audit trail.
+     */
+    public function activity(Request $request): Response
+    {
+        $action = $request->string('action')->toString();
+
+        return Inertia::render('admin/activity', [
+            'entries' => PlatformActivityLog::query()
+                ->with(['actor', 'tenant'])
+                ->when($action, fn ($q) => $q->where('action', $action))
+                ->latest('id')
+                ->paginate(30)
+                ->withQueryString()
+                ->through(fn (PlatformActivityLog $log) => [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'action_label' => $log->actionLabel(),
+                    'description' => $log->description,
+                    'actor' => $log->actor?->name ?? 'System',
+                    'tenant' => $log->tenant?->name,
+                    'ip_address' => $log->ip_address,
+                    'created_at' => $log->created_at?->diffForHumans(),
+                ]),
+            'filters' => ['action' => $action],
+            'actions' => PlatformActivityLog::actionLabels(),
+        ]);
+    }
+
+    /**
      * Support flow: act as a tenant admin so you can reproduce their problem.
      * Recorded on the impersonating admin so the trail survives the session.
      */
@@ -302,7 +421,7 @@ class PlatformController extends Controller
         $target = User::query()->withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
-            ->orderByRaw("CASE WHEN role = ? THEN 0 WHEN role = ? THEN 1 ELSE 2 END", [
+            ->orderByRaw('CASE WHEN role = ? THEN 0 WHEN role = ? THEN 1 ELSE 2 END', [
                 UserRole::Admin->value,
                 UserRole::Manager->value,
             ])
@@ -310,9 +429,11 @@ class PlatformController extends Controller
 
         abort_unless($target, 422, 'This tenant has no active staff member to sign in as.');
 
-        DB::transaction(function () use ($request, $tenant, $target): void {
+        $superAdminId = $request->user()->id;
+
+        DB::transaction(function () use ($request, $tenant, $target, $superAdminId): void {
             $request->session()->put('impersonating', [
-                'super_admin_id' => $request->user()->id,
+                'super_admin_id' => $superAdminId,
                 'tenant_id' => $tenant->id,
                 'tenant_name' => $tenant->name,
                 'user_id' => $target->id,
@@ -320,13 +441,26 @@ class PlatformController extends Controller
             ]);
         });
 
+        // Logged before the auth switch, so the actor is the super admin
+        // rather than the tenant user we are about to become.
+        PlatformActivityLog::create([
+            'user_id' => $superAdminId,
+            'action' => 'tenant.impersonated',
+            'subject_type' => $tenant->getMorphClass(),
+            'subject_id' => $tenant->id,
+            'tenant_id' => $tenant->id,
+            'description' => "Viewing {$tenant->name} as {$target->name}",
+            'properties' => ['target_user_id' => $target->id, 'target_user' => $target->name],
+            'ip_address' => $request->ip(),
+        ]);
+
         // The acting admin stays signed in; the tenant context is what changes.
         auth()->login($target);
         $request->session()->regenerate();
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __("You are now viewing :tenant as :user.", [
+            'message' => __('You are now viewing :tenant as :user.', [
                 'tenant' => $tenant->name,
                 'user' => $target->name,
             ]),
@@ -335,6 +469,13 @@ class PlatformController extends Controller
         return redirect()->route('dashboard');
     }
 
+    /**
+     * Ending an impersonation session.
+     *
+     * This deliberately sits outside EnsureSuperAdmin: while impersonating,
+     * the signed-in user is the tenant's staff, so the super-admin gate would
+     * lock the operator out of the only route that can undo it.
+     */
     public function stopImpersonating(Request $request): RedirectResponse
     {
         $session = $request->session()->pull('impersonating');
@@ -346,6 +487,19 @@ class PlatformController extends Controller
                 auth()->login($superAdmin);
                 $request->session()->regenerate();
             }
+
+            // Recorded after the auth switch back, so the actor resolves to the
+            // super admin even though auth() is now the tenant user again.
+            PlatformActivityLog::create([
+                'user_id' => $session['super_admin_id'],
+                'action' => 'tenant.impersonation_ended',
+                'subject_type' => (new Tenant)->getMorphClass(),
+                'subject_id' => $session['tenant_id'],
+                'tenant_id' => $session['tenant_id'],
+                'description' => "Stopped viewing {$session['tenant_name']}",
+                'properties' => ['impersonated_user' => $session['user_name']],
+                'ip_address' => $request->ip(),
+            ]);
         }
 
         return redirect()->route('admin.dashboard');

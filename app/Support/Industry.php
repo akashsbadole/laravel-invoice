@@ -48,7 +48,7 @@ class Industry
     /**
      * @return array<string,mixed>
      */
-    public static function config(string $key): array
+    public static function config(?string $key): array
     {
         $all = self::all();
 

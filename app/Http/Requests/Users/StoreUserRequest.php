@@ -23,9 +23,18 @@ class StoreUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            // Only roles a tenant may hand out — never the platform super admin.
+            'role' => ['required', Rule::in($this->assignableRoles())],
             'password' => ['required', Password::defaults()],
             'is_active' => ['boolean'],
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function assignableRoles(): array
+    {
+        return array_map(fn (UserRole $role) => $role->value, UserRole::assignable());
     }
 }

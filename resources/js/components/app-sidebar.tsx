@@ -2,12 +2,16 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
     Bell,
+    Building2,
     CreditCard,
     Crown,
     FileText,
     LayoutDashboard,
     Package,
+    ScrollText,
     Settings,
+    Shield,
+    UserCog,
     Users,
 } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
@@ -30,12 +34,31 @@ const secondaryItems: { titleKey: I18nKey; href: string; icon: typeof Settings }
     { titleKey: 'nav.billing', href: '/billing', icon: Crown },
 ];
 
+/**
+ * Platform-only destinations. Shown to a super admin so the admin panel is
+ * reachable from anywhere rather than by typing /admin.
+ */
+const platformItems: { titleKey: I18nKey; href: string; icon: typeof Settings }[] = [
+    { titleKey: 'nav.platform', href: '/admin', icon: Shield },
+    { titleKey: 'nav.tenants', href: '/admin/tenants', icon: Building2 },
+    { titleKey: 'nav.allUsers', href: '/admin/users', icon: UserCog },
+    { titleKey: 'nav.plans', href: '/admin/plans', icon: CreditCard },
+    { titleKey: 'nav.activityLog', href: '/admin/activity', icon: ScrollText },
+];
+
 export function AppSidebar() {
-    const { url, props } = usePage<{ auth: { tenant: { id: number; name: string } | null; firms: { id: number; name: string }[] } }>();
+    const { url, props } = usePage<{
+        auth: {
+            tenant: { id: number; name: string } | null;
+            firms: { id: number; name: string }[];
+        };
+        isSuperAdmin?: boolean;
+    }>();
     const { auth } = props;
     const { t } = useLocale();
     const firms = auth.firms ?? [];
     const currentFirmId = auth.tenant?.id;
+    const isSuperAdmin = props.isSuperAdmin === true;
 
     return (
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-navy-deep text-ivory md:flex">
@@ -113,6 +136,41 @@ export function AppSidebar() {
                         </Link>
                     );
                 })}
+
+                {isSuperAdmin && (
+                    <>
+                        <div className="brand-rule mt-4" />
+                        <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-ivory/40">
+                            {t('nav.platform')}
+                        </p>
+                        {platformItems.map((item) => {
+                            const isActive = url.startsWith(item.href);
+                            const Icon = item.icon;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={cn(
+                                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                                        isActive
+                                            ? 'bg-ivory/10 font-medium text-ivory'
+                                            : 'text-ivory/65 hover:bg-ivory/5 hover:text-ivory',
+                                    )}
+                                >
+                                    <Icon
+                                        className={cn(
+                                            'size-4',
+                                            isActive
+                                                ? 'text-brand'
+                                                : 'text-ivory/50',
+                                        )}
+                                    />
+                                    {t(item.titleKey)}
+                                </Link>
+                            );
+                        })}
+                    </>
+                )}
             </nav>
 
             <div className="border-t border-ivory/10 p-3">

@@ -25,8 +25,8 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Middleware\EnsurePortalCustomer;
-use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureSubscribed;
+use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -167,10 +167,18 @@ Route::middleware(['auth', EnsureSuperAdmin::class])
         Route::post('tenants/{tenant}/toggle-status', [PlatformController::class, 'toggleTenantStatus'])->name('tenants.toggle-status');
         Route::put('tenants/{tenant}/subscription', [PlatformController::class, 'updateSubscription'])->name('tenants.subscription.update');
         Route::post('tenants/{tenant}/impersonate', [PlatformController::class, 'impersonate'])->name('tenants.impersonate');
-        Route::post('stop-impersonating', [PlatformController::class, 'stopImpersonating'])->name('impersonation.stop');
 
         Route::get('users', [PlatformController::class, 'users'])->name('users.index');
         Route::post('users/{user}/toggle-active', [PlatformController::class, 'toggleUser'])->name('users.toggle-active');
 
         Route::get('plans', [PlatformController::class, 'plans'])->name('plans.index');
+        Route::put('plans/{plan}', [PlatformController::class, 'updatePlan'])->name('plans.update');
+
+        Route::get('activity', [PlatformController::class, 'activity'])->name('activity.index');
     });
+
+// Outside the super-admin gate on purpose: while impersonating, the signed-in
+// user is the tenant's staff, so this is the only route that can end it.
+Route::middleware('auth')
+    ->post('admin/stop-impersonating', [PlatformController::class, 'stopImpersonating'])
+    ->name('admin.impersonation.stop');

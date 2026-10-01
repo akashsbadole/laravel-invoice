@@ -35,8 +35,16 @@ class BillingController extends Controller
         $subscription = $this->subscriptions->subscriptionFor($tenant);
         $subscription?->load('plan');
 
+        // While the product is free there is nothing to buy, so the page
+        // reports current usage instead of inviting a purchase. Paid plans
+        // are not shown as available upgrades in this mode.
+        $freeMode = $this->subscriptions->isFreeMode();
+
         return Inertia::render('billing', [
-            'plans' => Plan::query()->where('is_active', true)->orderBy('sort_order')->get(),
+            'freeMode' => $freeMode,
+            'plans' => $freeMode
+                ? Plan::query()->where('slug', Plan::FREE_SLUG)->get()
+                : Plan::query()->where('is_active', true)->orderBy('sort_order')->get(),
             'subscription' => $subscription,
             'trialDaysLeft' => $subscription && $subscription->isTrialing()
                 ? now()->diffInDays($subscription->trial_ends_at)
@@ -52,6 +60,9 @@ class BillingController extends Controller
 
     public function checkout(Request $request): RedirectResponse|SymfonyResponse
     {
+        // Nothing to buy while the product is free.
+        abort_if($this->subscriptions->isFreeMode(), 404);
+
         $validated = $request->validate([
             'plan' => ['required', 'exists:plans,slug'],
         ]);
@@ -80,6 +91,8 @@ class BillingController extends Controller
 
     public function verify(Request $request): RedirectResponse
     {
+        abort_if($this->subscriptions->isFreeMode(), 404);
+
         $validated = $request->validate([
             'plan' => ['required', 'exists:plans,slug'],
             'razorpay_order_id' => ['required', 'string'],

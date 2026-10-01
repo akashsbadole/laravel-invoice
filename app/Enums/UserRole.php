@@ -2,8 +2,6 @@
 
 namespace App\Enums;
 
-use App\Enums\Permission;
-
 enum UserRole: string
 {
     /**

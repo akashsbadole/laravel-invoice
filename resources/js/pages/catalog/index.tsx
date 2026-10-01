@@ -364,12 +364,7 @@ function FieldInput({
             return null;
 
         case 'attributes':
-            control = (
-                <AttributesEditor
-                    idPrefix={idPrefix}
-                    initial={item?.attributes ?? {}}
-                />
-            );
+            control = <AttributesEditor initial={item?.attributes ?? {}} />;
             break;
 
         default:
@@ -403,10 +398,8 @@ function FieldInput({
  * Repeatable key/value rows for the free-form `attributes` column.
  */
 function AttributesEditor({
-    idPrefix,
     initial,
 }: {
-    idPrefix: string;
     initial: Record<string, string>;
 }) {
     const [rows, setRows] = useState(() => {
@@ -429,15 +422,19 @@ function AttributesEditor({
                     key={index}
                     className="flex items-center gap-2"
                 >
+                    {/* Indexed by row, not by key: a typed key would
+                        otherwise change the posted array shape mid-edit and
+                        collide with a sibling row. The backend flattens
+                        these pairs. */}
                     <Input
-                        name={`attributes[${key || index}]`}
+                        name={`attributes[${index}][key]`}
                         defaultValue={key}
                         placeholder="Name"
                         aria-label={`Attribute ${index + 1} name`}
                         onChange={(e) => update(index, e.target.value, value)}
                     />
                     <Input
-                        name={`attributes[${key || index}]`}
+                        name={`attributes[${index}][value]`}
                         defaultValue={value}
                         placeholder="Value"
                         aria-label={`Attribute ${index + 1} value`}
@@ -469,8 +466,7 @@ function AttributesEditor({
                 <Plus className="size-4" />
                 Add attribute
             </Button>
-            <input type="hidden" name={`_${idPrefix}_attributes`} value="" />
-        </div>
+            </div>
     );
 }
 

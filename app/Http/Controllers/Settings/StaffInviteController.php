@@ -30,7 +30,7 @@ class StaffInviteController extends Controller
         // while logged in with that email joins this firm instead.
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            'role' => ['required', Rule::in(array_map(fn (UserRole $r) => $r->value, UserRole::assignable()))],
         ]);
 
         abort_if($validated['role'] === UserRole::Admin->value && ! $request->user()->isAdmin(), 403);

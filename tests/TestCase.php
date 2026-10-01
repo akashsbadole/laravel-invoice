@@ -38,12 +38,52 @@ abstract class TestCase extends BaseTestCase
     {
         $plan = Plan::ensureDefaults()['starter'];
 
-        return Subscription::create([
+        // One subscription per tenant, so calling this for a tenant that
+        // already has one must not violate the unique index.
+        return Subscription::query()->firstOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'plan_id' => $plan->id,
+                'status' => 'trialing',
+                'trial_ends_at' => $tenant->trial_ends_at,
+            ],
+        );
+    }
+
+    /**
+     * A platform super admin: no tenant, so no tenant scope and no
+     * subscription. Used for the /admin panel tests.
+     */
+    protected function superAdmin(array $attributes = []): User
+    {
+        $user = User::factory()->create(array_merge([
+            'role' => UserRole::SuperAdmin,
+            'tenant_id' => null,
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ], $attributes));
+
+        return $user->refresh();
+    }
+
+    /**
+     * A tenant staff member holding a specific role.
+     */
+    protected function userWithRole(UserRole $role, ?Tenant $tenant = null): User
+    {
+        $tenant ??= Tenant::factory()->create();
+
+        $this->subscribe($tenant);
+        app(ChargeTypeSeeder::class)->seedForTenant($tenant->id, $tenant->industry);
+
+        $user = User::factory()->create([
             'tenant_id' => $tenant->id,
-            'plan_id' => $plan->id,
-            'status' => 'trialing',
-            'trial_ends_at' => $tenant->trial_ends_at,
+            'role' => $role,
+            'is_active' => true,
         ]);
+        $user->firms()->attach($tenant->id, ['role' => $role->value]);
+
+        return $user->refresh();
     }
 
     protected function customerFor(User $user, array $attributes = []): Customer

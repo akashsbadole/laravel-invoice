@@ -44,6 +44,7 @@ function loadRazorpay(): Promise<void> {
 }
 
 export default function Billing({
+    freeMode,
     plans,
     subscription,
     trialDaysLeft,
@@ -51,6 +52,7 @@ export default function Billing({
     gatewayConfigured,
     razorpayKeyId,
 }: {
+    freeMode: boolean;
     plans: Plan[];
     subscription: Subscription;
     trialDaysLeft: number;
@@ -124,7 +126,31 @@ export default function Billing({
             <Head title="Billing" />
 
             <div className="space-y-6 p-4 md:p-6">
-                <Heading title="Billing & subscription" description="Plans, trial status and usage for your business." />
+                <Heading
+                    title="Billing & subscription"
+                    description={
+                        freeMode
+                            ? 'Everything is included at no cost right now.'
+                            : 'Plans, trial status and usage for your business.'
+                    }
+                />
+
+                {freeMode && (
+                    <div className="flex items-start gap-3 rounded-md border border-brand/30 bg-brand/5 p-4">
+                        <Check className="mt-0.5 size-5 shrink-0 text-brand" />
+                        <div>
+                            <p className="font-medium">
+                                You have full access to every feature
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Catalog and stock, unlimited staff and
+                                invoices, quotations, e-invoicing, automation
+                                and the customer portal — all included.
+                                Nothing here is limited or time-bound.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <Card>
                     <CardContent className="flex flex-col gap-2 pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -150,7 +176,7 @@ export default function Billing({
                     </CardContent>
                 </Card>
 
-                {!gatewayConfigured && (
+                {!freeMode && !gatewayConfigured && (
                     <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                         Online payments are not configured yet — contact support to subscribe.
                     </p>
@@ -168,9 +194,17 @@ export default function Billing({
                                         {isCurrent && <Badge>Current</Badge>}
                                     </CardTitle>
                                     <p className="flex items-center gap-1 text-2xl font-bold">
-                                        <BadgeIndianRupee className="size-5" />
-                                        {price.toLocaleString('en-IN')}
-                                        <span className="text-sm font-normal text-muted-foreground">/month</span>
+                                        {freeMode ? (
+                                            'Free'
+                                        ) : (
+                                            <>
+                                                <BadgeIndianRupee className="size-5" />
+                                                {price.toLocaleString('en-IN')}
+                                                <span className="text-sm font-normal text-muted-foreground">
+                                                    /month
+                                                </span>
+                                            </>
+                                        )}
                                     </p>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
@@ -182,7 +216,7 @@ export default function Billing({
                                             </li>
                                         ))}
                                     </ul>
-                                    {!isCurrent && (
+                                    {!freeMode && !isCurrent && (
                                         <Button
                                             className="w-full"
                                             disabled={!gatewayConfigured || paying !== null}

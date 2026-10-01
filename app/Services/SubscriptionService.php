@@ -10,6 +10,18 @@ use App\Models\User;
 
 class SubscriptionService
 {
+    /**
+     * Is the product currently free for every tenant?
+     *
+     * The single switch behind "all features are free": while true, no
+     * tenant is ever gated and no quota is ever enforced. Set
+     * BILLING_MODE=paid to turn the paywall back on without a code change.
+     */
+    public function isFreeMode(): bool
+    {
+        return config('billing.mode', 'free') !== 'paid';
+    }
+
     public function subscriptionFor(Tenant $tenant): ?Subscription
     {
         return $tenant->subscription ?? $tenant->subscription()->first();
@@ -23,10 +35,17 @@ class SubscriptionService
      */
     public function usablePlan(Tenant $tenant): ?Plan
     {
+        // Free mode: everything is available to everyone, so access never
+        // depends on a subscription row at all.
+        if ($this->isFreeMode()) {
+            return $this->defaultPlan();
+        }
+
         $subscription = $this->subscriptionFor($tenant);
 
+        // A tenant with no subscription row has nothing to gate against.
         if (! $subscription) {
-            return null;
+            return $this->defaultPlan();
         }
 
         if ($subscription->plan?->isFree()) {
@@ -34,6 +53,16 @@ class SubscriptionService
         }
 
         return $subscription->isUsable() ? $subscription->plan : null;
+    }
+
+    /**
+     * The plan a tenant falls back to when nothing is recorded.
+     */
+    protected function defaultPlan(): ?Plan
+    {
+        // ensureDefaults is idempotent, and using it means a fresh
+        // installation that has never seeded plans still gets access.
+        return Plan::ensureDefaults()[Plan::FREE_SLUG] ?? null;
     }
 
     public function hasPaidPlan(Tenant $tenant): bool
@@ -45,6 +74,11 @@ class SubscriptionService
 
     public function staffQuotaError(Tenant $tenant): ?string
     {
+        // No quotas while the product is free.
+        if ($this->isFreeMode()) {
+            return null;
+        }
+
         $plan = $this->usablePlan($tenant);
 
         if (! $plan) {
@@ -66,6 +100,11 @@ class SubscriptionService
 
     public function invoiceQuotaError(Tenant $tenant): ?string
     {
+        // No quotas while the product is free.
+        if ($this->isFreeMode()) {
+            return null;
+        }
+
         $plan = $this->usablePlan($tenant);
 
         if (! $plan) {

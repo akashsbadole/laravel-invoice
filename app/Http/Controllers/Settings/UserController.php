@@ -27,7 +27,9 @@ class UserController extends Controller
         return Inertia::render('settings/users', [
             'users' => User::query()->orderBy('name')
                 ->get(['id', 'name', 'email', 'role', 'is_active', 'last_login_at', 'created_at']),
-            'roles' => collect(UserRole::cases())
+            // Only roles a tenant may assign — the platform super admin is managed
+            // from the /admin panel, never from a tenant's staff screen.
+            'roles' => collect(UserRole::assignable())
                 ->map(fn (UserRole $r) => ['value' => $r->value, 'label' => $r->label()])->values(),
             'invites' => StaffInvite::query()->whereNull('accepted_at')
                 ->orderByDesc('created_at')

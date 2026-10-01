@@ -78,6 +78,49 @@ class CatalogEnrichmentTest extends TestCase
         );
     }
 
+    /**
+     * The repeatable editor posts attributes[<index>][key|value] pairs; the
+     * backend must flatten them into the stored string map.
+     */
+    public function test_indexed_attribute_rows_from_the_editor_are_flattened(): void
+    {
+        $user = $this->adminFor();
+
+        $this->actingAs($user)->post(route('catalog.store'), [
+            'name' => 'Ball Valve',
+            'rate_type' => 'per_piece',
+            'attributes' => [
+                ['key' => 'thread', 'value' => '2x40'],
+                ['key' => 'finish', 'value' => 'matte'],
+                // A half-filled row the user left behind.
+                ['key' => 'orphan', 'value' => ''],
+                ['key' => '', 'value' => 'no key'],
+            ],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            ['thread' => '2x40', 'finish' => 'matte'],
+            CatalogItem::firstOrFail()->attributes,
+        );
+    }
+
+    public function test_attributes_can_be_replaced_wholesale(): void
+    {
+        $user = $this->adminFor();
+        $item = $this->inTenant($user, fn () => $this->item([
+            'rate_type' => 'per_piece',
+            'attributes' => ['old' => 'value'],
+        ]));
+
+        $this->actingAs($user)->put(route('catalog.update', $item), [
+            'name' => $item->name,
+            'rate_type' => 'per_piece',
+            'attributes' => [['key' => 'new', 'value' => 'value']],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame(['new' => 'value'], $item->refresh()->attributes);
+    }
+
     public function test_blank_attribute_rows_are_discarded(): void
     {
         $user = $this->adminFor();

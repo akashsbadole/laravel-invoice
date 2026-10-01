@@ -4,6 +4,7 @@ import {
     CreditCard,
     LifeBuoy,
     Package,
+    ScrollText,
     TrendingUp,
     UserCog,
     Users,
@@ -86,6 +87,12 @@ export default function AdminDashboard({
                         <Link href="/admin/plans">
                             <CreditCard className="size-4" />
                             Plans
+                        </Link>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                        <Link href="/admin/activity">
+                            <ScrollText className="size-4" />
+                            Activity log
                         </Link>
                     </Button>
                 </div>

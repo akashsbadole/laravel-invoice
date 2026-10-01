@@ -65,8 +65,13 @@ trait CatalogItemRules
                     ->where('tenant_id', $this->user()->tenant_id)
                     ->ignore($ignoreItemId),
             ],
+            // Two shapes are accepted: a plain map (CSV importer, API) and indexed
+            // key/value rows (the repeatable editor). Both are flattened to a
+            // string map by catalogPayload().
             'attributes' => ['nullable', 'array'],
-            'attributes.*' => ['nullable', 'string', 'max:255'],
+            'attributes.*' => ['nullable'],
+            'attributes.*.key' => ['nullable', 'string', 'max:255'],
+            'attributes.*.value' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'remove_image' => ['boolean'],
         ];
@@ -163,7 +168,12 @@ trait CatalogItemRules
     }
 
     /**
-     * @param  array<string,mixed>  $attributes
+     * Accepts either shape the attributes column can arrive in:
+     * a plain map (`attributes[key] = value`, e.g. from the CSV importer) or
+     * indexed pairs (`attributes[0][key]`, from the repeatable editor).
+     * Rows missing either half are dropped.
+     *
+     * @param  array<array-key,mixed>  $attributes
      * @return array<string,string>
      */
     protected function cleanAttributes(array $attributes): array
@@ -171,6 +181,11 @@ trait CatalogItemRules
         $clean = [];
 
         foreach ($attributes as $key => $value) {
+            if (is_array($value)) {
+                $key = (string) ($value['key'] ?? '');
+                $value = $value['value'] ?? '';
+            }
+
             $key = trim((string) $key);
             $value = is_scalar($value) ? trim((string) $value) : '';
 

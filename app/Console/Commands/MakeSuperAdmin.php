@@ -49,18 +49,25 @@ class MakeSuperAdmin extends Command
         $user = User::query()->withoutGlobalScopes()->where('email', $email)->first();
 
         if ($user) {
-            // Promoting an existing tenant user would leave them owning a
-            // tenant, so hand the ownership over to keep the platform account
-            // tenant-less and unambiguous.
             $this->components->info("Promoting existing user [{$email}] to super admin.");
 
             if ($user->tenant_id !== null) {
+                // A platform account must not own a tenant, otherwise the
+                // admin panel and the tenant scope disagree about who they
+                // are. The tenant itself is untouched; other admins still run
+                // it, and this account can still impersonate into it.
                 $this->components->warn(
-                    'This user owns a tenant. Their tenant is left intact; they keep admin rights there via impersonation.',
+                    'Detaching this account from its tenant. The tenant and its data are left intact.',
                 );
-            }
 
-            $user->forceFill(['role' => UserRole::SuperAdmin])->save();
+                $user->firms()->detach($user->tenant_id);
+                $user->forceFill([
+                    'role' => UserRole::SuperAdmin,
+                    'tenant_id' => null,
+                ])->save();
+            } else {
+                $user->forceFill(['role' => UserRole::SuperAdmin])->save();
+            }
         } else {
             $user = new User([
                 'name' => $name,

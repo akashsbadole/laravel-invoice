@@ -23,7 +23,8 @@ class UpdateUserRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->route('user')?->id)],
-            'role' => ['required', Rule::enum(UserRole::class)],
+            // Only roles a tenant may hand out — never the platform super admin.
+            'role' => ['required', Rule::in(array_map(fn (UserRole $role) => $role->value, UserRole::assignable()))],
             'password' => ['nullable', Password::defaults()],
             'is_active' => ['boolean'],
         ];

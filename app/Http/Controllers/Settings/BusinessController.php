@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Enums\ChargeAppliesTo;
 use App\Enums\ChargeCalculationType;
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateBusinessSettingsRequest;
 use App\Models\BusinessSetting;
@@ -18,6 +19,10 @@ class BusinessController extends Controller
 {
     public function edit(): Response
     {
+        // The update is guarded by its form request, but the screen itself
+        // exposes bank and SMS provider details, so it needs the same guard.
+        abort_unless(request()->user()->canDo(Permission::ManageSettings), 403);
+
         $settings = BusinessSetting::current();
 
         return Inertia::render('settings/business', [

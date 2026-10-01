@@ -3,6 +3,10 @@ import { Link, usePage } from '@inertiajs/react';
 import { CreditCard, FileText, LayoutDashboard, Package, Users } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { AppSidebar } from '@/components/app-sidebar';
+import {
+    ImpersonationBanner,
+    type Impersonation,
+} from '@/components/impersonation-banner';
 import { FlashToaster } from '@/components/flash-toaster';
 import { NavUser } from '@/components/nav-user';
 import { useLocale, type I18nKey } from '@/lib/i18n';
@@ -28,13 +32,18 @@ const mobileTabs: { titleKey: I18nKey; href: string; icon: typeof LayoutDashboar
 ];
 
 export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps) {
-    const { url } = usePage();
+    const { url, props } = usePage<{
+        impersonating?: Impersonation | null;
+    }>();
     const { t } = useLocale();
 
     return (
         <div className="flex min-h-screen">
             <AppSidebar />
             <div className="flex min-w-0 flex-1 flex-col">
+                {props.impersonating && (
+                    <ImpersonationBanner impersonating={props.impersonating} />
+                )}
                 <div className="border-b border-ivory/10 bg-navy-deep px-4 py-3 md:hidden">
                     <AppLogo dark />
                 </div>
