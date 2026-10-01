@@ -28,23 +28,24 @@ class CatalogItemImportController extends Controller
         'metal_type', 'purity', 'rate_type',
         'default_rate', 'default_net_weight', 'default_gross_weight',
         'default_length', 'default_width', 'default_wastage_percent',
-        'description',
+        'description', 'is_active',
     ];
 
-    public function template(): StreamedResponse
+    /**
+     * Only emit columns this industry can actually store, so a shared
+     * template never asks for jewelry-only weight columns on a tiles
+     * catalog.
+     *
+     * @return list<string>
+     */
+    protected function columnsFor(string $industry): array
     {
-        abort_unless(request()->user()->role->canWrite(), 403);
-
-        $industry = BusinessSetting::current()->industryKey();
         $usesWeights = Industry::usesWeightFields($industry);
         $isArea = in_array('per_sqft', Industry::rateTypes($industry), true)
             || in_array('per_sqm', Industry::rateTypes($industry), true);
-        $defaultRateType = Industry::rateTypes($industry)[0] ?? 'per_piece';
+        $fields = Industry::itemFields($industry);
 
-        // Only emit columns this industry can actually store.
-        $columns = array_values(array_filter(self::COLUMNS, function (string $column) use ($industry, $usesWeights, $isArea): bool {
-            $fields = Industry::itemFields($industry);
-
+        return array_values(array_filter(self::COLUMNS, function (string $column) use ($industry, $usesWeights, $isArea, $fields): bool {
             if (in_array($column, ['metal_type', 'purity', 'default_net_weight', 'default_gross_weight'], true)) {
                 return $usesWeights;
             }
@@ -59,6 +60,16 @@ class CatalogItemImportController extends Controller
 
             return true;
         }));
+    }
+
+    public function template(): StreamedResponse
+    {
+        abort_unless(request()->user()->role->canWrite(), 403);
+
+        $industry = BusinessSetting::current()->industryKey();
+        $usesWeights = Industry::usesWeightFields($industry);
+        $columns = $this->columnsFor($industry);
+        $defaultRateType = Industry::rateTypes($industry)[0] ?? 'per_piece';
 
         return ResponseFacade::streamDownload(function () use ($columns, $defaultRateType, $usesWeights) {
             $handle = fopen('php://output', 'w');
@@ -76,6 +87,7 @@ class CatalogItemImportController extends Controller
                     'default_rate' => '50',
                     'default_length' => '60',
                     'default_width' => '60',
+                    'is_active' => '1',
                     'description' => 'Sample row',
                     default => '',
                 };
@@ -108,29 +120,7 @@ class CatalogItemImportController extends Controller
     {
         abort_unless($request->user()->role->canWrite(), 403);
 
-        $industry = BusinessSetting::current()->industryKey();
-        $usesWeights = Industry::usesWeightFields($industry);
-        $isArea = in_array('per_sqft', Industry::rateTypes($industry), true)
-            || in_array('per_sqm', Industry::rateTypes($industry), true);
-
-        $columns = array_values(array_filter(self::COLUMNS, function (string $column) use ($industry, $usesWeights, $isArea): bool {
-            $fields = Industry::itemFields($industry);
-
-            if (in_array($column, ['metal_type', 'purity', 'default_net_weight', 'default_gross_weight'], true)) {
-                return $usesWeights;
-            }
-
-            if (in_array($column, ['default_length', 'default_width', 'default_wastage_percent'], true)) {
-                return $isArea;
-            }
-
-            if (in_array($column, ['size_label', 'finish', 'grade', 'specification', 'unit_label', 'brand', 'model_number'], true)) {
-                return in_array($column, $fields, true) || $column === 'model_number';
-            }
-
-            return true;
-        }));
-
+        $columns = $this->columnsFor(BusinessSetting::current()->industryKey());
         $items = CatalogItem::query()->orderBy('name')->get();
 
         return ResponseFacade::streamDownload(function () use ($columns, $items) {
@@ -152,8 +142,11 @@ class CatalogItemImportController extends Controller
     {
         abort_unless($request->user()->role->canWrite(), 403);
 
+        // Validate on the uploaded filename rather than the browser-reported
+        // MIME type: Excel sends .csv files as application/vnd.ms-excel, which
+        // a `mimes:csv` rule rejects outright.
         $request->validate([
-            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+            'file' => ['required', 'file', 'extensions:csv,txt', 'max:2048'],
         ]);
 
         $industry = BusinessSetting::current()->industryKey();
@@ -161,7 +154,7 @@ class CatalogItemImportController extends Controller
         $defaultRateType = $allowedRateTypes[0] ?? 'per_piece';
 
         $handle = fopen($request->file('file')->getRealPath(), 'r');
-        $header = fgetcsv($handle);
+        $header = $this->readRow($handle);
 
         if (! $header) {
             fclose($handle);
@@ -182,17 +175,17 @@ class CatalogItemImportController extends Controller
         $skipped = [];
         $rowNumber = 1;
 
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = $this->readRow($handle)) !== false) {
             $rowNumber++;
             $data = $this->extractRow($row, $columnIndex);
 
-            if (blank($data['name'] ?? null)) {
+            if (blank($data['name'])) {
                 $skipped[] = "Row {$rowNumber}: missing name";
 
                 continue;
             }
 
-            $data['rate_type'] = in_array($data['rate_type'] ?? null, $allowedRateTypes, true)
+            $data['rate_type'] = in_array($data['rate_type'], $allowedRateTypes, true)
                 ? $data['rate_type']
                 : $defaultRateType;
 
@@ -213,14 +206,14 @@ class CatalogItemImportController extends Controller
                 'metal_type' => $data['metal_type'] ?: null,
                 'purity' => $data['purity'] ?: null,
                 'rate_type' => $data['rate_type'],
-                'default_rate' => is_numeric($data['default_rate'] ?? null) ? $data['default_rate'] : null,
-                'default_net_weight' => is_numeric($data['default_net_weight'] ?? null) ? $data['default_net_weight'] : null,
-                'default_gross_weight' => is_numeric($data['default_gross_weight'] ?? null) ? $data['default_gross_weight'] : null,
-                'default_length' => is_numeric($data['default_length'] ?? null) ? $data['default_length'] : null,
-                'default_width' => is_numeric($data['default_width'] ?? null) ? $data['default_width'] : null,
-                'default_wastage_percent' => is_numeric($data['default_wastage_percent'] ?? null) ? $data['default_wastage_percent'] : null,
+                'default_rate' => $this->numberOrNull($data['default_rate']),
+                'default_net_weight' => $this->numberOrNull($data['default_net_weight']),
+                'default_gross_weight' => $this->numberOrNull($data['default_gross_weight']),
+                'default_length' => $this->numberOrNull($data['default_length']),
+                'default_width' => $this->numberOrNull($data['default_width']),
+                'default_wastage_percent' => $this->numberOrNull($data['default_wastage_percent']),
                 'description' => $data['description'] ?: null,
-                'is_active' => true,
+                'is_active' => $this->booleanOrDefault($data['is_active']),
                 'created_by' => $request->user()->id,
             ];
 
@@ -246,14 +239,31 @@ class CatalogItemImportController extends Controller
     }
 
     /**
+     * Read one CSV record. Spelled out rather than relying on the ini
+     * defaults, which are deprecated to leave implicit in PHP 8.4+.
+     *
+     * @param  resource  $handle
+     * @return array<int,string|null>|false
+     */
+    protected function readRow($handle): array|false
+    {
+        return fgetcsv($handle, 0, ',', '"', '\\');
+    }
+
+    /**
      * @param  array<int,string>  $header
      * @return array<string,int>
      */
     protected function mapHeader(array $header): array
     {
         $map = [];
+
         foreach ($header as $i => $rawName) {
-            $key = strtolower(trim(str_replace(' ', '_', (string) $rawName)));
+            // Excel prefixes a UTF-8 BOM to the first cell, which would
+            // otherwise turn "name" into an unrecognised column.
+            $name = preg_replace('/^\xEF\xBB\xBF/', '', (string) $rawName);
+            $key = strtolower(trim(str_replace(' ', '_', $name)));
+
             if (in_array($key, self::COLUMNS, true)) {
                 $map[$key] = $i;
             }
@@ -263,17 +273,33 @@ class CatalogItemImportController extends Controller
     }
 
     /**
-     * @param  array<int,string>  $row
+     * Every known column is present in the result, so the row payload can be
+     * built without probing for keys a hand-written CSV may have omitted.
+     *
+     * @param  array<int,string|null>  $row
      * @param  array<string,int>  $columnIndex
      * @return array<string,string|null>
      */
     protected function extractRow(array $row, array $columnIndex): array
     {
-        $data = [];
+        $data = array_fill_keys(self::COLUMNS, null);
+
         foreach ($columnIndex as $column => $index) {
             $data[$column] = isset($row[$index]) ? trim((string) $row[$index]) : null;
         }
 
         return $data;
+    }
+
+    protected function numberOrNull(?string $value): int|float|null
+    {
+        return is_numeric($value) ? $value + 0 : null;
+    }
+
+    protected function booleanOrDefault(?string $value): bool
+    {
+        return $value === null || $value === ''
+            ? true
+            : filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }

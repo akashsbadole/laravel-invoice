@@ -172,6 +172,36 @@ class PaymentReminderTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    /**
+     * `Mail::fake()` never renders a mailable, so a missing markdown dependency
+     * or a broken template would pass every other assertion in this class.
+     */
+    public function test_the_reminder_email_actually_renders(): void
+    {
+        $invoice = $this->unpaidInvoice();
+        $url = route('invoices.public.show', 'abc123');
+
+        $mailable = new PaymentReminderMail(
+            $invoice,
+            number_format((float) $invoice->balance_amount, 2),
+            $invoice->due_date,
+            $url,
+        );
+
+        $html = $mailable->render();
+
+        $this->assertStringContainsString($invoice->invoice_number, $html);
+        $this->assertStringContainsString(number_format((float) $invoice->balance_amount, 2), $html);
+        $this->assertStringContainsString($url, $html);
+        $this->assertStringContainsString(
+            $invoice->customer->full_name,
+            $html,
+        );
+
+        $envelope = $mailable->envelope();
+        $this->assertStringContainsString($invoice->invoice_number, $envelope->subject);
+    }
+
     public function test_the_nightly_command_skips_recently_reminded_invoices(): void
     {
         Mail::fake();

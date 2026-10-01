@@ -19,6 +19,11 @@ class CatalogItem extends Model
         'size_label', 'finish', 'grade', 'specification', 'unit_label',
         'default_rate', 'default_net_weight', 'default_gross_weight',
         'default_length', 'default_width', 'default_wastage_percent',
+        'cost_price', 'minimum_order_quantity', 'pack_size', 'tax_inclusive',
+        'barcode', 'color', 'material', 'thickness', 'warranty_months',
+        'manufacturer', 'country_of_origin',
+        'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
+        'image_path',
         'attributes', 'description', 'is_active', 'created_by',
     ];
 
@@ -32,9 +37,36 @@ class CatalogItem extends Model
             'default_length' => 'decimal:3',
             'default_width' => 'decimal:3',
             'default_wastage_percent' => 'decimal:2',
+            'cost_price' => 'decimal:2',
+            'minimum_order_quantity' => 'integer',
+            'warranty_months' => 'integer',
+            'tax_inclusive' => 'boolean',
+            'stock_tracked' => 'boolean',
+            'stock_quantity' => 'decimal:3',
+            'reorder_level' => 'decimal:3',
             'attributes' => 'array',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Append-only history behind stock_quantity.
+     *
+     * @return HasMany<InventoryMovement, $this>
+     */
+    public function movements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
+    }
+
+    /**
+     * Stock at or below the reorder level, but only for products that opt in.
+     */
+    public function isLowOnStock(): bool
+    {
+        return $this->stock_tracked
+            && (float) $this->reorder_level > 0
+            && (float) $this->stock_quantity <= (float) $this->reorder_level;
     }
 
     /**

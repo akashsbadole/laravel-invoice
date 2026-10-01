@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
-use App\Models\InvoiceTemplate;
+use App\Services\InvoicePdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +13,8 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PortalInvoiceController extends Controller
 {
+    public function __construct(private readonly InvoicePdfService $pdf) {}
+
     public function index(Request $request): Response
     {
         $customer = $request->attributes->get('portalCustomer');
@@ -62,16 +64,8 @@ class PortalInvoiceController extends Controller
         $customer = $request->attributes->get('portalCustomer');
         abort_unless($invoice->customer_id === $customer->id, 404);
 
-        $invoice->load(['customer', 'salesperson', 'items.charges', 'template']);
-        $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
-
-        $pdf = Pdf::loadView('pdf.invoice', [
-            'invoice' => $invoice,
-            'business' => BusinessSetting::forTenant($invoice->tenant_id),
-            'template' => $template,
-            'publicUrl' => null,
-            'qrSvg' => null,
-        ])->setPaper('a4');
+        $pdf = Pdf::loadView('pdf.invoice', $this->pdf->viewData($invoice, withShareLink: false))
+            ->setPaper('a4');
 
         return $pdf->download("{$invoice->invoice_number}.pdf");
     }

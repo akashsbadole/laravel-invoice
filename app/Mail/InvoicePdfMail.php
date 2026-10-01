@@ -4,7 +4,7 @@ namespace App\Mail;
 
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
-use App\Models\InvoiceTemplate;
+use App\Services\InvoicePdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -49,17 +49,11 @@ class InvoicePdfMail extends Mailable
      */
     public function attachments(): array
     {
-        $this->invoice->loadMissing(['customer', 'salesperson', 'items.charges', 'template']);
-
-        $template = $this->invoice->template ?? InvoiceTemplate::forTenantDefault($this->invoice->tenant_id);
-
-        $pdf = Pdf::loadView('pdf.invoice', [
-            'invoice' => $this->invoice,
-            'business' => BusinessSetting::forTenant($this->invoice->tenant_id),
-            'template' => $template,
-            'publicUrl' => null,
-            'qrSvg' => null,
-        ])->setPaper('a4')->output();
+        // No share link: an emailed PDF must not double as a public token.
+        $pdf = Pdf::loadView('pdf.invoice', app(InvoicePdfService::class)
+            ->viewData($this->invoice, withShareLink: false))
+            ->setPaper('a4')
+            ->output();
 
         return [
             Attachment::fromData(fn () => $pdf, "{$this->invoice->invoice_number}.pdf")

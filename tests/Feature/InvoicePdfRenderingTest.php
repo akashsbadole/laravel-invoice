@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Mail\InvoicePdfMail;
+use App\Models\BusinessSetting;
 use App\Models\Invoice;
-use App\Models\InvoiceTemplate;
+use App\Models\Tenant;
+use App\Services\InvoicePdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -74,10 +76,11 @@ class InvoicePdfRenderingTest extends TestCase
     public function test_the_portal_pdf_renders(): void
     {
         $invoice = $this->invoice();
-        $customer = $invoice->customer;
 
-        $response = $this->actingAs($customer, 'portal')
-            ->get(route('portal.invoices.pdf', $invoice));
+        // The portal guards on a session key, not on staff auth.
+        $this->withSession(['portal_customer_id' => $invoice->customer_id]);
+
+        $response = $this->get(route('portal.invoices.pdf', $invoice));
 
         $response->assertOk();
         $this->assertRealPdf((string) $response->getContent(), 'Portal PDF');
@@ -97,47 +100,92 @@ class InvoicePdfRenderingTest extends TestCase
 
         $response = $this->get(route('invoices.public.pdf', $token));
         $response->assertOk();
-        $this->assertRealPdf($response->streamedContent() ?: $response->getContent(), 'Public PDF');
+        $this->assertRealPdf((string) $response->getContent(), 'Public PDF');
     }
 
     public function test_the_emailed_pdf_attachment_renders(): void
     {
         $invoice = $this->invoice();
+        $mailable = new InvoicePdfMail($invoice);
 
-        $attachments = (new InvoicePdfMail($invoice))->attachments();
+        $this->assertCount(1, $mailable->attachments());
 
-        $this->assertCount(1, $attachments);
+        // Render the whole mailable: body, markdown/html template and the
+        // DomPDF attachment, exactly as a real send would.
+        $rendered = $mailable->render();
+
+        $this->assertStringContainsString($invoice->invoice_number, $rendered);
+        $this->assertStringContainsString(
+            BusinessSetting::forTenant($invoice->tenant_id)->default_currency,
+            $rendered,
+        );
 
         // Exercise the DomPDF render the attachment depends on.
-        $bytes = Pdf::loadView('pdf.invoice', [
-            'invoice' => $invoice,
-            'business' => \App\Models\BusinessSetting::forTenant($invoice->tenant_id),
-            'template' => $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id),
-            'industry' => 'jewelry',
-            'showWeights' => true,
-            'showStones' => true,
-            'hasAreaItems' => false,
-            'publicUrl' => null,
-            'qrSvg' => null,
-        ])->setPaper('a4')->output();
+        $bytes = Pdf::loadView('pdf.invoice', app(InvoicePdfService::class)
+            ->viewData($invoice, withShareLink: false))
+            ->setPaper('a4')
+            ->output();
 
         $this->assertRealPdf($bytes, 'Emailed PDF');
     }
 
-    public function test_the_pdf_template_renders_without_any_optional_variable(): void
+    /**
+     * The template reads these unconditionally, so the shared assembler is the
+     * only thing standing between a new call site and a 500.
+     */
+    public function test_the_assembler_supplies_every_variable_the_template_reads(): void
     {
         $invoice = $this->invoice();
 
-        // The exact shape InvoicePdfMail used to pass, which omitted the
-        // industry flags — this is the regression that made emailing throw.
-        $html = view('pdf.invoice', [
-            'invoice' => $invoice,
-            'business' => \App\Models\BusinessSetting::forTenant($invoice->tenant_id),
-            'template' => $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id),
-            'publicUrl' => null,
-            'qrSvg' => null,
-        ])->render();
+        $data = app(InvoicePdfService::class)->viewData($invoice);
 
+        foreach ([
+            'invoice', 'business', 'template', 'industry',
+            'showWeights', 'showStones', 'hasAreaItems', 'publicUrl', 'qrSvg',
+        ] as $key) {
+            $this->assertArrayHasKey($key, $data, "pdf.invoice needs \${$key}.");
+        }
+
+        $this->assertIsBool($data['showWeights']);
+        $this->assertIsBool($data['showStones']);
+        $this->assertIsBool($data['hasAreaItems']);
+    }
+
+    public function test_the_template_renders_for_a_non_weight_industry(): void
+    {
+        $user = $this->adminFor(Tenant::factory()->forIndustry('tiles_marble')->create());
+        $customer = $this->customerFor($user);
+
+        $this->actingAs($user)->post(route('invoices.store'), [
+            'customer_id' => $customer->id,
+            'document_type' => 'general_invoice',
+            'invoice_date' => now()->toDateString(),
+            'pricing_mode' => 'manual',
+            'tax_mode' => 'single',
+            'tax_rate' => 0,
+            'discount' => 0,
+            'invoice_charges' => [],
+            'items' => [[
+                'item_name' => 'Vitrified Tile',
+                'quantity' => 10,
+                'length' => 60,
+                'width' => 60,
+                'rate_type' => 'per_sqft',
+                'rate' => 55,
+                'tax_rate' => 0,
+                'discount' => 0,
+                'charges' => [],
+            ]],
+        ])->assertRedirect();
+
+        $invoice = Invoice::with(['customer', 'items.charges', 'template'])->firstOrFail();
+        $data = app(InvoicePdfService::class)->viewData($invoice);
+
+        $this->assertFalse($data['showWeights'], 'Tiles invoices must not show weight columns.');
+        $this->assertTrue($data['hasAreaItems'], 'Rows with length/width should report area.');
+
+        $html = view('pdf.invoice', $data)->render();
         $this->assertStringContainsString($invoice->invoice_number, $html);
+        $this->assertStringNotContainsString('Metal / Purity', $html);
     }
 }
