@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Enums\UserRole;
 use App\Mail\SubscriptionReceiptMail;
 use App\Models\Plan;
@@ -27,7 +28,7 @@ class BillingController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         /** @var Tenant $tenant */
         $tenant = $request->user()->tenant;
@@ -55,7 +56,7 @@ class BillingController extends Controller
             'plan' => ['required', 'exists:plans,slug'],
         ]);
 
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         /** @var Tenant $tenant */
         $tenant = $request->user()->tenant;
@@ -94,7 +95,7 @@ class BillingController extends Controller
             return back()->withErrors(['plan' => 'Payment verification failed. Please try again.']);
         }
 
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         /** @var Tenant $tenant */
         $tenant = $request->user()->tenant;
@@ -110,7 +111,7 @@ class BillingController extends Controller
 
     public function cancel(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         /** @var Tenant $tenant */
         $tenant = $request->user()->tenant;

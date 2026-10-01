@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\Permission;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\StoreUserRequest;
@@ -21,7 +22,7 @@ class UserController extends Controller
 
     public function index(Request $request): Response
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         return Inertia::render('settings/users', [
             'users' => User::query()->orderBy('name')
@@ -92,7 +93,7 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         if ($user->is($request->user())) {
             return back()->withErrors(['role' => 'You cannot delete your own account.']);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Reminders;
 
+use App\Enums\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +10,7 @@ class StoreReminderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canWrite();
+        return $this->user()->canDo(Permission::SendMessages);
     }
 
     /**

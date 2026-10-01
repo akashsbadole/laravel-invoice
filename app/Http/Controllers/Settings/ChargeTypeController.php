@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreChargeTypeRequest;
 use App\Http\Requests\Settings\UpdateChargeTypeRequest;
@@ -14,7 +15,7 @@ class ChargeTypeController extends Controller
 {
     public function index(): Response
     {
-        abort_unless(request()->user()->role->canManageSettings(), 403);
+        abort_unless(request()->user()->canDo(Permission::ManageSettings), 403);
 
         return Inertia::render('settings/charge-types', [
             'chargeTypes' => ChargeType::query()->orderBy('applies_to')->orderBy('sort_order')->get(),
@@ -51,7 +52,7 @@ class ChargeTypeController extends Controller
 
     public function destroy(ChargeType $chargeType): RedirectResponse
     {
-        abort_unless(request()->user()->role->canManageSettings(), 403);
+        abort_unless(request()->user()->canDo(Permission::ManageSettings), 403);
         abort_unless($chargeType->isDeletable(), 422, 'Built-in charge types can be deactivated but not deleted.');
 
         $chargeType->delete();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\Permission;
 use App\Support\Industry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -10,7 +11,7 @@ class UpdateBusinessSettingsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canManageSettings();
+        return $this->user()->canDo(Permission::ManageSettings);
     }
 
     /**
@@ -36,6 +37,7 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'sms_anniversary_wishes' => ['boolean'],
             'quotation_customer_decisions' => ['boolean'],
             'quotation_show_updates' => ['boolean'],
+            'show_all_catalog_fields' => ['boolean'],
             'sms_driver' => ['required', 'in:log,twilio,http'],
             'sms_country_code' => ['required', 'string', 'max:5'],
             'sms_twilio_sid' => ['nullable', 'string', 'max:255'],

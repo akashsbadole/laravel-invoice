@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PlatformController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CatalogItemController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Middleware\EnsurePortalCustomer;
+use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureSubscribed;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
@@ -96,6 +98,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::get('catalog/template', [CatalogItemImportController::class, 'template'])->name('catalog.template');
     Route::get('catalog/export', [CatalogItemImportController::class, 'exportCsv'])->name('catalog.export');
     Route::post('catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload');
+    Route::post('catalog/{catalogItem}/stock', [CatalogItemController::class, 'adjustStock'])->name('catalog.stock');
     Route::put('catalog/{catalogItem}', [CatalogItemController::class, 'update'])->name('catalog.update');
     Route::delete('catalog/{catalogItem}', [CatalogItemController::class, 'destroy'])->name('catalog.destroy');
 
@@ -143,3 +146,31 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 });
 
 require __DIR__.'/settings.php';
+
+/*
+|--------------------------------------------------------------------------
+| Platform administration
+|--------------------------------------------------------------------------
+|
+| The super admin has no tenant of their own, so this section is mounted
+| outside the tenant-scoped group and outside the subscription gate.
+|
+*/
+
+Route::middleware(['auth', EnsureSuperAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/', [PlatformController::class, 'dashboard'])->name('dashboard');
+        Route::get('tenants', [PlatformController::class, 'tenants'])->name('tenants.index');
+        Route::get('tenants/{tenant}', [PlatformController::class, 'showTenant'])->name('tenants.show');
+        Route::post('tenants/{tenant}/toggle-status', [PlatformController::class, 'toggleTenantStatus'])->name('tenants.toggle-status');
+        Route::put('tenants/{tenant}/subscription', [PlatformController::class, 'updateSubscription'])->name('tenants.subscription.update');
+        Route::post('tenants/{tenant}/impersonate', [PlatformController::class, 'impersonate'])->name('tenants.impersonate');
+        Route::post('stop-impersonating', [PlatformController::class, 'stopImpersonating'])->name('impersonation.stop');
+
+        Route::get('users', [PlatformController::class, 'users'])->name('users.index');
+        Route::post('users/{user}/toggle-active', [PlatformController::class, 'toggleUser'])->name('users.toggle-active');
+
+        Route::get('plans', [PlatformController::class, 'plans'])->name('plans.index');
+    });

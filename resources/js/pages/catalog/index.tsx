@@ -1,5 +1,13 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Download, FileDown, Plus, Upload } from 'lucide-react';
+import {
+    AlertTriangle,
+    Download,
+    FileDown,
+    ImageIcon,
+    Plus,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useState } from 'react';
 import CatalogItemController from '@/actions/App/Http/Controllers/CatalogItemController';
 import CatalogItemImportController from '@/actions/App/Http/Controllers/CatalogItemImportController';
@@ -27,14 +35,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { download as catalogDownload, template as catalogTemplate } from '@/routes/catalog';
-import { dashboard } from '@/routes';
 import {
-    GENERIC_CATALOG_FIELDS,
-    itemFieldLabel,
+    CATALOG_FIELD_GROUPS,
     rateTypeLabel,
 } from '@/lib/industries';
-import type { IndustryConfig } from '@/lib/industries';
+import type { CatalogFieldSpec, IndustryConfig } from '@/lib/industries';
+import { download as catalogDownload, template as catalogTemplate } from '@/routes/catalog';
+import { dashboard } from '@/routes';
 import type { Paginated } from '@/types/customer';
 import type { CatalogItem } from '@/types/invoice';
 
@@ -42,11 +49,22 @@ export default function CatalogPage({
     items,
     filters,
     industry,
+    fields,
+    lowStockCount,
 }: {
     items: Paginated<CatalogItem>;
-    filters: { search?: string };
+    filters: { search?: string; status?: string };
     industry: IndustryConfig;
+    fields: CatalogFieldSpec[];
+    lowStockCount: number;
 }) {
+    const statuses = [
+        { key: '', label: 'All' },
+        { key: 'active', label: 'Active' },
+        { key: 'inactive', label: 'Inactive' },
+        { key: 'low_stock', label: `Low stock (${lowStockCount})` },
+    ];
+
     return (
         <>
             <Head title="Product catalog" />
@@ -55,11 +73,11 @@ export default function CatalogPage({
                 <Heading
                     variant="small"
                     title="Product catalog"
-                    description="What you sell, at what price. Build quotations straight from these products. This is not stock — no quantities are tracked."
+                    description="What you sell, at what price. Build quotations straight from these products."
                 />
 
                 <div className="flex flex-wrap gap-2">
-                    <AddItemDialog industry={industry} />
+                    <AddItemDialog industry={industry} fields={fields} />
                     <ImportDialog />
                     <Button size="sm" variant="outline" asChild>
                         <a href={catalogDownload()}>
@@ -78,15 +96,31 @@ export default function CatalogPage({
                 <Form
                     {...CatalogItemController.index.form()}
                     options={{ preserveState: true }}
-                    className="flex gap-2"
+                    className="flex flex-wrap items-center gap-2"
                 >
                     {() => (
                         <>
                             <Input
                                 name="search"
                                 defaultValue={filters.search}
-                                placeholder="Search name or code"
+                                placeholder="Search name, code, brand or barcode"
+                                className="max-w-xs"
                             />
+                            <Select name="status" defaultValue={filters.status ?? ''}>
+                                <SelectTrigger className="w-44">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {statuses.map((option) => (
+                                        <SelectItem
+                                            key={option.key}
+                                            value={option.key}
+                                        >
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Button type="submit" variant="secondary">
                                 Search
                             </Button>
@@ -104,39 +138,100 @@ export default function CatalogPage({
                             items.data.map((item) => (
                                 <div
                                     key={item.id}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3"
+                                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
                                 >
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">{item.name}</span>
-                                            {item.item_code && (
-                                                <Badge variant="outline" className="text-xs">
-                                                    {item.item_code}
-                                                </Badge>
-                                            )}
-                                            {item.is_active === false && (
-                                                <Badge variant="secondary" className="text-xs">
-                                                    inactive
-                                                </Badge>
-                                            )}
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        {item.image_url ? (
+                                            <img
+                                                src={item.image_url}
+                                                alt=""
+                                                className="size-12 shrink-0 rounded-md border object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex size-12 shrink-0 items-center justify-center rounded-md border text-muted-foreground">
+                                                <ImageIcon className="size-5" />
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-medium">
+                                                    {item.name}
+                                                </span>
+                                                {item.item_code && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-xs"
+                                                    >
+                                                        {item.item_code}
+                                                    </Badge>
+                                                )}
+                                                {item.is_active === false && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-xs"
+                                                    >
+                                                        inactive
+                                                    </Badge>
+                                                )}
+                                                {item.is_low_stock && (
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="text-xs"
+                                                    >
+                                                        <AlertTriangle className="size-3" />
+                                                        low stock
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {(
+                                                    industry.uses_weight_fields
+                                                        ? [
+                                                              item.metal_type,
+                                                              item.purity,
+                                                          ]
+                                                        : [
+                                                              item.brand,
+                                                              item.model_number,
+                                                              item.size_label,
+                                                          ]
+                                                )
+                                                    .filter(Boolean)
+                                                    .join(' · ')}
+                                                {item.default_rate &&
+                                                    ` · ₹${item.default_rate}/${item.rate_type.replace(
+                                                        'per_',
+                                                        '',
+                                                    )}`}
+                                                {item.stock_tracked &&
+                                                    ` · stock ${item.stock_quantity}${
+                                                        item.stock_unit
+                                                            ? ` ${item.stock_unit}`
+                                                            : ''
+                                                    }`}
+                                            </p>
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            {(
-                                                industry.uses_weight_fields
-                                                    ? [item.metal_type, item.purity]
-                                                    : [item.brand, item.model_number, item.size_label]
-                                            )
-                                                .filter(Boolean)
-                                                .join(' · ')}
-                                            {item.default_rate &&
-                                                ` · ₹${item.default_rate}/${item.rate_type.replace('per_', '')}`}
-                                        </p>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <EditItemDialog item={item} industry={industry} />
-                                        <Form {...CatalogItemController.destroy.form(item.id)}>
+                                    <div className="flex items-center gap-2">
+                                        {item.stock_tracked && (
+                                            <StockDialog item={item} />
+                                        )}
+                                        <EditItemDialog
+                                            item={item}
+                                            industry={industry}
+                                            fields={fields}
+                                        />
+                                        <Form
+                                            {...CatalogItemController.destroy.form(
+                                                item.id,
+                                            )}
+                                        >
                                             {({ processing }) => (
-                                                <Button size="sm" variant="ghost" disabled={processing}>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    disabled={processing}
+                                                >
                                                     Delete
                                                 </Button>
                                             )}
@@ -170,186 +265,438 @@ export default function CatalogPage({
     );
 }
 
+/**
+ * One registry-driven input. Rendering from the spec is what keeps the form,
+ * the CSV and the validator describing the same set of fields.
+ */
+function FieldInput({
+    field,
+    idPrefix,
+    industry,
+    item,
+    errors,
+}: {
+    field: CatalogFieldSpec;
+    idPrefix: string;
+    industry: IndustryConfig;
+    item?: CatalogItem;
+    errors: Record<string, string>;
+}) {
+    const id = `${idPrefix}-${field.name}`;
+    const value = (item as Record<string, unknown> | undefined)?.[
+        field.name
+    ];
+    const labelId = `${id}-hint`;
+
+    let control: React.ReactNode;
+
+    switch (field.type) {
+        case 'textarea':
+            control = (
+                <Textarea
+                    id={id}
+                    name={field.name}
+                    rows={2}
+                    defaultValue={(value as string) ?? ''}
+                />
+            );
+            break;
+
+        case 'number':
+            control = (
+                <Input
+                    id={id}
+                    name={field.name}
+                    type="number"
+                    step="0.001"
+                    min={0}
+                    defaultValue={
+                        value === null || value === undefined
+                            ? ''
+                            : String(value)
+                    }
+                />
+            );
+            break;
+
+        case 'select':
+            control = (
+                <Select
+                    name={field.name}
+                    defaultValue={
+                        (value as string) ??
+                        industry.rate_types[0] ??
+                        'per_piece'
+                    }
+                >
+                    <SelectTrigger id={id} className="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {industry.rate_types.map((type) => (
+                            <SelectItem key={type} value={type}>
+                                {rateTypeLabel(type)}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            );
+            break;
+
+        case 'boolean':
+            return (
+                <div className="flex items-center gap-2 pt-6">
+                    <input
+                        type="checkbox"
+                        id={id}
+                        name={field.name}
+                        defaultChecked={Boolean(value)}
+                        className="size-4"
+                    />
+                    <Label htmlFor={id} className="font-normal">
+                        {field.label}
+                    </Label>
+                </div>
+            );
+
+        case 'image':
+            // Image upload is bespoke rather than a plain input.
+            return null;
+
+        case 'attributes':
+            control = (
+                <AttributesEditor
+                    idPrefix={idPrefix}
+                    initial={item?.attributes ?? {}}
+                />
+            );
+            break;
+
+        default:
+            control = (
+                <Input
+                    id={id}
+                    name={field.name}
+                    defaultValue={(value as string) ?? ''}
+                />
+            );
+    }
+
+    return (
+        <div className="grid gap-2">
+            <Label htmlFor={id}>{field.label}</Label>
+            {control}
+            {field.hint && (
+                <p
+                    id={labelId}
+                    className="text-xs text-muted-foreground"
+                >
+                    {field.hint}
+                </p>
+            )}
+            <InputError message={errors[field.name]} />
+        </div>
+    );
+}
+
+/**
+ * Repeatable key/value rows for the free-form `attributes` column.
+ */
+function AttributesEditor({
+    idPrefix,
+    initial,
+}: {
+    idPrefix: string;
+    initial: Record<string, string>;
+}) {
+    const [rows, setRows] = useState(() => {
+        const entries = Object.entries(initial);
+        return entries.length > 0 ? entries : [['', '']];
+    });
+
+    const update = (index: number, key: string, value: string) => {
+        setRows((current) =>
+            current.map((row, i) =>
+                i === index ? [key, value] : row,
+            ),
+        );
+    };
+
+    return (
+        <div className="space-y-2">
+            {rows.map(([key, value], index) => (
+                <div
+                    key={index}
+                    className="flex items-center gap-2"
+                >
+                    <Input
+                        name={`attributes[${key || index}]`}
+                        defaultValue={key}
+                        placeholder="Name"
+                        aria-label={`Attribute ${index + 1} name`}
+                        onChange={(e) => update(index, e.target.value, value)}
+                    />
+                    <Input
+                        name={`attributes[${key || index}]`}
+                        defaultValue={value}
+                        placeholder="Value"
+                        aria-label={`Attribute ${index + 1} value`}
+                        onChange={(e) => update(index, key, e.target.value)}
+                    />
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Remove attribute"
+                        onClick={() =>
+                            setRows((current) =>
+                                current.length === 1
+                                    ? [['', '']]
+                                    : current.filter((_, i) => i !== index),
+                            )
+                        }
+                    >
+                        <Trash2 className="size-4" />
+                    </Button>
+                </div>
+            ))}
+            <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setRows((c) => [...c, ['', '']])}
+            >
+                <Plus className="size-4" />
+                Add attribute
+            </Button>
+            <input type="hidden" name={`_${idPrefix}_attributes`} value="" />
+        </div>
+    );
+}
+
 function ItemFields({
     item,
     errors,
     idPrefix,
     industry,
+    fields,
 }: {
     item?: CatalogItem;
     errors: Record<string, string>;
     idPrefix: string;
     industry: IndustryConfig;
+    fields: CatalogFieldSpec[];
 }) {
-    const usesWeights = industry.uses_weight_fields;
-    const isArea = industry.rate_types.some((t) => t === 'per_sqft' || t === 'per_sqm');
-    const generic = GENERIC_CATALOG_FIELDS.filter((f) =>
-        industry.item_fields.includes(f),
-    );
+    const groups = Object.entries(CATALOG_FIELD_GROUPS)
+        .map(([key, label]) => ({
+            key: key as CatalogFieldSpec['group'],
+            label,
+            fields: fields.filter((f) => f.group === key),
+        }))
+        .filter((group) => group.fields.length > 0);
 
     return (
-        <div className="space-y-3">
-            <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}-name`}>Name</Label>
-                <Input id={`${idPrefix}-name`} name="name" defaultValue={item?.name} required />
-                <InputError message={errors.name} />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-code`}>Item code / SKU</Label>
-                    <Input id={`${idPrefix}-code`} name="item_code" defaultValue={item?.item_code ?? ''} />
-                    <InputError message={errors.item_code} />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-hsn`}>HSN code</Label>
-                    <Input id={`${idPrefix}-hsn`} name="hsn_code" defaultValue={item?.hsn_code ?? ''} />
-                </div>
-            </div>
+        <div className="space-y-5">
+            <ImageField idPrefix={idPrefix} item={item} errors={errors} />
 
-            {usesWeights ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor={`${idPrefix}-metal`}>Metal</Label>
-                        <Input id={`${idPrefix}-metal`} name="metal_type" defaultValue={item?.metal_type ?? ''} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor={`${idPrefix}-purity`}>Purity</Label>
-                        <Input id={`${idPrefix}-purity`} name="purity" defaultValue={item?.purity ?? ''} />
-                    </div>
-                </div>
-            ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                    {generic.map((field) => (
-                        <div key={field} className="grid gap-2">
-                            <Label htmlFor={`${idPrefix}-${field}`}>
-                                {itemFieldLabel(field)}
-                            </Label>
-                            <Input
-                                id={`${idPrefix}-${field}`}
-                                name={field}
-                                defaultValue={item?.[field] ?? ''}
-                            />
-                        </div>
-                    ))}
-                    <div className="grid gap-2">
-                        <Label htmlFor={`${idPrefix}-model`}>Model no.</Label>
-                        <Input
-                            id={`${idPrefix}-model`}
-                            name="model_number"
-                            defaultValue={item?.model_number ?? ''}
-                        />
-                    </div>
-                </div>
-            )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-ratetype`}>Rate basis</Label>
-                    <Select
-                        name="rate_type"
-                        defaultValue={item?.rate_type ?? industry.rate_types[0] ?? 'per_piece'}
-                    >
-                        <SelectTrigger id={`${idPrefix}-ratetype`} className="w-full">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {industry.rate_types.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {rateTypeLabel(type)}
-                                </SelectItem>
+            {groups.map((group) => (
+                <div key={group.key} className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">
+                        {group.label}
+                    </p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {group.fields
+                            .filter((f) => f.type !== 'image')
+                            .map((field) => (
+                                <FieldInput
+                                    key={field.name}
+                                    field={field}
+                                    idPrefix={idPrefix}
+                                    industry={industry}
+                                    item={item}
+                                    errors={errors}
+                                />
                             ))}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.rate_type} />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-rate`}>Default rate</Label>
-                    <Input
-                        id={`${idPrefix}-rate`}
-                        name="default_rate"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        defaultValue={item?.default_rate ?? ''}
-                    />
-                </div>
-            </div>
-
-            {usesWeights ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor={`${idPrefix}-net`}>Typical net wt (g)</Label>
-                        <Input
-                            id={`${idPrefix}-net`}
-                            name="default_net_weight"
-                            type="number"
-                            step="0.001"
-                            min={0}
-                            defaultValue={item?.default_net_weight ?? ''}
-                        />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor={`${idPrefix}-gross`}>Typical gross wt (g)</Label>
-                        <Input
-                            id={`${idPrefix}-gross`}
-                            name="default_gross_weight"
-                            type="number"
-                            step="0.001"
-                            min={0}
-                            defaultValue={item?.default_gross_weight ?? ''}
-                        />
                     </div>
                 </div>
-            ) : (
-                isArea && (
-                    <div className="grid gap-3 sm:grid-cols-3">
-                        <div className="grid gap-2">
-                            <Label htmlFor={`${idPrefix}-len`}>Typical length (cm)</Label>
-                            <Input
-                                id={`${idPrefix}-len`}
-                                name="default_length"
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                defaultValue={item?.default_length ?? ''}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor={`${idPrefix}-wid`}>Typical width (cm)</Label>
-                            <Input
-                                id={`${idPrefix}-wid`}
-                                name="default_width"
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                defaultValue={item?.default_width ?? ''}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor={`${idPrefix}-wastage`}>Typical wastage %</Label>
-                            <Input
-                                id={`${idPrefix}-wastage`}
-                                name="default_wastage_percent"
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                max={100}
-                                defaultValue={item?.default_wastage_percent ?? ''}
-                            />
-                        </div>
-                    </div>
-                )
-            )}
-
-            <div className="grid gap-2">
-                <Label htmlFor={`${idPrefix}-desc`}>Description</Label>
-                <Textarea id={`${idPrefix}-desc`} name="description" rows={2} defaultValue={item?.description ?? ''} />
-            </div>
+            ))}
         </div>
     );
 }
 
-function AddItemDialog({ industry }: { industry: IndustryConfig }) {
+function ImageField({
+    idPrefix,
+    item,
+    errors,
+}: {
+    idPrefix: string;
+    item?: CatalogItem;
+    errors: Record<string, string>;
+}) {
+    const [preview, setPreview] = useState<string | null>(
+        item?.image_url ?? null,
+    );
+    const [remove, setRemove] = useState(false);
+
+    return (
+        <div className="grid gap-2">
+            <Label htmlFor={`${idPrefix}-image`}>Product image</Label>
+            <div className="flex items-center gap-3">
+                {preview && !remove ? (
+                    <img
+                        src={preview}
+                        alt=""
+                        className="size-16 rounded-md border object-cover"
+                    />
+                ) : (
+                    <div className="flex size-16 items-center justify-center rounded-md border text-muted-foreground">
+                        <ImageIcon className="size-5" />
+                    </div>
+                )}
+                <input
+                    id={`${idPrefix}-image`}
+                    name="image"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground"
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                            setPreview(URL.createObjectURL(file));
+                            setRemove(false);
+                        }
+                    }}
+                />
+            </div>
+            {item?.image_url && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                        type="checkbox"
+                        name="remove_image"
+                        checked={remove}
+                        onChange={(e) => setRemove(e.target.checked)}
+                        className="size-4"
+                    />
+                    Remove the current image
+                </label>
+            )}
+            <InputError message={errors.image} />
+        </div>
+    );
+}
+
+/**
+ * Record a stock movement. Stock is never edited directly — the dialog only
+ * produces ledger entries, so the balance always has an explanation.
+ */
+function StockDialog({ item }: { item: CatalogItem }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    Stock
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Adjust stock — {item.name}</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                    Currently{' '}
+                    <strong>
+                        {item.stock_quantity}
+                        {item.stock_unit ? ` ${item.stock_unit}` : ''}
+                    </strong>
+                    {Number(item.reorder_level) > 0 && (
+                        <> · reorder at {item.reorder_level}</>
+                    )}
+                </p>
+                <Form
+                    {...CatalogItemController.adjustStock.form(item.id)}
+                    onSuccess={() => setOpen(false)}
+                    className="space-y-4"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor={`stock-type-${item.id}`}>
+                                    Movement
+                                </Label>
+                                <Select name="type" defaultValue="in">
+                                    <SelectTrigger
+                                        id={`stock-type-${item.id}`}
+                                        className="w-full"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="in">
+                                            Stock in (received)
+                                        </SelectItem>
+                                        <SelectItem value="out">
+                                            Stock out (issued)
+                                        </SelectItem>
+                                        <SelectItem value="adjustment">
+                                            Correction (set exact count)
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.type} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor={`stock-qty-${item.id}`}>
+                                    Quantity
+                                </Label>
+                                <Input
+                                    id={`stock-qty-${item.id}`}
+                                    name="quantity"
+                                    type="number"
+                                    step="0.001"
+                                    required
+                                />
+                                <InputError message={errors.quantity} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor={`stock-note-${item.id}`}>
+                                    Note (optional)
+                                </Label>
+                                <Input
+                                    id={`stock-note-${item.id}`}
+                                    name="note"
+                                    placeholder="e.g. Purchase invoice 42"
+                                />
+                                <InputError message={errors.note} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button
+                                        variant="secondary"
+                                        type="button"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button disabled={processing}>
+                                    {processing ? 'Saving…' : 'Record'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AddItemDialog({
+    industry,
+    fields,
+}: {
+    industry: IndustryConfig;
+    fields: CatalogFieldSpec[];
+}) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -360,7 +707,7 @@ function AddItemDialog({ industry }: { industry: IndustryConfig }) {
                     Add item
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>New catalog item</DialogTitle>
                 </DialogHeader>
@@ -372,12 +719,24 @@ function AddItemDialog({ industry }: { industry: IndustryConfig }) {
                 >
                     {({ processing, errors }) => (
                         <>
-                            <ItemFields errors={errors} idPrefix="new" industry={industry} />
+                            <ItemFields
+                                errors={errors}
+                                idPrefix="new"
+                                industry={industry}
+                                fields={fields}
+                            />
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button variant="secondary" type="button">Cancel</Button>
+                                    <Button
+                                        variant="secondary"
+                                        type="button"
+                                    >
+                                        Cancel
+                                    </Button>
                                 </DialogClose>
-                                <Button disabled={processing}>Add</Button>
+                                <Button disabled={processing}>
+                                    Add
+                                </Button>
                             </DialogFooter>
                         </>
                     )}
@@ -390,18 +749,22 @@ function AddItemDialog({ industry }: { industry: IndustryConfig }) {
 function EditItemDialog({
     item,
     industry,
+    fields,
 }: {
     item: CatalogItem;
     industry: IndustryConfig;
+    fields: CatalogFieldSpec[];
 }) {
     const [open, setOpen] = useState(false);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" variant="outline">Edit</Button>
+                <Button size="sm" variant="outline">
+                    Edit
+                </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Edit {item.name}</DialogTitle>
                 </DialogHeader>
@@ -417,6 +780,7 @@ function EditItemDialog({
                                 errors={errors}
                                 idPrefix={`edit-${item.id}`}
                                 industry={industry}
+                                fields={fields}
                             />
                             <div className="flex items-center gap-2">
                                 <input
@@ -426,11 +790,18 @@ function EditItemDialog({
                                     defaultChecked={item.is_active !== false}
                                     className="size-4"
                                 />
-                                <Label htmlFor={`active-${item.id}`}>Active (shown in invoice picker)</Label>
+                                <Label htmlFor={`active-${item.id}`}>
+                                    Active (shown in invoice picker)
+                                </Label>
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button variant="secondary" type="button">Close</Button>
+                                    <Button
+                                        variant="secondary"
+                                        type="button"
+                                    >
+                                        Close
+                                    </Button>
                                 </DialogClose>
                                 <Button disabled={processing}>Save</Button>
                             </DialogFooter>
@@ -458,9 +829,10 @@ function ImportDialog() {
                     <DialogTitle>Import catalog from CSV</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-muted-foreground">
-                    Rows are matched by <code>item_code</code>: existing codes are updated, new ones
-                    are added. Only <code>name</code> is required. Download the CSV template for the
-                    exact columns.
+                    Rows are matched by <code>item_code</code>: existing codes
+                    are updated, new ones are added. Only <code>name</code> is
+                    required, and you may include just the columns you have.
+                    Download the CSV template for the exact columns.
                 </p>
                 <Form
                     {...CatalogItemImportController.importCsv.form()}
@@ -483,7 +855,12 @@ function ImportDialog() {
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
-                                    <Button variant="secondary" type="button">Cancel</Button>
+                                    <Button
+                                        variant="secondary"
+                                        type="button"
+                                    >
+                                        Cancel
+                                    </Button>
                                 </DialogClose>
                                 <Button disabled={processing}>
                                     {processing ? 'Importing…' : 'Import'}

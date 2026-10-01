@@ -49,6 +49,10 @@ class HandleInertiaRequests extends Middleware
                 'toast' => fn () => $request->session()->get('toast'),
                 'status' => fn () => $request->session()->get('status'),
             ],
+            // Drives the "you are viewing X as Y" banner, so a super admin can
+            // never mistake a customer's workspace for their own.
+            'impersonating' => fn () => $request->session()->get('impersonating'),
+            'isSuperAdmin' => fn () => (bool) $request->user()?->isSuperAdmin(),
             // What this tenant's trade can actually use — mirrors
             // EnsureIndustryAllows so nav and routes stay in sync.
             'capabilities' => fn (): array => $request->user()
@@ -61,7 +65,10 @@ class HandleInertiaRequests extends Middleware
 
     protected function industryKey(Request $request): ?string
     {
-        $tenantId = $request->user()?->tenant_id;
+        // While impersonating, capabilities must follow the tenant being
+        // viewed, not the tenant of the signed-in account.
+        $tenantId = $request->session()->get('impersonating.tenant_id')
+            ?? $request->user()?->tenant_id;
 
         if ($tenantId === null) {
             return null;

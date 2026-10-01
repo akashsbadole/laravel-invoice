@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\User;
@@ -13,7 +14,7 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         $filters = $request->only(['user_id', 'search']);
 

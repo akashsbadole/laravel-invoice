@@ -54,10 +54,29 @@ class Tenant extends Model
         static::$resolving = true;
 
         try {
-            return static::$contextId ?? auth()->user()?->tenant_id;
+            if (static::$contextId !== null) {
+                return static::$contextId;
+            }
+
+            // An impersonated super admin is browsing inside a tenant, so the
+            // session's tenant is the one that scopes their queries.
+            if ($impersonated = session('impersonating.tenant_id')) {
+                return (int) $impersonated;
+            }
+
+            return auth()->user()?->tenant_id;
         } finally {
             static::$resolving = false;
         }
+    }
+
+    /**
+     * True while a super admin is impersonating a tenant, so the UI can show
+     * a banner and the admin can bail out.
+     */
+    public static function isImpersonating(): bool
+    {
+        return session('impersonating') !== null;
     }
 
     /**

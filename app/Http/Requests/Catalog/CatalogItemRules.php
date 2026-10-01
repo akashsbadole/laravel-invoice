@@ -67,6 +67,8 @@ trait CatalogItemRules
             ],
             'attributes' => ['nullable', 'array'],
             'attributes.*' => ['nullable', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_image' => ['boolean'],
         ];
 
         foreach (CatalogField::all() as $field) {
@@ -105,7 +107,9 @@ trait CatalogItemRules
         }
 
         if ($field === 'minimum_order_quantity') {
-            $rules = ['required', 'integer', 'min:1'];
+            // Not required: the registry default of 1 applies when the form
+            // omits it entirely (API clients, CSV import).
+            $rules = ['nullable', 'integer', 'min:1'];
         }
 
         if ($field === 'warranty_months') {
@@ -121,7 +125,7 @@ trait CatalogItemRules
      *
      * @return array<string,mixed>
      */
-    protected function catalogPayload(): array
+    public function catalogPayload(): array
     {
         $validated = $this->validated();
 
@@ -143,7 +147,10 @@ trait CatalogItemRules
             } elseif (in_array($field['type'], ['text', 'textarea'], true)) {
                 $payload[$name] = blank($value) ? null : $value;
             } elseif ($field['type'] === 'number') {
-                $payload[$name] = $value === null || $value === '' ? null : $value + 0;
+                // Blank numeric cells fall back to the registry default so a
+                // NOT NULL column is never written as null.
+                $number = $value === null || $value === '' ? null : $value + 0;
+                $payload[$name] = $number ?? ($field['default'] ?? null);
             } else {
                 $payload[$name] = $value === null ? null : $value;
             }

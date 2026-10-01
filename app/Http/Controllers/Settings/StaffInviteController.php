@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\Permission;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Mail\StaffInviteMail;
@@ -19,7 +20,7 @@ class StaffInviteController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         if ($error = $this->subscriptions->staffQuotaError($request->user()->tenant)) {
             return back()->withErrors(['email' => $error]);
@@ -57,7 +58,7 @@ class StaffInviteController extends Controller
 
     public function destroy(Request $request, StaffInvite $invite): RedirectResponse
     {
-        abort_unless($request->user()->role->canManageUsers(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
 
         $invite->delete();
 

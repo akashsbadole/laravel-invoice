@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests\Invoices;
 
+use App\Enums\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePaymentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canWrite();
+        return $this->user()->canDo(Permission::RecordPayments);
     }
 
     /**

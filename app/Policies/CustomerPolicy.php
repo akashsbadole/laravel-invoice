@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
+use App\Enums\Permission;
 use App\Models\Customer;
 use App\Models\User;
 
@@ -10,32 +10,35 @@ class CustomerPolicy
 {
     public function viewAny(User $user): bool
     {
-        return true; // all authenticated roles can browse customers
+        return $user->canDo(Permission::ViewCustomers);
     }
 
     public function view(User $user, Customer $customer): bool
     {
-        return $this->sameTenant($user, $customer->tenant_id);
+        return $this->sameTenant($user, $customer->tenant_id)
+            && $user->canDo(Permission::ViewCustomers);
     }
 
     public function create(User $user): bool
     {
-        return $user->role->canWrite();
+        return $user->canDo(Permission::ManageCustomers);
     }
 
     public function update(User $user, Customer $customer): bool
     {
-        return $this->sameTenant($user, $customer->tenant_id) && $user->role->canWrite();
+        return $this->sameTenant($user, $customer->tenant_id)
+            && $user->canDo(Permission::ManageCustomers);
     }
 
     public function delete(User $user, Customer $customer): bool
     {
-        return $this->sameTenant($user, $customer->tenant_id) && $user->role === UserRole::Admin;
+        return $this->sameTenant($user, $customer->tenant_id)
+            && $user->canDo(Permission::DeleteInvoices);
     }
 
     public function export(User $user): bool
     {
-        return $user->role->canWrite();
+        return $user->canDo(Permission::ViewReports);
     }
 
     protected function sameTenant(User $user, ?int $tenantId): bool

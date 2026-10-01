@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreInvoiceTemplateRequest;
 use App\Http\Requests\Settings\UpdateInvoiceTemplateRequest;
@@ -16,7 +17,7 @@ class InvoiceTemplateController extends Controller
 {
     public function index(): Response
     {
-        abort_unless(request()->user()->role->canManageSettings(), 403);
+        abort_unless(request()->user()->canDo(Permission::ManageSettings), 403);
 
         return Inertia::render('settings/invoice-templates', [
             'templates' => InvoiceTemplate::query()->orderByDesc('is_default')->orderBy('name')->get(),
@@ -54,7 +55,7 @@ class InvoiceTemplateController extends Controller
 
     public function setDefault(InvoiceTemplate $invoiceTemplate): RedirectResponse
     {
-        abort_unless(request()->user()->role->canManageSettings(), 403);
+        abort_unless(request()->user()->canDo(Permission::ManageSettings), 403);
 
         DB::transaction(function () use ($invoiceTemplate) {
             InvoiceTemplate::query()->where('id', '!=', $invoiceTemplate->id)->update(['is_default' => false]);
@@ -68,7 +69,7 @@ class InvoiceTemplateController extends Controller
 
     public function destroy(InvoiceTemplate $invoiceTemplate): RedirectResponse
     {
-        abort_unless(request()->user()->role->canManageSettings(), 403);
+        abort_unless(request()->user()->canDo(Permission::ManageSettings), 403);
         abort_if($invoiceTemplate->is_default, 422, 'Set another template as default before deleting this one.');
 
         $invoiceTemplate->delete();

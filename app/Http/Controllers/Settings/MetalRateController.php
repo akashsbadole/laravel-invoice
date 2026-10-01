@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreMetalRateRequest;
 use App\Models\MetalRate;
@@ -44,7 +45,7 @@ class MetalRateController extends Controller
 
     public function destroy(Request $request, MetalRate $metalRate): RedirectResponse
     {
-        abort_unless($request->user()->role->canWrite(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
 
         $metalRate->delete();
 

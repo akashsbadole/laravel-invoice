@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Customers;
 
+use App\Enums\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +10,7 @@ class UpdateCustomerRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canWrite();
+        return $this->user()->canDo(Permission::ManageCustomers);
     }
 
     /**

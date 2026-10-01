@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Invoices;
 
+use App\Enums\Permission;
 use App\Enums\DocumentType;
 use App\Enums\LineType;
 use App\Support\Industry;
@@ -12,7 +13,7 @@ class StoreInvoiceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canWrite();
+        return $this->user()->canDo(Permission::CreateInvoices);
     }
 
     /**

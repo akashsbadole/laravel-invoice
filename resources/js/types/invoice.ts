@@ -310,6 +310,32 @@ export type CatalogItem = {
     attributes: Record<string, string> | null;
     description: string | null;
     is_active?: boolean;
+
+    // Commercial
+    cost_price: string | null;
+    minimum_order_quantity: number | string;
+    pack_size: string | null;
+    tax_inclusive?: boolean;
+
+    // Traceability / physical
+    barcode: string | null;
+    color: string | null;
+    material: string | null;
+    thickness: string | null;
+    warranty_months: number | string | null;
+    manufacturer: string | null;
+    country_of_origin: string | null;
+
+    // Stock
+    stock_tracked?: boolean;
+    stock_quantity: string | number;
+    reorder_level: string | number;
+    stock_unit: string | null;
+    is_low_stock?: boolean;
+
+    // Media
+    image_path?: string | null;
+    image_url?: string | null;
 };
 
 export type InvoiceTemplateOption = {

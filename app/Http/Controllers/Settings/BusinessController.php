@@ -38,7 +38,7 @@ class BusinessController extends Controller
                     'default_tax_rate', 'default_currency', 'invoice_terms', 'footer_text',
                     'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
                     'sms_birthday_wishes', 'sms_anniversary_wishes',
-                    'quotation_customer_decisions', 'quotation_show_updates',
+                    'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
                 ]),
                 'logo_url' => $settings->logo_path ? Storage::disk('public')->url($settings->logo_path) : null,
                 'signature_url' => $settings->signature_image_path ? Storage::disk('public')->url($settings->signature_image_path) : null,
@@ -64,6 +64,7 @@ class BusinessController extends Controller
             'sms_anniversary_wishes' => $request->boolean('sms_anniversary_wishes'),
             'quotation_customer_decisions' => $request->boolean('quotation_customer_decisions'),
             'quotation_show_updates' => $request->boolean('quotation_show_updates'),
+            'show_all_catalog_fields' => $request->boolean('show_all_catalog_fields'),
         ]);
 
         // Secrets are write-only: blank means "keep the stored value".

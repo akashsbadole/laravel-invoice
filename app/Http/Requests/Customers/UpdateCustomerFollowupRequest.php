@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Customers;
 
+use App\Enums\Permission;
 use App\Enums\FollowupStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,13 +12,13 @@ class UpdateCustomerFollowupRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canWrite();
+        return $this->user()->canDo(Permission::SendMessages);
     }
 
     /**
      * Every field is optional per-request (`sometimes`) so this same
      * endpoint supports both a full edit and a quick one-field status
-     * change — only the keys actually sent are validated and updated.
+     * change â€” only the keys actually sent are validated and updated.
      *
      * @return array<string, mixed>
      */

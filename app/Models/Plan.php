@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Plan extends Model
 {
+    public const FREE_SLUG = 'free';
+
     /** @var list<string> */
     protected $fillable = [
         'name', 'slug', 'price', 'currency', 'interval',
@@ -39,6 +41,20 @@ class Plan extends Model
         return $this->max_invoices_per_month === null;
     }
 
+    public function allowsUnlimitedStaff(): bool
+    {
+        return $this->max_staff >= 1000000;
+    }
+
+    /**
+     * The always-available plan. While the product is free every new tenant
+     * lands here, so nothing is gated behind checkout.
+     */
+    public function isFree(): bool
+    {
+        return $this->slug === self::FREE_SLUG;
+    }
+
     /**
      * Seed the default plans if missing and return them keyed by slug.
      *
@@ -47,6 +63,12 @@ class Plan extends Model
     public static function ensureDefaults(): array
     {
         $defaults = [
+            [
+                'name' => 'Free', 'slug' => self::FREE_SLUG, 'price' => 0,
+                'max_staff' => 1000000, 'max_invoices_per_month' => null,
+                'features' => ['Unlimited staff', 'Unlimited invoices', 'Catalog + stock', 'PDF, share links & WhatsApp'],
+                'sort_order' => 0,
+            ],
             [
                 'name' => 'Starter', 'slug' => 'starter', 'price' => 499,
                 'max_staff' => 5, 'max_invoices_per_month' => 200,

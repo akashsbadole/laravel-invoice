@@ -67,6 +67,24 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === UserRole::Admin;
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->role?->isSuperAdmin() ?? false;
+    }
+
+    public function canDo($permission): bool
+    {
+        return $this->role?->can($permission) ?? false;
+    }
+
+    /**
+     * A platform account has no tenant, so it is exempt from tenant scoping.
+     */
+    public function hasTenant(): bool
+    {
+        return $this->tenant_id !== null;
+    }
+
     /**
      * Firms (tenants) this login can switch between.
      *

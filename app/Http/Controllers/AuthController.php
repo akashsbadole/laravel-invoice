@@ -53,6 +53,12 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->save();
 
+        // A platform super admin has no tenant, so send them to the admin
+        // panel rather than a tenant dashboard they cannot load.
+        if ($user->isSuperAdmin()) {
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
         return redirect()->intended(route('dashboard'));
     }
 

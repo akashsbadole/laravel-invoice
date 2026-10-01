@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\Permission;
+
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +11,7 @@ class StoreInvoiceTemplateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canManageSettings();
+        return $this->user()->canDo(Permission::ManageSettings);
     }
 
     /**

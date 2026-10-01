@@ -43,15 +43,17 @@ class RegisterController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        $trialDays = (int) config('billing.trial_days', 14);
+        // While the product is free every new tenant starts on the free plan
+        // with no trial clock, so registration never dead-ends at checkout.
+        $freePlan = Plan::ensureDefaults()[Plan::FREE_SLUG];
 
-        $user = DB::transaction(function () use ($validated, $trialDays) {
+        $user = DB::transaction(function () use ($validated, $freePlan) {
             $tenant = Tenant::create([
                 'name' => $validated['business_name'],
                 'industry' => $validated['industry'],
                 'slug' => $this->uniqueSlug($validated['business_name']),
                 'status' => 'active',
-                'trial_ends_at' => now()->addDays($trialDays),
+                'trial_ends_at' => null,
             ]);
 
             $settings = new BusinessSetting([
@@ -80,9 +82,9 @@ class RegisterController extends Controller
 
             Subscription::create([
                 'tenant_id' => $tenant->id,
-                'plan_id' => Plan::ensureDefaults()['starter']->id,
-                'status' => 'trialing',
-                'trial_ends_at' => $tenant->trial_ends_at,
+                'plan_id' => $freePlan->id,
+                'status' => 'active',
+                'current_period_ends_at' => null,
             ]);
 
             return $user;
@@ -92,7 +94,7 @@ class RegisterController extends Controller
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Welcome! Your 14-day trial has started.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Welcome! Your workspace is ready.')]);
 
         return redirect()->intended(route('dashboard'));
     }

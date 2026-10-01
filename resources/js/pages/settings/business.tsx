@@ -41,6 +41,7 @@ type BusinessSettings = {
     sms_anniversary_wishes: boolean;
     quotation_customer_decisions: boolean;
     quotation_show_updates: boolean;
+    show_all_catalog_fields: boolean;
     default_tax_rate: string;
     default_currency: string;
     invoice_terms: string | null;
@@ -615,6 +616,11 @@ export default function BusinessSettingsPage({
                                                 name: 'quotation_show_updates',
                                                 label: 'Show an updates feed',
                                                 hint: 'Customers see every change made to a shared quotation.',
+                                            },
+                                            {
+                                                name: 'show_all_catalog_fields',
+                                                label: 'Show every catalog field',
+                                                hint: 'Reveal all product fields regardless of your industry.',
                                             },
                                         ] as const
                                     ).map((option) => (

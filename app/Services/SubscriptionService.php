@@ -15,15 +15,32 @@ class SubscriptionService
         return $tenant->subscription ?? $tenant->subscription()->first();
     }
 
+    /**
+     * The plan currently granting access, if any.
+     *
+     * The free plan is always usable regardless of subscription status —
+     * while the product is free nobody should be redirected to checkout.
+     */
     public function usablePlan(Tenant $tenant): ?Plan
     {
         $subscription = $this->subscriptionFor($tenant);
 
-        if (! $subscription || ! $subscription->isUsable()) {
+        if (! $subscription) {
             return null;
         }
 
-        return $subscription->plan;
+        if ($subscription->plan?->isFree()) {
+            return $subscription->plan;
+        }
+
+        return $subscription->isUsable() ? $subscription->plan : null;
+    }
+
+    public function hasPaidPlan(Tenant $tenant): bool
+    {
+        $plan = $this->subscriptionFor($tenant)?->plan;
+
+        return $plan !== null && ! $plan->isFree();
     }
 
     public function staffQuotaError(Tenant $tenant): ?string
@@ -35,6 +52,10 @@ class SubscriptionService
         }
 
         $count = User::query()->withoutGlobalScopes()->where('tenant_id', $tenant->id)->count();
+
+        if ($plan->allowsUnlimitedStaff()) {
+            return null;
+        }
 
         if ($count >= $plan->max_staff) {
             return "Your {$plan->name} plan allows {$plan->max_staff} staff members. Upgrade to add more.";

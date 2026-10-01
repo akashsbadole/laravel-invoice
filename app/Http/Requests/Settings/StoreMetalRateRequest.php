@@ -2,13 +2,15 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Enums\Permission;
+
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreMetalRateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->role->canWrite();
+        return $this->user()->canDo(Permission::ManageCatalog);
     }
 
     /**

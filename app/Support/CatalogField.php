@@ -30,7 +30,31 @@ final class CatalogField
     private const INDUSTRY_GATED_GROUPS = [self::GROUP_PHYSICAL];
 
     /**
-     * @return list<array{name:string,label:string,type:string,group:string,hint?:string}>
+     * Whether a trade-specific field applies to this industry.
+     *
+     * Weight columns belong to weight-priced trades and area columns to
+     * area-priced ones; the rest are opted into via `item_fields` so a tiles
+     * catalog does not show a "Metal" box.
+     */
+    private static function physicalApplies(string $name, string $industry): bool
+    {
+        $weightOnly = ['metal_type', 'purity', 'default_net_weight', 'default_gross_weight'];
+        $areaOnly = ['default_length', 'default_width', 'default_wastage_percent'];
+
+        if (in_array($name, $weightOnly, true)) {
+            return Industry::usesWeightFields($industry);
+        }
+
+        if (in_array($name, $areaOnly, true)) {
+            return in_array('per_sqft', Industry::rateTypes($industry), true)
+                || in_array('per_sqm', Industry::rateTypes($industry), true);
+        }
+
+        return in_array($name, Industry::itemFields($industry), true);
+    }
+
+    /**
+     * @return list<array{name:string,label:string,type:string,group:string,hint?:string,default?:int|float}>
      */
     public static function all(): array
     {
@@ -51,7 +75,7 @@ final class CatalogField
             ['name' => 'default_rate', 'label' => 'Selling price', 'type' => 'number', 'group' => self::GROUP_PRICING],
             ['name' => 'cost_price', 'label' => 'Cost price', 'type' => 'number', 'group' => self::GROUP_PRICING, 'hint' => 'Your purchase cost, for margin checks. Never shown to customers.'],
             ['name' => 'tax_inclusive', 'label' => 'Selling price includes tax', 'type' => 'boolean', 'group' => self::GROUP_PRICING],
-            ['name' => 'minimum_order_quantity', 'label' => 'Minimum order qty', 'type' => 'number', 'group' => self::GROUP_PRICING],
+            ['name' => 'minimum_order_quantity', 'label' => 'Minimum order qty', 'type' => 'number', 'group' => self::GROUP_PRICING, 'default' => 1],
             ['name' => 'pack_size', 'label' => 'Pack size', 'type' => 'text', 'group' => self::GROUP_PRICING, 'hint' => 'e.g. "Box of 12" or "1.2 m length".'],
             ['name' => 'unit_label', 'label' => 'Unit label', 'type' => 'text', 'group' => self::GROUP_PRICING, 'hint' => 'e.g. piece, box, metre, sq ft.'],
 
@@ -74,8 +98,8 @@ final class CatalogField
 
             // Stock — opt-in per product, so made-to-order work is unaffected.
             ['name' => 'stock_tracked', 'label' => 'Track stock for this product', 'type' => 'boolean', 'group' => self::GROUP_STOCK],
-            ['name' => 'stock_quantity', 'label' => 'Quantity in stock', 'type' => 'number', 'group' => self::GROUP_STOCK],
-            ['name' => 'reorder_level', 'label' => 'Reorder level', 'type' => 'number', 'group' => self::GROUP_STOCK, 'hint' => 'Flagged as low when stock falls to this.'],
+            ['name' => 'stock_quantity', 'label' => 'Quantity in stock', 'type' => 'number', 'group' => self::GROUP_STOCK, 'default' => 0],
+            ['name' => 'reorder_level', 'label' => 'Reorder level', 'type' => 'number', 'group' => self::GROUP_STOCK, 'default' => 0, 'hint' => 'Flagged as low when stock falls to this.'],
             ['name' => 'stock_unit', 'label' => 'Stock unit', 'type' => 'text', 'group' => self::GROUP_STOCK],
 
             // Media & extensibility.
@@ -85,20 +109,25 @@ final class CatalogField
     }
 
     /**
-     * @return list<array{name:string,label:string,type:string,group:string,hint?:string}>
+     * @return list<array{name:string,label:string,type:string,group:string,hint?:string,default?:int|float}>
      */
     public static function allForIndustry(?string $industry = null, ?bool $showAll = null): array
     {
+        $industry = Industry::normalize($industry);
+
         if ($showAll ?? self::showAll()) {
             return self::all();
         }
 
-        $allowed = Industry::itemFields($industry);
-
         return array_values(array_filter(
             self::all(),
-            fn (array $field) => ! in_array($field['group'], self::INDUSTRY_GATED_GROUPS, true)
-                || in_array($field['name'], $allowed, true),
+            function (array $field) use ($industry): bool {
+                if (! in_array($field['group'], self::INDUSTRY_GATED_GROUPS, true)) {
+                    return true;
+                }
+
+                return self::physicalApplies($field['name'], $industry);
+            },
         ));
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Http\Requests\Reminders\StoreReminderRequest;
 use App\Models\BusinessSetting;
 use App\Models\Customer;
@@ -46,7 +47,7 @@ class ReminderController extends Controller
 
     public function done(Request $request, Reminder $reminder): RedirectResponse
     {
-        abort_unless($request->user()->role->canWrite(), 403);
+        abort_unless($request->user()->canDo(Permission::SendMessages), 403);
 
         $reminder->update(['is_done' => true]);
 
@@ -57,7 +58,7 @@ class ReminderController extends Controller
 
     public function destroy(Request $request, Reminder $reminder): RedirectResponse
     {
-        abort_unless($request->user()->role->canWrite(), 403);
+        abort_unless($request->user()->canDo(Permission::SendMessages), 403);
 
         $reminder->delete();
 
@@ -97,7 +98,7 @@ class ReminderController extends Controller
 
     public function sendOccasionSms(Request $request, Customer $customer, SmsService $sms): RedirectResponse
     {
-        abort_unless($request->user()->role->canWrite(), 403);
+        abort_unless($request->user()->canDo(Permission::SendMessages), 403);
 
         $business = BusinessSetting::current();
         $message = $request->input('occasion') === 'anniversary'

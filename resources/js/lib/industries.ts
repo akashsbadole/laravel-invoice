@@ -23,6 +23,35 @@ export type IndustryConfig = IndustryOption & {
     item_fields: string[];
     template_flags: string[];
     charge_types: string[];
+    show_all_fields?: boolean;
+};
+
+/**
+ * One catalog field, mirrored from App\Support\CatalogField::all(). The
+ * registry is the single source of truth for the form, so adding a field
+ * server-side makes it appear here with no component changes.
+ */
+export type CatalogFieldSpec = {
+    name: string;
+    label: string;
+    type:
+        | 'text'
+        | 'textarea'
+        | 'number'
+        | 'boolean'
+        | 'select'
+        | 'image'
+        | 'attributes';
+    group: 'identity' | 'pricing' | 'physical' | 'stock';
+    hint?: string;
+    default?: number;
+};
+
+export const CATALOG_FIELD_GROUPS: Record<CatalogFieldSpec['group'], string> = {
+    identity: 'Product details',
+    pricing: 'Pricing & packing',
+    physical: 'Specification',
+    stock: 'Stock',
 };
 
 /**

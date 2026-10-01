@@ -21,7 +21,7 @@ class BusinessSetting extends Model
         'invoice_terms', 'footer_text', 'signature_image_path', 'stamp_image_path',
         'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
         'sms_birthday_wishes', 'sms_anniversary_wishes',
-        'quotation_customer_decisions', 'quotation_show_updates',
+        'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
         'sms_driver', 'sms_country_code',
         'sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from',
         'sms_http_url', 'sms_http_token', 'sms_http_to_field', 'sms_http_message_field',
@@ -42,6 +42,7 @@ class BusinessSetting extends Model
             'sms_anniversary_wishes' => 'boolean',
             'quotation_customer_decisions' => 'boolean',
             'quotation_show_updates' => 'boolean',
+            'show_all_catalog_fields' => 'boolean',
         ];
     }
 

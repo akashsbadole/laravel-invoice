@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Models\BusinessSetting;
 use App\Models\CatalogItem;
+use App\Services\InventoryService;
+use App\Support\CatalogField;
 use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,18 +20,24 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class CatalogItemImportController extends Controller
 {
+    public function __construct(private readonly InventoryService $inventory) {}
+
     /**
-     * Columns the importer understands. Jewelry-only columns are ignored for
-     * other trades and generic ones ignored for jewelry, so a shared template
-     * works everywhere.
+     * Columns the importer understands, straight from the field registry so
+     * the CSV can never offer a column the model does not have. The
+     * `attributes` column is serialised as `key=value;key2=value2`.
      */
     protected const COLUMNS = [
-        'name', 'item_code', 'brand', 'model_number', 'hsn_code',
-        'size_label', 'finish', 'grade', 'specification', 'unit_label',
-        'metal_type', 'purity', 'rate_type',
-        'default_rate', 'default_net_weight', 'default_gross_weight',
+        'name', 'item_code', 'barcode', 'brand', 'model_number',
+        'manufacturer', 'country_of_origin', 'hsn_code', 'description',
+        'rate_type', 'default_rate', 'cost_price', 'tax_inclusive',
+        'minimum_order_quantity', 'pack_size', 'unit_label',
+        'metal_type', 'purity', 'size_label', 'finish', 'grade', 'color',
+        'material', 'thickness', 'specification', 'warranty_months',
+        'default_net_weight', 'default_gross_weight',
         'default_length', 'default_width', 'default_wastage_percent',
-        'description', 'is_active',
+        'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
+        'image_path', 'attributes', 'is_active',
     ];
 
     /**
@@ -40,31 +49,12 @@ class CatalogItemImportController extends Controller
      */
     protected function columnsFor(string $industry): array
     {
-        $usesWeights = Industry::usesWeightFields($industry);
-        $isArea = in_array('per_sqft', Industry::rateTypes($industry), true)
-            || in_array('per_sqm', Industry::rateTypes($industry), true);
-        $fields = Industry::itemFields($industry);
-
-        return array_values(array_filter(self::COLUMNS, function (string $column) use ($industry, $usesWeights, $isArea, $fields): bool {
-            if (in_array($column, ['metal_type', 'purity', 'default_net_weight', 'default_gross_weight'], true)) {
-                return $usesWeights;
-            }
-
-            if (in_array($column, ['default_length', 'default_width', 'default_wastage_percent'], true)) {
-                return $isArea;
-            }
-
-            if (in_array($column, ['size_label', 'finish', 'grade', 'specification', 'unit_label', 'brand', 'model_number'], true)) {
-                return in_array($column, $fields, true) || $column === 'model_number';
-            }
-
-            return true;
-        }));
+        return CatalogField::names($industry);
     }
 
     public function template(): StreamedResponse
     {
-        abort_unless(request()->user()->role->canWrite(), 403);
+        abort_unless(request()->user()->canDo(Permission::ManageCatalog), 403);
 
         $industry = BusinessSetting::current()->industryKey();
         $usesWeights = Industry::usesWeightFields($industry);
@@ -79,15 +69,24 @@ class CatalogItemImportController extends Controller
                 return match ($column) {
                     'name' => $usesWeights ? 'Gold Ring 22K' : 'Product sample',
                     'item_code' => 'SKU-001',
+                    'barcode' => '8901234567890',
                     'brand' => 'Your Brand',
                     'hsn_code' => $usesWeights ? '7113' : '6910',
                     'metal_type' => 'Gold',
                     'purity' => '22K',
                     'rate_type' => $defaultRateType,
                     'default_rate' => '50',
+                    'cost_price' => '35',
+                    'minimum_order_quantity' => '1',
+                    'pack_size' => 'Box of 12',
+                    'length' => '60',
                     'default_length' => '60',
                     'default_width' => '60',
+                    'stock_tracked' => '1',
+                    'stock_quantity' => '0',
+                    'reorder_level' => '0',
                     'is_active' => '1',
+                    'attributes' => 'thread=2x40;finish=matte',
                     'description' => 'Sample row',
                     default => '',
                 };
@@ -118,7 +117,7 @@ class CatalogItemImportController extends Controller
      */
     public function exportCsv(Request $request): StreamedResponse
     {
-        abort_unless($request->user()->role->canWrite(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
 
         $columns = $this->columnsFor(BusinessSetting::current()->industryKey());
         $items = CatalogItem::query()->orderBy('name')->get();
@@ -129,7 +128,7 @@ class CatalogItemImportController extends Controller
 
             foreach ($items as $item) {
                 fputcsv($handle, array_map(
-                    fn (string $column) => $column === 'rate_type' ? $item->rate_type->value : (string) ($item->{$column} ?? ''),
+                    fn (string $column) => $this->exportValue($item, $column),
                     $columns,
                 ));
             }
@@ -140,7 +139,7 @@ class CatalogItemImportController extends Controller
 
     public function importCsv(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->role->canWrite(), 403);
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
 
         // Validate on the uploaded filename rather than the browser-reported
         // MIME type: Excel sends .csv files as application/vnd.ms-excel, which
@@ -189,39 +188,30 @@ class CatalogItemImportController extends Controller
                 ? $data['rate_type']
                 : $defaultRateType;
 
-            $itemCode = $data['item_code'] ?: null;
-            $existing = $itemCode ? CatalogItem::query()->where('item_code', $itemCode)->first() : null;
+            $payload = $this->payloadFrom($data, $allowedRateTypes, $defaultRateType);
 
-            $payload = [
-                'name' => $data['name'],
-                'item_code' => $itemCode,
-                'brand' => $data['brand'] ?: null,
-                'model_number' => $data['model_number'] ?: null,
-                'hsn_code' => $data['hsn_code'] ?: null,
-                'size_label' => $data['size_label'] ?: null,
-                'finish' => $data['finish'] ?: null,
-                'grade' => $data['grade'] ?: null,
-                'specification' => $data['specification'] ?: null,
-                'unit_label' => $data['unit_label'] ?: null,
-                'metal_type' => $data['metal_type'] ?: null,
-                'purity' => $data['purity'] ?: null,
-                'rate_type' => $data['rate_type'],
-                'default_rate' => $this->numberOrNull($data['default_rate']),
-                'default_net_weight' => $this->numberOrNull($data['default_net_weight']),
-                'default_gross_weight' => $this->numberOrNull($data['default_gross_weight']),
-                'default_length' => $this->numberOrNull($data['default_length']),
-                'default_width' => $this->numberOrNull($data['default_width']),
-                'default_wastage_percent' => $this->numberOrNull($data['default_wastage_percent']),
-                'description' => $data['description'] ?: null,
-                'is_active' => $this->booleanOrDefault($data['is_active']),
-                'created_by' => $request->user()->id,
-            ];
+            $itemCode = $payload['item_code'];
+            $existing = $itemCode ? CatalogItem::query()->where('item_code', $itemCode)->first() : null;
+            $payload['created_by'] = $request->user()->id;
+
+            $submittedStock = (float) ($payload['stock_quantity'] ?? 0);
+            $payload['stock_quantity'] = 0;
 
             if ($existing) {
                 $existing->update($payload);
+
+                if ($payload['stock_tracked'] && $submittedStock !== (float) $existing->stock_quantity) {
+                    $this->inventory->setOpeningStock($existing, $submittedStock, $request->user()->id);
+                }
+
                 $updated++;
             } else {
-                CatalogItem::create($payload);
+                $item = CatalogItem::create($payload);
+
+                if ($payload['stock_tracked'] && $submittedStock !== 0.0) {
+                    $this->inventory->setOpeningStock($item, $submittedStock, $request->user()->id);
+                }
+
                 $created++;
             }
         }
@@ -291,15 +281,142 @@ class CatalogItemImportController extends Controller
         return $data;
     }
 
+    /**
+     * One cell for the export. Attributes are flattened so the round trip
+     * through the importer is lossless.
+     */
+    protected function exportValue(CatalogItem $item, string $column): string
+    {
+        if ($column === 'rate_type') {
+            return $item->rate_type?->value ?? '';
+        }
+
+        if ($column === 'attributes') {
+            return $this->stringifyAttributes($item->attributes);
+        }
+
+        if ($column === 'is_active') {
+            return $item->is_active ? '1' : '0';
+        }
+
+        $value = $item->{$column} ?? '';
+
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        return (string) $value;
+    }
+
     protected function numberOrNull(?string $value): int|float|null
     {
         return is_numeric($value) ? $value + 0 : null;
     }
 
-    protected function booleanOrDefault(?string $value): bool
+    protected function booleanOrDefault(?string $value, bool $default = true): bool
     {
-        return $value === null || $value === ''
-            ? true
-            : filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        if ($value === null || trim($value) === '') {
+            return $default;
+        }
+
+        return filter_var(trim($value), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Turn one extracted CSV row into model attributes, applying the same
+     * coercion rules the form uses.
+     *
+     * @param  array<string,string|null>  $data
+     * @param  list<string>  $allowedRateTypes
+     * @return array<string,mixed>
+     */
+    protected function payloadFrom(array $data, array $allowedRateTypes, string $defaultRateType): array
+    {
+        $payload = [
+            'rate_type' => in_array($data['rate_type'], $allowedRateTypes, true)
+                ? $data['rate_type']
+                : $defaultRateType,
+            'attributes' => $this->parseAttributes($data['attributes'] ?? null),
+            // Importing is an explicit act, so a product with no is_active
+            // column is treated as active.
+            'is_active' => $this->booleanOrDefault($data['is_active'] ?? null),
+            'tax_inclusive' => $this->booleanOrDefault($data['tax_inclusive'] ?? null, false),
+            'stock_tracked' => $this->booleanOrDefault($data['stock_tracked'] ?? null, false),
+        ];
+
+        foreach (CatalogField::all() as $field) {
+            $name = $field['name'];
+
+            // Already handled above or by the caller.
+            if (in_array($name, ['rate_type', 'attributes', 'item_code'], true)) {
+                continue;
+            }
+
+            $value = $data[$name] ?? null;
+
+            $payload[$name] = match ($field['type']) {
+                // Fall back to the registry default: several numeric columns
+                // are NOT NULL, so a blank CSV cell must not write null.
+                'number' => $this->numberOrNull($value) ?? ($field['default'] ?? null),
+                'boolean' => $this->booleanOrDefault($value, $name === 'is_active'),
+                default => filled($value) ? $value : null,
+            };
+        }
+
+        $payload['item_code'] = $data['item_code'] ?: null;
+
+        return $payload;
+    }
+
+    /**
+     * Read the `key=value;key2=value2` attributes column.
+     *
+     * @return array<string,string>
+     */
+    protected function parseAttributes(?string $value): array
+    {
+        if (blank($value)) {
+            return [];
+        }
+
+        $attributes = [];
+
+        foreach (explode(';', $value) as $pair) {
+            if (! str_contains($pair, '=')) {
+                continue;
+            }
+
+            [$key, $val] = explode('=', $pair, 2);
+            $key = trim($key);
+            $val = trim($val);
+
+            if ($key !== '' && $val !== '') {
+                $attributes[$key] = $val;
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * Render the attributes array back into one CSV cell.
+     *
+     * @param  array<string,mixed>|null  $attributes
+     */
+    protected function stringifyAttributes(?array $attributes): string
+    {
+        if (! $attributes) {
+            return '';
+        }
+
+        $pairs = [];
+
+        foreach ($attributes as $key => $value) {
+            if (is_scalar($value) && (string) $value !== '') {
+                $pairs[] = $key.'='.(string) $value;
+            }
+        }
+
+        return implode(';', $pairs);
     }
 }
