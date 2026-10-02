@@ -200,9 +200,9 @@ class QuotationBuilderTest extends TestCase
         $this->product($user, ['status' => 'inactive']);
 
         $this->actingAs($user)
-            ->get(route('invoices.index'))
+            ->get(route('quotations.create'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('catalogProducts', 0));
+            ->assertInertia(fn ($page) => $page->has('products', 0));
     }
 
     public function test_active_products_are_offered_to_the_builder(): void
@@ -211,12 +211,12 @@ class QuotationBuilderTest extends TestCase
         $this->product($user);
 
         $this->actingAs($user)
-            ->get(route('invoices.index'))
+            ->get(route('quotations.create'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('catalogProducts', 1)
-                ->where('catalogProducts.0.name', 'Vitrified Floor Tile 600x600')
-                ->where('catalogProducts.0.rate_type', 'per_sqft')
+                ->has('products', 1)
+                ->where('products.0.name', 'Vitrified Floor Tile 600x600')
+                ->where('products.0.rate_type', 'per_sqft')
             );
     }
 }

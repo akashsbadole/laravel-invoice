@@ -66,6 +66,16 @@ class CatalogItemController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        $industry = BusinessSetting::current()->industryKey();
+
+        return Inertia::render('catalog/create', [
+            'industry' => $this->industryProps($industry),
+            'fields' => $this->fieldProps($industry),
+        ]);
+    }
+
     /**
      * The fields the form should render, straight from the registry.
      *
@@ -158,7 +168,7 @@ class CatalogItemController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product added to the catalog.')]);
 
-        return back();
+        return to_route('catalog.index');
     }
 
     public function update(UpdateCatalogItemRequest $request, CatalogItem $catalogItem): RedirectResponse

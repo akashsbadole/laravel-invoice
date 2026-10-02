@@ -12,10 +12,8 @@ import {
 import { useState } from 'react';
 import CatalogItemController from '@/actions/App/Http/Controllers/CatalogItemController';
 import CatalogItemImportController from '@/actions/App/Http/Controllers/CatalogItemImportController';
-import { AttributesEditor } from '@/components/attributes-editor';
+import { CatalogItemForm } from '@/components/catalog/catalog-item-form';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
-import { VariantsEditor } from '@/components/variants-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import InputError from '@/components/input-error';
 import {
     Select,
     SelectContent,
@@ -37,22 +36,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import {
-    CATALOG_FIELD_GROUPS,
-    rateTypeLabel,
-} from '@/lib/industries';
-import type { CatalogFieldSpec, IndustryConfig } from '@/lib/industries';
-import {
-    download as catalogDownload,
+    create as catalogCreate,
     excelDownload,
     excelTemplate,
     template as catalogTemplate,
+    download as catalogDownload,
 } from '@/routes/catalog';
 import { dashboard } from '@/routes';
+import type { CatalogFieldSpec, IndustryConfig } from '@/lib/industries';
 import type { Paginated } from '@/types/customer';
 import type { CatalogItem } from '@/types/invoice';
-
 export default function CatalogPage({
     items,
     filters,
@@ -89,7 +83,12 @@ export default function CatalogPage({
                 />
 
                 <div className="flex flex-wrap gap-2">
-                    <AddItemDialog industry={industry} fields={fields} />
+                    <Button size="sm" asChild>
+                        <a href={catalogCreate()}>
+                            <Plus className="size-4" />
+                            Add item
+                        </a>
+                    </Button>
                     <ImportDialog />
                     <Button size="sm" variant="outline" asChild>
                         <a href={catalogDownload()}>
@@ -337,253 +336,6 @@ export default function CatalogPage({
     );
 }
 
-/**
- * One registry-driven input. Rendering from the spec is what keeps the form,
- * the CSV and the validator describing the same set of fields.
- */
-function FieldInput({
-    field,
-    idPrefix,
-    industry,
-    item,
-    errors,
-}: {
-    field: CatalogFieldSpec;
-    idPrefix: string;
-    industry: IndustryConfig;
-    item?: CatalogItem;
-    errors: Record<string, string>;
-}) {
-    const id = `${idPrefix}-${field.name}`;
-    const value = (item as Record<string, unknown> | undefined)?.[
-        field.name
-    ];
-    const labelId = `${id}-hint`;
-
-    let control: React.ReactNode;
-
-    switch (field.type) {
-        case 'textarea':
-            control = (
-                <Textarea
-                    id={id}
-                    name={field.name}
-                    rows={2}
-                    defaultValue={(value as string) ?? ''}
-                />
-            );
-            break;
-
-        case 'number':
-            control = (
-                <Input
-                    id={id}
-                    name={field.name}
-                    type="number"
-                    step="0.001"
-                    min={0}
-                    defaultValue={
-                        value === null || value === undefined
-                            ? ''
-                            : String(value)
-                    }
-                />
-            );
-            break;
-
-        case 'select':
-            control = (
-                <Select
-                    name={field.name}
-                    defaultValue={
-                        (value as string) ??
-                        industry.rate_types[0] ??
-                        'per_piece'
-                    }
-                >
-                    <SelectTrigger id={id} className="w-full">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {industry.rate_types.map((type) => (
-                            <SelectItem key={type} value={type}>
-                                {rateTypeLabel(type)}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            );
-            break;
-
-        case 'boolean':
-            return (
-                <div className="flex items-center gap-2 pt-6">
-                    <input
-                        type="checkbox"
-                        id={id}
-                        name={field.name}
-                        defaultChecked={Boolean(value)}
-                        className="size-4"
-                    />
-                    <Label htmlFor={id} className="font-normal">
-                        {field.label}
-                    </Label>
-                </div>
-            );
-
-        case 'image':
-            // Image upload is bespoke rather than a plain input.
-            return null;
-
-        case 'attributes':
-            control = <AttributesEditor initial={item?.attributes ?? {}} />;
-            break;
-
-        default:
-            control = (
-                <Input
-                    id={id}
-                    name={field.name}
-                    defaultValue={(value as string) ?? ''}
-                />
-            );
-    }
-
-    return (
-        <div className="grid gap-2">
-            <Label htmlFor={id}>{field.label}</Label>
-            {control}
-            {field.hint && (
-                <p
-                    id={labelId}
-                    className="text-xs text-muted-foreground"
-                >
-                    {field.hint}
-                </p>
-            )}
-            <InputError message={errors[field.name]} />
-        </div>
-    );
-}
-
-/**
- * Repeatable key/value rows for the free-form `attributes` column.
- */
-function ItemFields({
-    item,
-    errors,
-    idPrefix,
-    industry,
-    fields,
-}: {
-    item?: CatalogItem;
-    errors: Record<string, string>;
-    idPrefix: string;
-    industry: IndustryConfig;
-    fields: CatalogFieldSpec[];
-}) {
-    const groups = Object.entries(CATALOG_FIELD_GROUPS)
-        .map(([key, label]) => ({
-            key: key as CatalogFieldSpec['group'],
-            label,
-            fields: fields.filter((f) => f.group === key),
-        }))
-        .filter((group) => group.fields.length > 0);
-
-    return (
-        <div className="space-y-5">
-            <ImageField idPrefix={idPrefix} item={item} errors={errors} />
-
-            {groups.map((group) => (
-                <div key={group.key} className="space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">
-                        {group.label}
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {group.fields
-                            .filter((f) => f.type !== 'image')
-                            .map((field) => (
-                                <FieldInput
-                                    key={field.name}
-                                    field={field}
-                                    idPrefix={idPrefix}
-                                    industry={industry}
-                                    item={item}
-                                    errors={errors}
-                                />
-                            ))}
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-function ImageField({
-    idPrefix,
-    item,
-    errors,
-}: {
-    idPrefix: string;
-    item?: CatalogItem;
-    errors: Record<string, string>;
-}) {
-    const [preview, setPreview] = useState<string | null>(
-        item?.image_url ?? null,
-    );
-    const [remove, setRemove] = useState(false);
-
-    return (
-        <div className="grid gap-2">
-            <Label htmlFor={`${idPrefix}-image`}>Product image</Label>
-            <div className="flex items-center gap-3">
-                {preview && !remove ? (
-                    <img
-                        src={preview}
-                        alt=""
-                        className="size-16 rounded-md border object-cover"
-                    />
-                ) : (
-                    <div className="flex size-16 items-center justify-center rounded-md border text-muted-foreground">
-                        <ImageIcon className="size-5" />
-                    </div>
-                )}
-                <input
-                    id={`${idPrefix}-image`}
-                    name="image"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                            setPreview(URL.createObjectURL(file));
-                            setRemove(false);
-                        }
-                    }}
-                />
-            </div>
-            {item?.image_url && (
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input
-                        type="checkbox"
-                        name="remove_image"
-                        checked={remove}
-                        onChange={(e) => setRemove(e.target.checked)}
-                        className="size-4"
-                    />
-                    Remove the current image
-                </label>
-            )}
-            <InputError message={errors.image} />
-        </div>
-    );
-}
-
-/**
- * Record a stock movement. Stock is never edited directly — the dialog only
- * produces ledger entries, so the balance always has an explanation.
- */
 function StockDialog({ item }: { item: CatalogItem }) {
     const [open, setOpen] = useState(false);
 
@@ -685,79 +437,6 @@ function StockDialog({ item }: { item: CatalogItem }) {
     );
 }
 
-function AddItemDialog({
-    industry,
-    fields,
-}: {
-    industry: IndustryConfig;
-    fields: CatalogFieldSpec[];
-}) {
-    const [open, setOpen] = useState(false);
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button size="sm">
-                    <Plus className="size-4" />
-                    Add item
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>New catalog item</DialogTitle>
-                </DialogHeader>
-                <Form
-                    {...CatalogItemController.store.form()}
-                    resetOnSuccess
-                    onSuccess={() => setOpen(false)}
-                    className="space-y-4"
-                >
-                    {({ processing, errors }) => (
-                        <>
-                            <ItemFields
-                                errors={errors}
-                                idPrefix="new"
-                                industry={industry}
-                                fields={fields}
-                            />
-                            <VariantsEditor errors={errors} />
-                            <div className="flex items-start gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="new-status"
-                                    name="status"
-                                    value="draft"
-                                    className="mt-0.5 size-4"
-                                />
-                                <Label
-                                    htmlFor="new-status"
-                                    className="font-normal"
-                                >
-                                    Save as draft (not visible in quotations
-                                    until activated)
-                                </Label>
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button
-                                        variant="secondary"
-                                        type="button"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </DialogClose>
-                                <Button disabled={processing}>
-                                    Add
-                                </Button>
-                            </DialogFooter>
-                        </>
-                    )}
-                </Form>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 function EditItemDialog({
     item,
     industry,
@@ -787,17 +466,12 @@ function EditItemDialog({
                 >
                     {({ processing, errors }) => (
                         <>
-                            <ItemFields
+                            <CatalogItemForm
                                 item={item}
                                 errors={errors}
-                                idPrefix={`edit-${item.id}`}
                                 industry={industry}
                                 fields={fields}
-                            />
-                            <VariantsEditor
-                                initial={item.variants ?? []}
-                                errors={errors}
-                                defaultRate={item.default_rate}
+                                idPrefix={`edit-${item.id}`}
                             />
                             <div className="grid gap-2">
                                 <Label htmlFor={`status-${item.id}`}>

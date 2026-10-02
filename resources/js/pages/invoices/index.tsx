@@ -1,6 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { FileText, Plus } from 'lucide-react';
-import { QuotationBuilderDialog } from '@/components/quotations/quotation-builder-dialog';
+import { FileText, Package, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,7 @@ import {
 import { dashboard } from '@/routes';
 import { create, index, show } from '@/routes/invoices';
 import type { Paginated } from '@/types/customer';
-import type { Invoice, InvoiceStatus, QuotationProduct } from '@/types/invoice';
+import type { Invoice, InvoiceStatus } from '@/types/invoice';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
@@ -48,12 +47,10 @@ export default function InvoicesIndex({
     invoices,
     filters,
     usesJewelryDocuments,
-    catalogProducts,
 }: {
     invoices: Paginated<Invoice>;
     filters: { search?: string; status?: string; document_type?: string };
     usesJewelryDocuments: boolean;
-    catalogProducts: QuotationProduct[];
 }) {
     const activeTab = filters.document_type || 'all';
 
@@ -76,7 +73,12 @@ export default function InvoicesIndex({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Heading title="Invoices" description="Every invoice you've created." />
                     <div className="flex flex-wrap gap-2">
-                        <QuotationBuilderDialog products={catalogProducts} />
+                        <Button asChild variant="outline" className="w-full sm:w-auto">
+                            <Link href="/quotations/create">
+                                <Package className="size-4" />
+                                New quotation
+                            </Link>
+                        </Button>
                         <Button asChild variant="outline" className="w-full sm:w-auto">
                             <Link href={`${create()}?document_type=quotation`}>
                                 <FileText className="size-4" />

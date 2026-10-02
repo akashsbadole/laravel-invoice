@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Catalog;
 
 use App\Enums\Permission;
-
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateCatalogItemRequest extends FormRequest

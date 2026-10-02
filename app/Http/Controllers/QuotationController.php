@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Quotations\StoreQuotationDraftRequest;
 use App\Enums\CatalogStatus;
+use App\Http\Requests\Quotations\StoreQuotationDraftRequest;
 use App\Models\CatalogItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
  * Catalog-first quotation building.
@@ -17,6 +19,13 @@ use Illuminate\Support\Collection;
  */
 class QuotationController extends Controller
 {
+    public function create(): Response
+    {
+        return Inertia::render('quotations/create', [
+            'products' => $this->products(),
+        ]);
+    }
+
     /**
      * The catalog rows offered by the builder dialog.
      *

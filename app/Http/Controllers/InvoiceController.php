@@ -74,7 +74,6 @@ class InvoiceController extends Controller
             'invoices' => $invoices,
             'filters' => $filters,
             'usesJewelryDocuments' => Industry::usesWeightFields(),
-            'catalogProducts' => app(QuotationController::class)->products(),
         ]);
     }
 

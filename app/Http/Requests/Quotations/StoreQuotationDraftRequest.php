@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Quotations;
 
 use App\Enums\Permission;
-
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

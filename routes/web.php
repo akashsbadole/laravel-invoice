@@ -118,6 +118,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     // The product catalog is a day-to-day working surface (quotations are
     // built from it), so it is a top-level section rather than a settings
     // screen.
+    Route::get('catalog/create', [CatalogItemController::class, 'create'])->name('catalog.create');
     Route::get('catalog', [CatalogItemController::class, 'index'])->name('catalog.index');
     Route::post('catalog', [CatalogItemController::class, 'store'])->name('catalog.store');
     Route::get('catalog/template', [CatalogItemImportController::class, 'template'])->name('catalog.template');
@@ -134,6 +135,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::put('catalog/{catalogItem}', [CatalogItemController::class, 'update'])->name('catalog.update');
     Route::delete('catalog/{catalogItem}', [CatalogItemController::class, 'destroy'])->name('catalog.destroy');
 
+    Route::get('quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
     Route::post('quotations/draft', [QuotationController::class, 'draft'])->name('quotations.draft');
 
     Route::resource('invoices', InvoiceController::class);

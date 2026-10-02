@@ -45,11 +45,11 @@ class CatalogDraftActivateTest extends TestCase
         ]));
 
         $this->actingAs($user)
-            ->get(route('invoices.index'))
+            ->get(route('quotations.create'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->where('catalogProducts', fn ($products) => $products->count() === 1)
-                ->where('catalogProducts.0.name', 'Live Tile'));
+                ->where('products', fn ($products) => $products->count() === 1)
+                ->where('products.0.name', 'Live Tile'));
     }
 
     public function test_drafts_are_excluded_from_the_invoice_picker(): void

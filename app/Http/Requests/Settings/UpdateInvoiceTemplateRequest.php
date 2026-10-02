@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Settings;
 
 use App\Enums\Permission;
-
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateInvoiceTemplateRequest extends FormRequest

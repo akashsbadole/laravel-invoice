@@ -37,9 +37,9 @@ class CatalogStatusLifecycleTest extends TestCase
         $this->product($user, ['status' => 'discontinued']);
 
         $this->actingAs($user)
-            ->get(route('invoices.index'))
+            ->get(route('quotations.create'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('catalogProducts', 0));
+            ->assertInertia(fn ($page) => $page->has('products', 0));
     }
 
     public function test_discontinued_products_are_not_offered_to_the_invoice_picker(): void

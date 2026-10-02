@@ -48,6 +48,38 @@ class CatalogRouteTest extends TestCase
         ]);
     }
 
+    public function test_the_catalog_create_page_is_served_from_its_own_url(): void
+    {
+        $user = $this->adminFor();
+
+        $this->actingAs($user)
+            ->get(route('catalog.create'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('catalog/create'));
+    }
+
+    public function test_products_can_be_created_from_the_catalog_create_page(): void
+    {
+        $user = $this->adminFor();
+
+        $this->actingAs($user)
+            ->post(route('catalog.store'), [
+                'name' => 'Ball Valve 2 inch',
+                'brand' => 'Jindal',
+                'model_number' => 'BV-200',
+                'rate_type' => 'per_piece',
+                'default_rate' => 750,
+            ])
+            ->assertRedirect(route('catalog.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('catalog_items', [
+            'name' => 'Ball Valve 2 inch',
+            'brand' => 'Jindal',
+            'status' => 'active',
+        ]);
+    }
+
     public function test_products_can_be_updated_and_deleted_from_the_catalog(): void
     {
         $user = $this->adminFor();
