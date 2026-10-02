@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Tenant;
 use App\Services\QuotationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -21,8 +22,18 @@ class ExpireQuotations extends Command
 
     public function handle(QuotationService $quotations): int
     {
+        $expired = 0;
+
         try {
-            $count = $quotations->expireLapsed();
+            // Run per tenant so every expiry event is stamped with the tenant it
+            // belongs to. Without a tenant context TenantScope is a no-op and the
+            // events land with tenant_id = NULL, invisible to the tenant's feed.
+            foreach (Tenant::query()->get() as $tenant) {
+                $expired += Tenant::runInContext(
+                    $tenant->id,
+                    fn (): int => $quotations->expireLapsed(),
+                );
+            }
         } catch (\Throwable $e) {
             // Never let one bad row stop the nightly run for every tenant.
             Log::error('Quotation expiry sweep failed.', ['exception' => $e]);
@@ -32,7 +43,7 @@ class ExpireQuotations extends Command
             return self::FAILURE;
         }
 
-        $this->info("{$count} quotation(s) marked expired.");
+        $this->info("{$expired} quotation(s) marked expired.");
 
         return self::SUCCESS;
     }

@@ -30,6 +30,8 @@ class CatalogItemController extends Controller
 
     public function index(Request $request): Response
     {
+        abort_unless($request->user()->canDo(Permission::ViewCatalog), 403);
+
         $search = $request->string('search')->toString();
         $industry = BusinessSetting::current()->industryKey();
         $status = $request->string('status')->toString();
@@ -68,6 +70,8 @@ class CatalogItemController extends Controller
 
     public function create(): Response
     {
+        abort_unless(request()->user()->canDo(Permission::ManageCatalog), 403);
+
         $industry = BusinessSetting::current()->industryKey();
 
         return Inertia::render('catalog/create', [
@@ -83,7 +87,27 @@ class CatalogItemController extends Controller
      */
     protected function fieldProps(string $industry): array
     {
-        return CatalogField::allForIndustry($industry);
+        $fields = CatalogField::allForIndustry($industry);
+
+        // Without view_costs the form must not render a cost price box either.
+        // presentItem() already strips the value, and an empty but visible
+        // input would only invite staff to type a margin they may not see.
+        if (! $this->canSeeCosts()) {
+            $fields = array_values(array_filter(
+                $fields,
+                fn (array $field): bool => $field['name'] !== 'cost_price',
+            ));
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Whether the signed-in role may see product cost prices.
+     */
+    protected function canSeeCosts(): bool
+    {
+        return (bool) request()->user()?->canDo(Permission::ViewCosts);
     }
 
     /**
@@ -98,6 +122,10 @@ class CatalogItemController extends Controller
                 'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
                 'image_path', 'status',
             ]),
+            // Margin is the business's own figure. Dropping the key entirely
+            // (rather than nulling it) keeps it out of the Inertia payload, so
+            // it cannot be read back out of the page's props.
+            ...$this->canSeeCosts() ? [] : ['cost_price' => null],
             'rate_type' => $item->rate_type?->value,
             'image_url' => $item->image_path ? Storage::disk('public')->url($item->image_path) : null,
             'is_low_stock' => $item->isLowOnStock(),

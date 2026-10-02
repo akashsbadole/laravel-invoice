@@ -61,7 +61,12 @@ class StoreInvoiceRequest extends FormRequest
     {
         return [
             'customer_id' => ['required', Rule::exists('customers', 'id')->where('tenant_id', $this->user()->tenant_id)],
-            'document_type' => ['sometimes', Rule::enum(DocumentType::class)],
+            // Credit and debit notes only ever come into being through
+            // InvoiceController::storeNote(), against a payable parent. Letting
+            // the form name one would let a live invoice be re-typed into an
+            // adjustment, which drops it out of sales reports and GST returns
+            // and freezes its payment status.
+            'document_type' => ['sometimes', Rule::enum(DocumentType::class), Rule::notIn(DocumentType::adjustmentValues())],
             'invoice_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             // Only a quotation has a validity window; the expiry sweep reads it.

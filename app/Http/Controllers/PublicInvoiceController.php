@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\QuotationActivity;
 use App\Enums\QuotationStatus;
 use App\Models\BusinessSetting;
 use App\Models\InvoiceShareLink;
 use App\Models\InvoiceTemplate;
+use App\Services\QuotationNotifier;
 use App\Services\QuotationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +18,10 @@ use RuntimeException;
 
 class PublicInvoiceController extends Controller
 {
-    public function __construct(private readonly QuotationService $quotations) {}
+    public function __construct(
+        private readonly QuotationService $quotations,
+        private readonly QuotationNotifier $notifier,
+    ) {}
 
     public function show(Request $request, string $token): Response
     {
@@ -35,6 +40,10 @@ class PublicInvoiceController extends Controller
             ]);
         }
 
+        // Captured before markViewed() writes the timestamp: only the first look
+        // is news, and a customer refreshing the page must not re-alert staff.
+        $firstView = $shareLink->viewed_at === null;
+
         $shareLink->markViewed();
 
         $invoice = $shareLink->invoice()->with([
@@ -44,6 +53,12 @@ class PublicInvoiceController extends Controller
         $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
         $settings = BusinessSetting::forTenant($invoice->tenant_id);
         $isQuotation = $invoice->document_type->isQuotation();
+
+        // The customer just proved they opened it — the shop's cue to follow up
+        // while interest is fresh.
+        if ($firstView && $isQuotation) {
+            $this->notifier->activity($invoice, QuotationActivity::Viewed);
+        }
 
         return Inertia::render('invoices/public', [
             'status' => 'ok',
@@ -112,16 +127,23 @@ class PublicInvoiceController extends Controller
         ]);
 
         $decision = QuotationStatus::from($validated['decision']);
+        $response = $this->responseText($validated, $decision);
 
         try {
-            $this->quotations->decide(
-                $invoice,
-                $decision,
-                $this->responseText($validated, $decision),
-            );
+            $this->quotations->decide($invoice, $decision, $response);
         } catch (RuntimeException $e) {
             return back()->withErrors(['decision' => $e->getMessage()]);
         }
+
+        // The answer is the whole point of sharing a quotation — tell the shop
+        // rather than leaving it to be discovered on the next page refresh.
+        $this->notifier->activity(
+            $invoice,
+            $decision === QuotationStatus::Accepted
+                ? QuotationActivity::Accepted
+                : QuotationActivity::Declined,
+            $response,
+        );
 
         return back()->with(
             'message',

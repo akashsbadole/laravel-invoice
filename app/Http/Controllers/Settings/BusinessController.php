@@ -51,6 +51,8 @@ class BusinessController extends Controller
                     'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
                     'sms_birthday_wishes', 'sms_anniversary_wishes',
                     'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
+                    'quotation_alerts_owner', 'quotation_alerts_email',
+                    'quotation_followup_enabled', 'quotation_followup_days',
                     'receipt_width', 'receipt_accent_color', 'receipt_footer',
                     'receipt_show_logo', 'receipt_show_signature', 'receipt_show_stamp', 'receipt_show_gstin',
                 ]),
@@ -78,6 +80,9 @@ class BusinessController extends Controller
             'sms_anniversary_wishes' => $request->boolean('sms_anniversary_wishes'),
             'quotation_customer_decisions' => $request->boolean('quotation_customer_decisions'),
             'quotation_show_updates' => $request->boolean('quotation_show_updates'),
+            'quotation_alerts_owner' => $request->boolean('quotation_alerts_owner'),
+            'quotation_alerts_email' => $request->boolean('quotation_alerts_email'),
+            'quotation_followup_enabled' => $request->boolean('quotation_followup_enabled'),
             'show_all_catalog_fields' => $request->boolean('show_all_catalog_fields'),
             'receipt_show_logo' => $request->boolean('receipt_show_logo'),
             'receipt_show_signature' => $request->boolean('receipt_show_signature'),
@@ -131,6 +136,10 @@ class BusinessController extends Controller
         $data['rounding_mode'] = ($data['rounding_mode'] ?? '') !== ''
             ? $data['rounding_mode']
             : RoundingMode::NearestRupee->value;
+
+        // An omitted or blank value must fall back to the default rather than
+        // write null into an unsigned column.
+        $data['quotation_followup_days'] = max((int) $request->input('quotation_followup_days', 2), 0);
 
         $settings->fill($data)->save();
 

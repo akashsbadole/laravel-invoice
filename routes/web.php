@@ -20,6 +20,8 @@ use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalInvoiceController;
 use App\Http\Controllers\PublicInvoiceController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\QuotationFollowUpController;
+use App\Http\Controllers\QuotationPipelineController;
 use App\Http\Controllers\ReceiptController;
 use App\Http\Controllers\RecurringInvoiceController;
 use App\Http\Controllers\RegisterController;
@@ -28,6 +30,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Middleware\EnsurePortalCustomer;
 use App\Http\Middleware\EnsureSubscribed;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\EnsureTenantUser;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
@@ -92,10 +95,14 @@ Route::middleware([EnsurePortalCustomer::class])->group(function () {
 // Public, unauthenticated invoice sharing — no auth/verified middleware.
 // Matches the spec's exact public URL shape: /invoice/view/{token}.
 Route::get('invoice/view/{token}', [PublicInvoiceController::class, 'show'])->name('invoices.public.show');
-Route::post('invoice/view/{token}/verify', [PublicInvoiceController::class, 'verifyPassword'])->name('invoices.public.verify');
+Route::post('invoice/view/{token}/verify', [PublicInvoiceController::class, 'verifyPassword'])->middleware('throttle:20,1')->name('invoices.public.verify');
 Route::get('invoice/view/{token}/pdf', [InvoicePdfController::class, 'public'])->name('invoices.public.pdf');
+// The customer accepting a quotation is a guest action. This sat inside the
+// auth group, so a real customer was redirected to /login and the headline
+// quotation feature never worked for the person it was built for.
+Route::post('invoice/view/{token}/decide', [PublicInvoiceController::class, 'decide'])->middleware('throttle:20,1')->name('invoices.public.decide');
 
-Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
+Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
@@ -137,6 +144,9 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::get('quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
     Route::post('quotations/draft', [QuotationController::class, 'draft'])->name('quotations.draft');
+    // The pipeline board: what is open, what it is worth, and what to chase.
+    Route::get('quotations', [QuotationPipelineController::class, 'index'])->name('quotations.index');
+    Route::post('quotations/{quotation}/nudge', [QuotationFollowUpController::class, 'store'])->name('quotations.nudge');
 
     Route::resource('invoices', InvoiceController::class);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
@@ -164,8 +174,6 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::post('invoices/{invoice}/share-links/{shareLink}/deactivate', [InvoiceShareLinkController::class, 'deactivate'])->name('invoices.share-links.deactivate');
     Route::post('invoices/{invoice}/share-links/{shareLink}/mark-sent', [InvoiceShareLinkController::class, 'markSent'])->name('invoices.share-links.mark-sent');
     Route::post('invoices/{invoice}/share-links/{shareLink}/sms', [InvoiceShareLinkController::class, 'sendSms'])->name('invoices.share-links.sms');
-
-    Route::post('invoice/view/{token}/decide', [PublicInvoiceController::class, 'decide'])->name('invoices.public.decide');
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/download', [ReportController::class, 'download'])->name('reports.download');

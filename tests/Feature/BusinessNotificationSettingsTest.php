@@ -34,6 +34,8 @@ class BusinessNotificationSettingsTest extends TestCase
             'sms_anniversary_wishes' => false,
             'quotation_customer_decisions' => true,
             'quotation_show_updates' => true,
+            'quotation_alerts_owner' => true,
+            'quotation_alerts_email' => false,
         ], $overrides);
     }
 
@@ -99,5 +101,36 @@ class BusinessNotificationSettingsTest extends TestCase
                 ->component('settings/business')
                 ->has('settings.email_payment_reminders')
             );
+    }
+
+    /**
+     * The quotation alerts are the shop's only signal that a customer opened,
+     * accepted or declined a quote, so the toggle has to survive a round trip —
+     * a checkbox that renders but never saves would be worse than no checkbox.
+     */
+    public function test_the_quotation_alert_toggles_persist_and_switch_off(): void
+    {
+        $user = $this->adminFor();
+
+        $this->actingAs($user)
+            ->post(route('business.update'), $this->payload([
+                'quotation_alerts_owner' => true,
+                'quotation_alerts_email' => true,
+            ]))
+            ->assertRedirect();
+
+        $settings = BusinessSetting::forTenant($user->tenant_id);
+        $this->assertTrue($settings->quotation_alerts_owner);
+        $this->assertTrue($settings->quotation_alerts_email);
+
+        // Unchecked checkboxes are absent from the payload entirely.
+        $payload = $this->payload();
+        unset($payload['quotation_alerts_owner'], $payload['quotation_alerts_email']);
+
+        $this->actingAs($user)->post(route('business.update'), $payload)->assertRedirect();
+
+        $settings = BusinessSetting::forTenant($user->tenant_id);
+        $this->assertFalse($settings->quotation_alerts_owner);
+        $this->assertFalse($settings->quotation_alerts_email);
     }
 }

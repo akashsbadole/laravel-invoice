@@ -65,6 +65,23 @@ export function computeArea(item: InvoiceItemForm): number {
     return 0;
 }
 
+/**
+ * The area actually used for billing.
+ *
+ * computeArea() deliberately reports the raw measurement so the form can say
+ * "enter length and width". InvoiceCalculationService::areaOf() falls back to
+ * 1.0 for an area-priced line with no dimensions, so the customer is charged
+ * the rate instead of nothing — the preview has to bill that the same way or
+ * a ₹0 line saves at full rate.
+ */
+function billingArea(item: InvoiceItemForm): number {
+    const area = computeArea(item);
+
+    if (area > 0) return area;
+
+    return item.rate_type === 'per_sqft' || item.rate_type === 'per_sqm' ? 1 : 0;
+}
+
 export function computeItem(
     item: InvoiceItemForm,
     pricingMode: PricingMode,
@@ -76,7 +93,7 @@ export function computeItem(
     const netWeight = item.net_weight || 0;
     const stoneCarat = item.stone_carat || 0;
 
-    const area = computeArea(item);
+    const area = billingArea(item);
     const wastagePercent = item.wastage_percent || 0;
     const billableArea = wastagePercent > 0 ? area * (1 + wastagePercent / 100) : area;
     const boxes = item.boxes || 0;
@@ -251,6 +268,12 @@ export function computeInvoice(
     let itemsTax = 0;
     const taxBySlab = new Map<string, number>();
 
+    // Mirror of InvoiceCalculationService: the invoice-level discount is
+    // rounded to paise once, before it is used anywhere. Leaving it raw made a
+    // sub-paise figure show a different total on screen than the one stored
+    // and printed.
+    const discount = round2(invoiceDiscount);
+
     const addToSlab = (rate: number, amount: number) => {
         if (amount === 0) return;
         const key = rate.toFixed(2);
@@ -287,7 +310,7 @@ export function computeInvoice(
             ? round2(taxBreakdown.reduce((sum, r) => sum + r.amount, 0))
             : round2(itemsTax + invoiceLevelTax);
 
-    const beforeTaxation = round2(subtotal + invoiceChargesTotal + tax - invoiceDiscount);
+    const beforeTaxation = round2(subtotal + invoiceChargesTotal + tax - discount);
     // TCS rides on top of the invoice value; TDS is withheld from the payment
     // later, so it never inflates the billed amount.
     const tcsAmount = tcsRate > 0 ? round2(beforeTaxation * (tcsRate / 100)) : 0;
@@ -315,7 +338,7 @@ export function computeInvoice(
         chargesSummary: Array.from(summary.values()),
         taxBreakdown,
         subtotal: round2(baseSubtotal),
-        discount: invoiceDiscount,
+        discount,
         tax,
         tcsAmount,
         tdsAmount,

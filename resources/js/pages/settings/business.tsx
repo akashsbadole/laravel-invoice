@@ -47,6 +47,10 @@ type BusinessSettings = {
     sms_anniversary_wishes: boolean;
     quotation_customer_decisions: boolean;
     quotation_show_updates: boolean;
+    quotation_alerts_owner: boolean;
+    quotation_alerts_email: boolean;
+    quotation_followup_enabled: boolean;
+    quotation_followup_days: number;
     show_all_catalog_fields: boolean;
     receipt_width: string;
     receipt_accent_color: string;
@@ -802,7 +806,8 @@ export default function BusinessSettingsPage({
                                     </p>
                                     <p className="-mt-1 text-xs text-muted-foreground">
                                         What customers can do on a shared
-                                        quotation link.
+                                        quotation link, and how we follow up on
+                                        it.
                                     </p>
 
                                     {(
@@ -816,6 +821,21 @@ export default function BusinessSettingsPage({
                                                 name: 'quotation_show_updates',
                                                 label: 'Show an updates feed',
                                                 hint: 'Customers see every change made to a shared quotation.',
+                                            },
+                                            {
+                                                name: 'quotation_alerts_owner',
+                                                label: 'Alert me when a customer touches a quote',
+                                                hint: 'Notify staff the moment a shared quotation is opened, accepted or declined.',
+                                            },
+                                            {
+                                                name: 'quotation_alerts_email',
+                                                label: 'Send those alerts by email too',
+                                                hint: 'A copy by email, for when nobody is watching the app.',
+                                            },
+                                            {
+                                                name: 'quotation_followup_enabled',
+                                                label: 'Chase unanswered quotes automatically',
+                                                hint: 'Nudge a customer whose quote was never opened, or is about to expire.',
                                             },
                                             {
                                                 name: 'show_all_catalog_fields',
@@ -847,6 +867,30 @@ export default function BusinessSettingsPage({
                                             </span>
                                         </label>
                                     ))}
+
+                                    <div className="grid gap-2 sm:w-40">
+                                        <Label htmlFor="quotation_followup_days">
+                                            Wait (days)
+                                        </Label>
+                                        <Input
+                                            id="quotation_followup_days"
+                                            name="quotation_followup_days"
+                                            type="number"
+                                            inputMode="numeric"
+                                            min={0}
+                                            max={90}
+                                            defaultValue={
+                                                settings.quotation_followup_days
+                                            }
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Days to wait before the first
+                                            automatic nudge.
+                                        </p>
+                                        <InputError
+                                            message={errors.quotation_followup_days}
+                                        />
+                                    </div>
                                 </div>
                             </section>
 

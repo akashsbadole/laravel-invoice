@@ -215,7 +215,7 @@ class QuotationService
             ->get()
             ->map(fn (InvoiceEvent $event) => [
                 'label' => $this->describe($event),
-                'detail' => $event->properties['note'] ?? $event->properties['response'] ?? null,
+                'detail' => $event->meta['note'] ?? $event->meta['response'] ?? null,
                 'at' => (string) $event->created_at,
             ])
             ->values()
@@ -224,7 +224,10 @@ class QuotationService
 
     protected function describe(InvoiceEvent $event): string
     {
-        $properties = $event->properties ?? [];
+        // Read `meta`: that is the column InvoiceEvent::log() writes. An earlier
+        // version read `$event->properties`, an attribute that does not exist,
+        // so every activity row silently lost its detail.
+        $properties = $event->meta ?? [];
         $action = $properties['action'] ?? null;
 
         return match ($action) {
