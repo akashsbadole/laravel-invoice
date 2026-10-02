@@ -119,6 +119,11 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::get('catalog/template', [CatalogItemImportController::class, 'template'])->name('catalog.template');
     Route::get('catalog/export', [CatalogItemImportController::class, 'exportCsv'])->name('catalog.export');
     Route::post('catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload');
+    Route::get('catalog/excel/template', [CatalogItemImportController::class, 'excelTemplate'])->name('catalog.excel-template');
+    Route::get('catalog/excel/export', [CatalogItemImportController::class, 'exportExcel'])->name('catalog.excel-export');
+    Route::get('catalog/excel/preview', [CatalogItemImportController::class, 'excelPreview'])->name('catalog.excel-preview');
+    Route::post('catalog/excel/preview', [CatalogItemImportController::class, 'excelPreviewUpload'])->name('catalog.excel-preview-upload');
+    Route::post('catalog/excel/import', [CatalogItemImportController::class, 'importExcel'])->name('catalog.excel-import');
     Route::post('catalog/{catalogItem}/stock', [CatalogItemController::class, 'adjustStock'])->name('catalog.stock');
     Route::post('catalog/{catalogItem}/activate', [CatalogItemController::class, 'activate'])->name('catalog.activate');
     Route::post('catalog/activate', [CatalogItemController::class, 'activateSelected'])->name('catalog.activate-selected');

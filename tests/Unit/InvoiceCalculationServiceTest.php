@@ -163,6 +163,35 @@ class InvoiceCalculationServiceTest extends TestCase
         $this->assertSame(50.0, $result['items'][0]['base_value']);
     }
 
+    public function test_litre_pricing_treats_quantity_as_the_litres_billed(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'items' => [$this->item([
+                'quantity' => 5,
+                'rate_type' => 'per_litre',
+                'rate' => 400,
+            ])],
+        ]));
+
+        // 400/litre × 5 litres = 2,000 — the quantity must not be applied
+        // twice (once as the volume and again when the line total is built).
+        $this->assertSame(2000.0, $result['items'][0]['base_value']);
+        $this->assertSame(2000.0, $result['subtotal']);
+    }
+
+    public function test_litre_pricing_bills_a_single_litre_once(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'items' => [$this->item([
+                'quantity' => 1,
+                'rate_type' => 'per_litre',
+                'rate' => 400,
+            ])],
+        ]));
+
+        $this->assertSame(400.0, $result['items'][0]['base_value']);
+    }
+
     public function test_tax_is_applied_after_discount(): void
     {
         $result = $this->calculator->calculate($this->invoice([

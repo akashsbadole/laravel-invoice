@@ -11,6 +11,7 @@
         "laravel/fortify": "^2.0@dev",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
+        "phpoffice/phpspreadsheet": "^5.10",
         "razorpay/razorpay": "2.9",
         "spatie/laravel-activitylog": "^4.8",
         "twilio/sdk": "^8.0"

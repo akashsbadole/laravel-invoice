@@ -28,7 +28,7 @@ export type InvoiceStatus =
     | 'accepted'
     | 'converted';
 
-export type CatalogStatus = 'draft' | 'active' | 'inactive';
+export type CatalogStatus = 'draft' | 'active' | 'inactive' | 'discontinued';
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'card' | 'upi' | 'cheque' | 'other';
 
 export type ChargeType = {

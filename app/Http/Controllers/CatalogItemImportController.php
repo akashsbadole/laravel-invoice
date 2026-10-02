@@ -11,17 +11,29 @@ use App\Support\CatalogField;
 use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Response as ResponseFacade;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * CSV import/export for the product catalog. Uses the same industry-aware
- * columns as the catalog form, so an export can be re-imported unchanged.
+ * CSV and Excel import/export for the product catalog. Uses the same
+ * industry-aware columns as the catalog form, so an export can be
+ * re-imported unchanged.
  */
 class CatalogItemImportController extends Controller
 {
     public function __construct(private readonly InventoryService $inventory) {}
+
+    /** Preview rows are cached briefly so the review page can edit them. */
+    protected const PREVIEW_TTL_HOURS = 2;
+
+    /** Hard ceiling so one upload cannot fill the cache or the browser. */
+    protected const PREVIEW_MAX_ROWS = 1000;
 
     /**
      * Columns the importer understands, straight from the field registry so
@@ -65,37 +77,46 @@ class CatalogItemImportController extends Controller
         return ResponseFacade::streamDownload(function () use ($columns, $defaultRateType, $usesWeights) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, $columns);
-
-            $sample = array_map(function (string $column) use ($defaultRateType, $usesWeights): string {
-                return match ($column) {
-                    'name' => $usesWeights ? 'Gold Ring 22K' : 'Product sample',
-                    'item_code' => 'SKU-001',
-                    'barcode' => '8901234567890',
-                    'brand' => 'Your Brand',
-                    'hsn_code' => $usesWeights ? '7113' : '6910',
-                    'metal_type' => 'Gold',
-                    'purity' => '22K',
-                    'rate_type' => $defaultRateType,
-                    'default_rate' => '50',
-                    'cost_price' => '35',
-                    'minimum_order_quantity' => '1',
-                    'pack_size' => 'Box of 12',
-                    'length' => '60',
-                    'default_length' => '60',
-                    'default_width' => '60',
-                    'stock_tracked' => '1',
-                    'stock_quantity' => '0',
-                    'reorder_level' => '0',
-                    'status' => 'active',
-                    'attributes' => 'thread=2x40;finish=matte',
-                    'description' => 'Sample row',
-                    default => '',
-                };
-            }, $columns);
-
-            fputcsv($handle, $sample);
+            fputcsv($handle, $this->sampleRow($columns, $defaultRateType, $usesWeights));
             fclose($handle);
         }, 'catalog-import-template.csv', $this->csvHeaders());
+    }
+
+    /**
+     * The example row the template ships with, keyed to the same columns
+     * the header uses so a spreadsheet can show a realistic fill-in.
+     *
+     * @param  list<string>  $columns
+     * @return list<string>
+     */
+    protected function sampleRow(array $columns, string $defaultRateType, bool $usesWeights): array
+    {
+        return array_map(function (string $column) use ($defaultRateType, $usesWeights): string {
+            return match ($column) {
+                'name' => $usesWeights ? 'Gold Ring 22K' : 'Product sample',
+                'item_code' => 'SKU-001',
+                'barcode' => '8901234567890',
+                'brand' => 'Your Brand',
+                'hsn_code' => $usesWeights ? '7113' : '6910',
+                'metal_type' => 'Gold',
+                'purity' => '22K',
+                'rate_type' => $defaultRateType,
+                'default_rate' => '50',
+                'cost_price' => '35',
+                'minimum_order_quantity' => '1',
+                'pack_size' => 'Box of 12',
+                'length' => '60',
+                'default_length' => '60',
+                'default_width' => '60',
+                'stock_tracked' => '1',
+                'stock_quantity' => '0',
+                'reorder_level' => '0',
+                'status' => 'active',
+                'attributes' => 'thread=2x40;finish=matte',
+                'description' => 'Sample row',
+                default => '',
+            };
+        }, $columns);
     }
 
     /**
@@ -190,30 +211,12 @@ class CatalogItemImportController extends Controller
                 : $defaultRateType;
 
             $payload = $this->payloadFrom($data, $allowedRateTypes, $defaultRateType);
-
-            $itemCode = $payload['item_code'];
-            $existing = $itemCode ? CatalogItem::query()->where('item_code', $itemCode)->first() : null;
             $payload['created_by'] = $request->user()->id;
 
-            $submittedStock = (float) ($payload['stock_quantity'] ?? 0);
-            $payload['stock_quantity'] = 0;
-
-            if ($existing) {
-                $existing->update($payload);
-
-                if ($payload['stock_tracked'] && $submittedStock !== (float) $existing->stock_quantity) {
-                    $this->inventory->setOpeningStock($existing, $submittedStock, $request->user()->id);
-                }
-
-                $updated++;
-            } else {
-                $item = CatalogItem::create($payload);
-
-                if ($payload['stock_tracked'] && $submittedStock !== 0.0) {
-                    $this->inventory->setOpeningStock($item, $submittedStock, $request->user()->id);
-                }
-
+            if ($this->upsertRow($payload, $request->user()->id) === 'created') {
                 $created++;
+            } else {
+                $updated++;
             }
         }
 
@@ -227,6 +230,305 @@ class CatalogItemImportController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
         return back();
+    }
+
+    /**
+     * Create or update one catalog row from an import payload.
+     *
+     * Rows carrying an item_code update the product it names, so re-importing
+     * an export edits instead of duplicating. Stock always travels through
+     * the movement ledger, never as a bare column overwrite.
+     *
+     * @param  array<string,mixed>  $payload
+     * @return 'created'|'updated'
+     */
+    protected function upsertRow(array $payload, int $userId): string
+    {
+        $itemCode = $payload['item_code'] ?? null;
+        $existing = $itemCode ? CatalogItem::query()->where('item_code', $itemCode)->first() : null;
+
+        $submittedStock = (float) ($payload['stock_quantity'] ?? 0);
+        $payload['stock_quantity'] = 0;
+
+        if ($existing) {
+            $existing->update($payload);
+
+            if ($payload['stock_tracked'] && $submittedStock !== (float) $existing->stock_quantity) {
+                $this->inventory->setOpeningStock($existing, $submittedStock, $userId);
+            }
+
+            return 'updated';
+        }
+
+        $item = CatalogItem::create($payload);
+
+        if ($payload['stock_tracked'] && $submittedStock !== 0.0) {
+            $this->inventory->setOpeningStock($item, $submittedStock, $userId);
+        }
+
+        return 'created';
+    }
+
+    /**
+     * Excel (.xlsx) version of the import template.
+     */
+    public function excelTemplate(): StreamedResponse
+    {
+        abort_unless(request()->user()->canDo(Permission::ManageCatalog), 403);
+
+        $industry = BusinessSetting::current()->industryKey();
+        $usesWeights = Industry::usesWeightFields($industry);
+        $columns = $this->columnsFor($industry);
+        $defaultRateType = Industry::rateTypes($industry)[0] ?? 'per_piece';
+
+        $spreadsheet = $this->spreadsheetFrom([
+            $columns,
+            $this->sampleRow($columns, $defaultRateType, $usesWeights),
+        ]);
+        $spreadsheet->getActiveSheet()->getStyle('A1')->getFont()->setBold(true);
+
+        return $this->xlsxDownload($spreadsheet, 'catalog-import-template.xlsx');
+    }
+
+    /**
+     * Export the whole catalog as an editable Excel workbook.
+     */
+    public function exportExcel(Request $request): StreamedResponse
+    {
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
+
+        $columns = $this->columnsFor(BusinessSetting::current()->industryKey());
+        $items = CatalogItem::query()->orderBy('name')->get();
+
+        $rows = [$columns];
+
+        foreach ($items as $item) {
+            $rows[] = array_map(
+                fn (string $column) => $this->exportValue($item, $column),
+                $columns,
+            );
+        }
+
+        return $this->xlsxDownload($this->spreadsheetFrom($rows), 'catalog-export.xlsx');
+    }
+
+    /**
+     * Parse an uploaded workbook into an editable preview the user can fix
+     * (add, edit, delete rows) before anything touches the catalog.
+     */
+    public function excelPreviewUpload(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
+
+        $request->validate([
+            'file' => ['required', 'file', 'extensions:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
+        } catch (\Throwable) {
+            return back()->withErrors(['file' => 'That file could not be read. Upload an .xlsx, .xls or .csv file.']);
+        }
+
+        $grid = $spreadsheet->getActiveSheet()->toArray(null, true, false, false);
+        $spreadsheet->disconnectWorksheets();
+
+        if (blank($grid)) {
+            return back()->withErrors(['file' => 'The file appears to be empty.']);
+        }
+
+        $header = array_map(
+            fn ($value) => is_scalar($value) ? (string) $value : '',
+            array_shift($grid),
+        );
+        $columnIndex = $this->mapHeader($header);
+
+        if (! isset($columnIndex['name'])) {
+            return back()->withErrors(['file' => 'The spreadsheet must include a "name" column.']);
+        }
+
+        $rows = [];
+        $truncated = false;
+        $rowNumber = 1;
+
+        foreach ($grid as $gridRow) {
+            $rowNumber++;
+            $data = $this->extractRow(array_values($gridRow), $columnIndex);
+
+            if (! $this->rowHasContent($data)) {
+                continue;
+            }
+
+            if (count($rows) >= self::PREVIEW_MAX_ROWS) {
+                $truncated = true;
+
+                break;
+            }
+
+            $rows[] = $data;
+        }
+
+        if ($rows === []) {
+            return back()->withErrors(['file' => 'No data rows were found in the file.']);
+        }
+
+        $token = Str::random(40);
+        Cache::put(
+            $this->previewKey($token),
+            ['rows' => $rows, 'truncated' => $truncated],
+            now()->addHours(self::PREVIEW_TTL_HOURS),
+        );
+
+        return redirect()->route('catalog.excel-preview', ['token' => $token]);
+    }
+
+    /**
+     * The review page itself: rows come from the cache so the user can add,
+     * edit and delete them before importing.
+     */
+    public function excelPreview(Request $request)
+    {
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
+
+        $token = (string) $request->query('token');
+        $preview = $token !== '' ? Cache::get($this->previewKey($token)) : null;
+
+        if (! is_array($preview) || ! isset($preview['rows'])) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'That import preview has expired. Upload the file again.']);
+
+            return redirect()->route('catalog.index');
+        }
+
+        $industry = BusinessSetting::current()->industryKey();
+
+        return Inertia::render('catalog/excel-preview', [
+            'token' => $token,
+            'columns' => $this->columnsFor($industry),
+            'rows' => $preview['rows'],
+            'truncated' => (bool) ($preview['truncated'] ?? false),
+            'rateTypes' => Industry::rateTypes($industry),
+            'statuses' => array_map(
+                fn (CatalogStatus $status) => ['value' => $status->value, 'label' => $status->label()],
+                CatalogStatus::cases(),
+            ),
+        ]);
+    }
+
+    /**
+     * Import the (possibly edited) preview rows for real.
+     */
+    public function importExcel(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
+
+        $request->validate([
+            'token' => ['required', 'string'],
+            'rows' => ['required', 'array', 'min:1', 'max:'.(self::PREVIEW_MAX_ROWS + 1)],
+            'rows.*.name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        // Validate() only returns rule-matched keys, and a preview row
+        // carries every catalog column — read the raw payload instead.
+        $token = (string) $request->input('token');
+        $rawRows = $request->input('rows', []);
+
+        $industry = BusinessSetting::current()->industryKey();
+        $allowedRateTypes = Industry::rateTypes($industry);
+        $defaultRateType = $allowedRateTypes[0] ?? 'per_piece';
+
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        foreach ($rawRows as $rawRow) {
+            if (! is_array($rawRow)) {
+                $skipped++;
+
+                continue;
+            }
+
+            $data = array_fill_keys(self::COLUMNS, null);
+
+            foreach ($rawRow as $key => $value) {
+                if (in_array($key, self::COLUMNS, true) && is_scalar($value)) {
+                    $data[$key] = trim((string) $value);
+                }
+            }
+
+            if (blank($data['name'])) {
+                $skipped++;
+
+                continue;
+            }
+
+            $payload = $this->payloadFrom($data, $allowedRateTypes, $defaultRateType);
+            $payload['created_by'] = $request->user()->id;
+
+            if ($this->upsertRow($payload, $request->user()->id) === 'created') {
+                $created++;
+            } else {
+                $updated++;
+            }
+        }
+
+        Cache::forget($this->previewKey($token));
+
+        $message = "Imported: {$created} added, {$updated} updated.";
+        if ($skipped > 0) {
+            $message .= " Skipped {$skipped} row(s) without a name.";
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
+
+        return redirect()->route('catalog.index');
+    }
+
+    /**
+     * Whether a parsed row holds anything worth previewing, so blank spacer
+     * rows Excel loves to save do not clutter the review table.
+     *
+     * @param  array<string,string|null>  $data
+     */
+    protected function rowHasContent(array $data): bool
+    {
+        foreach ($data as $value) {
+            if (filled($value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function previewKey(string $token): string
+    {
+        return "catalog-excel-preview:{$token}";
+    }
+
+    /**
+     * Build a one-sheet workbook from ordered rows (header first).
+     *
+     * @param  list<list<string>>  $rows
+     */
+    protected function spreadsheetFrom(array $rows): Spreadsheet
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Catalog');
+        $sheet->fromArray($rows, null, 'A1');
+
+        return $spreadsheet;
+    }
+
+    protected function xlsxDownload(Spreadsheet $spreadsheet, string $filename): StreamedResponse
+    {
+        return ResponseFacade::streamDownload(function () use ($spreadsheet) {
+            (new Xlsx($spreadsheet))->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'no-store, no-cache',
+        ]);
     }
 
     /**
@@ -335,6 +637,11 @@ class CatalogItemImportController extends Controller
 
         $normalized = strtolower(trim($value));
 
+        // Map older/common spreadsheet labels to the supported lifecycle.
+        if ($normalized === 'archived' || $normalized === 'disabled') {
+            return CatalogStatus::Discontinued->value;
+        }
+
         return CatalogStatus::tryFrom($normalized)
             ? $normalized
             : CatalogStatus::Active->value;
@@ -356,7 +663,7 @@ class CatalogItemImportController extends Controller
                 : $defaultRateType,
             'attributes' => $this->parseAttributes($data['attributes'] ?? null),
             // Importing is an explicit act, so a product with no status column
-            // is treated as active. Valid values: draft, active, inactive.
+            // is treated as active. Valid values: draft, active, inactive, discontinued.
             'status' => $this->statusFrom($data['status'] ?? null),
             'tax_inclusive' => $this->booleanOrDefault($data['tax_inclusive'] ?? null, false),
             'stock_tracked' => $this->booleanOrDefault($data['stock_tracked'] ?? null, false),

@@ -94,6 +94,23 @@ from — not a settings screen.
   `huid_number` and `certificate_number` are promoted into the invoice line's
   dedicated HUID/Cert fields instead of printing twice.
 
+### Product status
+
+Every product carries one of four states:
+
+- **Draft** — staged but not ready to sell: hidden from the quotation builder,
+  the invoice picker and the dashboard's active count; badged in the list;
+  auto-activates the first time stock is added; `catalogs:flag-stale-drafts`
+  flags drafts left untouched for 30 days.
+- **Active** — live and selectable everywhere.
+- **Inactive** — off sale for now (seasonal, out of favour), still editable.
+- **Discontinued** — retired for good; hidden from sellers, kept for history.
+
+Any non-active product shows a one-click **Activate** button on the catalog
+list, and `POST /catalog/activate` re-activates several at once. The `status`
+column carries the state through CSV/Excel imports and exports; unknown labels
+fall back to Active, while `archived`/`disabled` map to Discontinued.
+
 ### Field registry
 
 `app/Support/CatalogField.php` is the single registry of every product
@@ -111,7 +128,10 @@ edited directly — the dialog only produces ledger entries, so a balance can
 always be explained. Products at or below their reorder level are badged and
 filterable via **Low stock**.
 
-### CSV import and export
+### CSV and Excel import and export
+
+**CSV** imports straight into the catalog; **Excel** (`.xlsx`, `.xls` or
+`.csv`) goes through a preview first.
 
 Import matches rows by `item_code`: existing codes update, new ones are added,
 and only `name` is required.
@@ -129,6 +149,14 @@ Handles the cases that break naive importers:
 
 Export uses the same columns as the template, so an export can be edited and
 re-imported without reformatting.
+
+The Excel flow is full CRUD on the sheet before anything is written: an upload
+opens `catalog/excel/preview`, where every row can be edited inline, added to
+or deleted, and only **Import** touches the catalog (previews are cached for
+two hours under a one-time token). `catalog/excel/export` and
+`catalog/excel/template` publish the same columns as the CSV ones, so a
+workbook round-trips losslessly. Permission and validation failures surface
+as toast notifications, not silent failures.
 
 ---
 
@@ -376,23 +404,9 @@ Problems an owner actually faces
 - Credit behavior:
 - limits, over-limit blocking for payable documents, credit-day due dates.
 - Catalog behavior:
-- industry-driven fields/rate types/charges/CSV columns;
+- industry-driven fields/rate types/charges/CSV/Excel columns;
 - inventory ledger instead of silent stock edits;
-- inactive products excluded from quotation builder.
+- draft/inactive/discontinued products excluded from quotation builder and invoice picker;
+- four-state product status (Draft, Active, Inactive, Discontinued) with one-click Activate.
 - Reporting:
 - sales excluding non-sale documents, ageing, top items, quotation conversion, tax/GSTR outputs.
-  Draft catalog + activate: proposed behavior
-  Current evidence:
-- Creation defaults new catalog products to active; the Add dialog has no status toggle.
-- Edit has an Active checkbox; list shows inactive badge/filter.
-- Quotation builder only offers active products.
-  Proposed minimal semantics:
-- Catalog status becomes explicit at creation: Active or Draft/Inactive.
-- Draft means:
-- visible in catalog;
-- badged as Draft;
-- excluded from quotation builder, invoice picker, dashboard active counts, and sales-facing surfaces;
-- import/export preserves the status.
-- “Activate” means one explicit action moves Draft → Active, with an activity log entry.
-- Keep quotation draft separate: quotation draft remains session-only prefill, not a persisted document state.
-  One confirmation before implementation: should “Draft” mean unpublished/internal product, or should there be three states — Draft, Active, Discontinued?

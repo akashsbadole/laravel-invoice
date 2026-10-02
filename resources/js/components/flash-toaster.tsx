@@ -7,34 +7,72 @@ type FlashToast = {
     message?: string;
 } | null;
 
+type PageProps = {
+    flash?: { toast?: FlashToast };
+};
+
 /**
- * Bridges Laravel's flashed `toast` session data into sonner toasts.
- * Mounted once in app.tsx next to <Toaster />.
+ * Bridges Laravel's flashed `toast` session data into sonner toasts, and
+ * surfaces validation errors as a toast when no explicit message was set.
+ * Mounted once per layout, next to <Toaster />.
  */
 export function FlashToaster() {
-    const { flash } = usePage<{ flash?: { toast?: FlashToast } }>().props;
-    const lastShown = useRef<string | null>(null);
+    const { flash, errors } = usePage<PageProps>().props;
+    const lastToast = useRef<string | null>(null);
+    const lastErrors = useRef<string | null>(null);
 
     useEffect(() => {
         const data = flash?.toast;
 
-        if (!data?.message) return;
+        if (data?.message) {
+            const key = `${data.type ?? 'info'}:${data.message}`;
 
-        const key = `${data.type ?? 'info'}:${data.message}`;
+            // Inertia re-renders without remounting on navigation; only
+            // guard the same flash within one visit so repeating an action
+            // still toasts again afterwards.
+            if (lastToast.current !== key) {
+                lastToast.current = key;
 
-        // Inertia re-renders without remounting on navigation; guard
-        // against showing the same flash twice.
-        if (lastShown.current === key) return;
-        lastShown.current = key;
+                if (data.type === 'error') {
+                    toast.error(data.message);
+                } else if (data.type === 'success') {
+                    toast.success(data.message);
+                } else {
+                    toast(data.message);
+                }
+            }
 
-        if (data.type === 'error') {
-            toast.error(data.message);
-        } else if (data.type === 'success') {
-            toast.success(data.message);
-        } else {
-            toast(data.message);
+            return;
         }
-    }, [flash]);
+
+        // Flash is cleared on the next navigation, so an identical message
+        // fired later is allowed to show again.
+        lastToast.current = null;
+
+        const errorMessages = errors
+            ? Object.values(errors)
+                  .map((message) =>
+                      typeof message === 'string' ? message : '',
+                  )
+                  .filter((message) => message !== '')
+            : [];
+
+        if (errorMessages.length === 0) {
+            lastErrors.current = null;
+
+            return;
+        }
+
+        const errorKey = errorMessages.join('|');
+
+        if (lastErrors.current === errorKey) return;
+        lastErrors.current = errorKey;
+
+        const [first, ...rest] = errorMessages;
+        toast.error(
+            rest.length > 0 ? `${first} (+${rest.length} more)` : first,
+        );
+    }, [flash, errors]);
 
     return null;
 }

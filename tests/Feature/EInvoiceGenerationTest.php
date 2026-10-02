@@ -7,6 +7,7 @@ use App\Enums\LineType;
 use App\Enums\TaxMode;
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
+use App\Models\Tenant;
 use App\Services\EInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -21,9 +22,13 @@ class EInvoiceGenerationTest extends TestCase
 
     protected const IRN = 'a5c12e0d80f2b1e9c3a4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6';
 
-    protected function gstrInvoice(array $itemOverrides = [], array $options = []): Invoice
+    protected function gstrInvoice(array $itemOverrides = [], array $options = [], ?string $industry = null): Invoice
     {
-        $user = $this->adminFor();
+        // Rate types are validated against the tenant's industry, so a line
+        // priced per litre needs an industry that actually sells by volume.
+        $user = $this->adminFor($industry
+            ? Tenant::factory()->forIndustry($industry)->create()
+            : null);
         $customer = $this->customerFor($user, [
             'customer_type' => 'business',
             'tax_number' => '29AAAAA0000A1Z5',
@@ -311,5 +316,16 @@ class EInvoiceGenerationTest extends TestCase
         $payload = app(EInvoiceService::class)->buildPayload($invoice);
 
         $this->assertSame('GMS', $payload['ItemList'][0]['Unit']);
+    }
+
+    public function test_a_litre_priced_line_reports_litres_as_the_unit(): void
+    {
+        config(['services.einvoice.driver' => 'log']);
+
+        $invoice = $this->gstrInvoice(['rate_type' => 'per_litre', 'quantity' => 5], [], 'paint');
+
+        $payload = app(EInvoiceService::class)->buildPayload($invoice);
+
+        $this->assertSame('LTR', $payload['ItemList'][0]['Unit']);
     }
 }

@@ -44,4 +44,11 @@ class CatalogItemFactory extends Factory
             'status' => CatalogStatus::Inactive,
         ]);
     }
+
+    public function discontinued(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => CatalogStatus::Discontinued,
+        ]);
+    }
 }

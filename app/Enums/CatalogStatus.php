@@ -6,8 +6,8 @@ namespace App\Enums;
  * Publication state of a catalog item.
  *
  * Draft: not yet ready to sell — hidden from the quotation builder and the
- * invoice product picker. Active: live and selectable. Inactive: previously
- * published but taken off sale (e.g. discontinued), still editable.
+ * invoice product picker. Active: live and selectable. Inactive: taken off
+ * sale for now, but still editable. Discontinued: retired for good.
  */
 enum CatalogStatus: string
 {
@@ -17,12 +17,15 @@ enum CatalogStatus: string
 
     case Inactive = 'inactive';
 
+    case Discontinued = 'discontinued';
+
     public function label(): string
     {
         return match ($this) {
             self::Draft => 'Draft',
             self::Active => 'Active',
             self::Inactive => 'Inactive',
+            self::Discontinued => 'Discontinued',
         };
     }
 

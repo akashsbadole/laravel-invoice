@@ -203,6 +203,7 @@ class EInvoiceService
             'per_sqft' => 'SQF',
             'per_sqm' => 'SQM',
             'per_box' => 'BOX',
+            'per_litre' => 'LTR',
             default => 'NOS',
         };
     }

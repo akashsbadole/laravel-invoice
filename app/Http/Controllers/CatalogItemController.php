@@ -42,6 +42,7 @@ class CatalogItemController extends Controller
                 ->when($status === 'active', fn ($q) => $q->where('status', CatalogStatus::Active->value))
                 ->when($status === 'draft', fn ($q) => $q->where('status', CatalogStatus::Draft->value))
                 ->when($status === 'inactive', fn ($q) => $q->where('status', CatalogStatus::Inactive->value))
+                ->when($status === 'discontinued', fn ($q) => $q->where('status', CatalogStatus::Discontinued->value))
                 ->when($status === 'low_stock', fn ($q) => $q->where('stock_tracked', true)
                     ->whereColumn('stock_quantity', '<=', 'reorder_level')
                     ->where('reorder_level', '>', 0))
@@ -178,14 +179,15 @@ class CatalogItemController extends Controller
     }
 
     /**
-     * Publish a single draft catalog item.
+     * Bring a product back on sale: drafts, inactive and discontinued items
+     * all activate here so the list only needs one button.
      */
     public function activate(Request $request, CatalogItem $catalogItem): RedirectResponse
     {
         abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
 
-        if (! $catalogItem->isDraft()) {
-            return back()->withErrors(['status' => __('Only draft items can be activated.')]);
+        if ($catalogItem->status === CatalogStatus::Active) {
+            return back()->withErrors(['status' => __('This product is already active.')]);
         }
 
         $catalogItem->update(['status' => CatalogStatus::Active]);
@@ -196,7 +198,7 @@ class CatalogItemController extends Controller
     }
 
     /**
-     * Publish multiple draft items in one go.
+     * Bring several off-sale products back on sale in one go.
      */
     public function activateSelected(Request $request): RedirectResponse
     {
@@ -209,10 +211,10 @@ class CatalogItemController extends Controller
 
         $count = CatalogItem::query()
             ->whereIn('id', $validated['ids'])
-            ->where('status', CatalogStatus::Draft->value)
+            ->where('status', '!=', CatalogStatus::Active->value)
             ->update(['status' => CatalogStatus::Active->value]);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __("Activated {$count} draft product(s).")]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __("Activated {$count} product(s).")]);
 
         return back();
     }

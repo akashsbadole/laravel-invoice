@@ -42,10 +42,15 @@ import {
     rateTypeLabel,
 } from '@/lib/industries';
 import type { CatalogFieldSpec, IndustryConfig } from '@/lib/industries';
-import { download as catalogDownload, template as catalogTemplate } from '@/routes/catalog';
+import {
+    download as catalogDownload,
+    excelDownload,
+    excelTemplate,
+    template as catalogTemplate,
+} from '@/routes/catalog';
 import { dashboard } from '@/routes';
 import type { Paginated } from '@/types/customer';
-import type { CatalogItem, CatalogStatus } from '@/types/invoice';
+import type { CatalogItem } from '@/types/invoice';
 
 export default function CatalogPage({
     items,
@@ -67,6 +72,7 @@ export default function CatalogPage({
         { key: 'active', label: 'Active' },
         { key: 'draft', label: `Draft (${draftCount})` },
         { key: 'inactive', label: 'Inactive' },
+        { key: 'discontinued', label: 'Discontinued' },
         { key: 'low_stock', label: `Low stock (${lowStockCount})` },
     ];
 
@@ -88,6 +94,18 @@ export default function CatalogPage({
                         <a href={catalogDownload()}>
                             <Download className="size-4" />
                             Export CSV
+                        </a>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                        <a href={excelDownload()}>
+                            <Download className="size-4" />
+                            Export Excel
+                        </a>
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                        <a href={excelTemplate()}>
+                            <FileDown className="size-4" />
+                            Excel template
                         </a>
                     </Button>
                     <Button size="sm" variant="outline" asChild>
@@ -187,6 +205,15 @@ export default function CatalogPage({
                                                         inactive
                                                     </Badge>
                                                 )}
+                                                {item.status ===
+                                                    'discontinued' && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-xs"
+                                                    >
+                                                        discontinued
+                                                    </Badge>
+                                                )}
                                                 {item.is_low_stock && (
                                                     <Badge
                                                         variant="destructive"
@@ -227,7 +254,7 @@ export default function CatalogPage({
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {item.status === 'draft' && (
+                                        {item.status !== 'active' && (
                                             <Form
                                                 {...CatalogItemController.activate.form(
                                                     item.id,
@@ -775,7 +802,10 @@ function EditItemDialog({
                                             Active
                                         </SelectItem>
                                         <SelectItem value="inactive">
-                                            Inactive
+                                            Inactive (temporarily off sale)
+                                        </SelectItem>
+                                        <SelectItem value="discontinued">
+                                            Discontinued (retired)
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -801,32 +831,87 @@ function EditItemDialog({
 
 function ImportDialog() {
     const [open, setOpen] = useState(false);
+    const fileInput =
+        'block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground';
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
                     <Upload className="size-4" />
-                    Import CSV
+                    Import
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle>Import catalog from CSV</DialogTitle>
+                    <DialogTitle>Import catalog</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-muted-foreground">
                     Rows are matched by <code>item_code</code>: existing codes
                     are updated, new ones are added. Only <code>name</code> is
                     required, and you may include just the columns you have.
-                    Download the CSV template for the exact columns.
                 </p>
-                <Form
-                    {...CatalogItemImportController.importCsv.form()}
-                    onSuccess={() => setOpen(false)}
-                    className="space-y-4"
-                >
-                    {({ processing, errors }) => (
-                        <>
+
+                <section className="space-y-2 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold">
+                            Excel (with preview)
+                        </h3>
+                        <a
+                            href={excelTemplate()}
+                            className="text-xs underline underline-offset-2"
+                        >
+                            Template
+                        </a>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Upload an .xlsx/.xls sheet, review it, add or delete
+                        rows, then import.
+                    </p>
+                    <Form
+                        {...CatalogItemImportController.excelPreviewUpload.form()}
+                        onSuccess={() => setOpen(false)}
+                    >
+                        {({ processing, errors }) => (
+                            <div className="grid gap-2">
+                                <Label htmlFor="excel-file">Excel file</Label>
+                                <input
+                                    id="excel-file"
+                                    name="file"
+                                    type="file"
+                                    accept=".xlsx,.xls,.csv"
+                                    required
+                                    className={fileInput}
+                                />
+                                <InputError message={errors.file} />
+                                <Button
+                                    disabled={processing}
+                                    className="justify-self-end"
+                                >
+                                    {processing ? 'Reading…' : 'Preview'}
+                                </Button>
+                            </div>
+                        )}
+                    </Form>
+                </section>
+
+                <section className="space-y-2 rounded-md border p-3">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold">
+                            CSV (quick import)
+                        </h3>
+                        <a
+                            href={catalogTemplate()}
+                            className="text-xs underline underline-offset-2"
+                        >
+                            Template
+                        </a>
+                    </div>
+                    <Form
+                        {...CatalogItemImportController.importCsv.form()}
+                        onSuccess={() => setOpen(false)}
+                    >
+                        {({ processing, errors }) => (
                             <div className="grid gap-2">
                                 <Label htmlFor="csv-file">CSV file</Label>
                                 <input
@@ -835,26 +920,27 @@ function ImportDialog() {
                                     type="file"
                                     accept=".csv,text/csv"
                                     required
-                                    className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-secondary-foreground"
+                                    className={fileInput}
                                 />
                                 <InputError message={errors.file} />
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button
-                                        variant="secondary"
-                                        type="button"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </DialogClose>
-                                <Button disabled={processing}>
+                                <Button
+                                    disabled={processing}
+                                    className="justify-self-end"
+                                >
                                     {processing ? 'Importing…' : 'Import'}
                                 </Button>
-                            </DialogFooter>
-                        </>
-                    )}
-                </Form>
+                            </div>
+                        )}
+                    </Form>
+                </section>
+
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="secondary" type="button">
+                            Close
+                        </Button>
+                    </DialogClose>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

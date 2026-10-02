@@ -141,9 +141,11 @@ class InvoiceCalculationService
             $rateType === RateType::PerMeter => $rate * $metres,
             $rateType === RateType::PerKg => $rate * $netWeight,
             $rateType === RateType::PerBox => $rate * max($boxes, 1),
-            // Paint, adhesives and other liquids bill by volume, where the
-            // line quantity is the number of litres.
-            $rateType === RateType::PerLitre => $rate * max((float) ($itemInput['quantity'] ?? 0), 1),
+            // Paint, adhesives and other liquids bill by volume: the line
+            // quantity IS the number of litres, so the plain rate × quantity
+            // applied when the total is computed is the whole calculation.
+            // (Multiplying by quantity here as well would square it.)
+            $rateType === RateType::PerLitre => $rate,
             default => $rate,
         };
 

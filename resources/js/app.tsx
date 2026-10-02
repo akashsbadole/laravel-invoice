@@ -1,8 +1,8 @@
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/manrope';
 import { StrictMode, type ComponentType, type ReactNode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
+import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -87,6 +87,29 @@ void createInertiaApp({
     progress: {
         color: '#4B5563',
     },
+});
+
+// A visit that dies outside Inertia's control — an expired session, a 500,
+// a dropped connection — otherwise leaves the owner staring at a form that
+// silently did nothing. Flash toasts and validation errors are handled by
+// <FlashToaster />; these cover the failures that never produce a response.
+router.on('invalid', (event) => {
+    const status = event.detail.response?.status;
+
+    if (status === 419) {
+        toast.error('Your session expired. Refresh the page and try again.');
+
+        return;
+    }
+
+    toast.error(
+        `That request failed${status ? ` (${status})` : ''}. Please try again.`,
+    );
+});
+
+router.on('exception', (event) => {
+    console.error('Inertia request failed', event.detail);
+    toast.error('That request could not be sent. Check your connection and try again.');
 });
 
 // This will set light / dark mode on load...

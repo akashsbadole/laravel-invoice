@@ -101,7 +101,9 @@ export function computeItem(
                     : item.rate_type === 'per_kg'
                       ? rate * netWeight
                       : item.rate_type === 'per_box'
-                        ? rate * Math.max(boxes, 1)
+                      ? rate * Math.max(boxes, 1)
+                      : item.rate_type === 'per_litre'
+                        ? rate // quantity is the litre count; × quantity below
                         : rate; // per_piece, per_unit or fixed
 
     let chargesPerUnit = 0;
