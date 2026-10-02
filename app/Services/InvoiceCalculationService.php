@@ -39,6 +39,11 @@ class InvoiceCalculationService
         $tcsRate = max((float) ($input['tcs_rate'] ?? 0), 0);
         $tdsRate = max((float) ($input['tds_rate'] ?? 0), 0);
 
+        // Customer-group percentage, injected by the controller from the
+        // customer's own group. Never read off the request, so a client
+        // cannot claim a discount it has not been given.
+        $groupDiscountPercent = min(max((float) ($input['group_discount_percent'] ?? 0), 0), 100);
+
         // Only load the charge catalogue when the submission actually
         // references charges — a charge-free invoice needs no query at all.
         $chargeTypes = $this->referencesCharges($input)
@@ -53,7 +58,7 @@ class InvoiceCalculationService
         $taxBySlab = [];
 
         foreach ($input['items'] ?? [] as $index => $itemInput) {
-            $item = $this->calculateItem($itemInput, $pricingMode, $chargeTypes, $index);
+            $item = $this->calculateItem($itemInput, $pricingMode, $chargeTypes, $index, $groupDiscountPercent);
             $items[] = $item;
             $subtotal += $item['base_value'] + $item['charges_total'] - $item['discount'];
             $baseSubtotal += $item['base_value'];
@@ -127,9 +132,10 @@ class InvoiceCalculationService
     /**
      * @param  array<string,mixed>  $itemInput
      * @param  Collection<int,ChargeType>  $chargeTypes
+     * @param  float  $groupDiscountPercent  customer-group percentage off unpriced lines
      * @return array<string,mixed>
      */
-    protected function calculateItem(array $itemInput, PricingMode $pricingMode, Collection $chargeTypes, int $sortOrder): array
+    protected function calculateItem(array $itemInput, PricingMode $pricingMode, Collection $chargeTypes, int $sortOrder, float $groupDiscountPercent = 0): array
     {
         $quantity = max((int) ($itemInput['quantity'] ?? 1), 1);
         $rate = (float) ($itemInput['rate'] ?? 0);
@@ -187,7 +193,6 @@ class InvoiceCalculationService
             }
         }
 
-        $discount = $lineType->isTaxable() ? (float) ($itemInput['discount'] ?? 0) : 0.0;
         // Exchange credit is the customer's own metal handed back, not a
         // supply — charging GST on it would be wrong.
         $taxRate = $lineType->isTaxable() ? (float) ($itemInput['tax_rate'] ?? 0) : 0.0;
@@ -199,6 +204,17 @@ class InvoiceCalculationService
         }
 
         $chargesTotal = round($chargesPerUnit * $quantity, 2);
+
+        $discount = $lineType->isTaxable() ? (float) ($itemInput['discount'] ?? 0) : 0.0;
+
+        // A line the shopkeeper has not priced by hand takes the customer
+        // group's percentage off its own value. Anything they did type wins,
+        // which is also what keeps a stored invoice at the figure it was
+        // issued with when the group's rate changes afterwards.
+        if ($discount <= 0 && $groupDiscountPercent > 0 && $lineType->isTaxable()) {
+            $discount = round(max($baseValue, 0.0) * ($groupDiscountPercent / 100), 2);
+        }
+
         $taxableAmount = round(($taxableBasePerUnit * $quantity) - $discount, 2);
         $tax = round(max($taxableAmount, 0) * ($taxRate / 100), 2);
         $total = round($baseValue + $chargesTotal - $discount + $tax, 2);

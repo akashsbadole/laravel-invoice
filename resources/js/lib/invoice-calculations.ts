@@ -69,6 +69,7 @@ export function computeItem(
     item: InvoiceItemForm,
     pricingMode: PricingMode,
     chargeTypesById: Map<number, ChargeType>,
+    groupDiscountPercent = 0,
 ): ComputedItem {
     const quantity = Math.max(item.quantity || 1, 1);
     const rate = item.rate || 0;
@@ -125,12 +126,21 @@ export function computeItem(
 
     // Exchange credit is the customer's own metal handed back — not a
     // taxable supply, so no discount and no GST either.
-    const discount = isExchange ? 0 : item.discount || 0;
+    const manualDiscount = isExchange ? 0 : item.discount || 0;
     const taxRate = isExchange ? 0 : item.tax_rate || 0;
 
     const rawBaseValue = round2(baseValuePerUnit * quantity);
     const baseValue = isExchange ? -Math.abs(rawBaseValue) : rawBaseValue;
     const chargesTotal = round2(chargesPerUnit * quantity);
+
+    // Mirror of InvoiceCalculationService: a line nobody priced by hand takes
+    // the customer group's percentage off its own value; a discount that was
+    // typed in wins, so a stored invoice keeps the figure it was issued with.
+    const discount =
+        manualDiscount <= 0 && !isExchange && groupDiscountPercent > 0
+            ? round2(Math.max(baseValue, 0) * (groupDiscountPercent / 100))
+            : manualDiscount;
+
     const taxableAmount = Math.max(round2(taxableBasePerUnit * quantity - discount), 0);
     const tax = round2(taxableAmount * (taxRate / 100));
     const total = round2(baseValue + chargesTotal - discount + tax);
@@ -228,9 +238,12 @@ export function computeInvoice(
     roundingMode: RoundingMode = 'nearest_rupee',
     tcsRate = 0,
     tdsRate = 0,
+    groupDiscountPercent = 0,
 ): ComputedInvoice {
     const chargeTypesById = new Map(chargeTypes.map((ct) => [ct.id, ct]));
-    const computedItems = items.map((item) => computeItem(item, pricingMode, chargeTypesById));
+    const computedItems = items.map((item) =>
+        computeItem(item, pricingMode, chargeTypesById, groupDiscountPercent),
+    );
 
     let subtotal = 0; // base + item charges - item discounts (base for % invoice charges)
     let baseSubtotal = 0; // base only (displayed "Subtotal")

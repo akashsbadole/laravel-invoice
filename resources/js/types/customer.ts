@@ -55,6 +55,16 @@ export type ContactChannel =
 
 export type PriceTier = 'a' | 'b' | 'c';
 
+/** A named pricing tier (Wholesale, Staff, VIP). */
+export type CustomerGroup = {
+    id: number;
+    name: string;
+    discount_percent: string;
+    is_active: boolean;
+    sort_order?: number;
+    customers_count?: number;
+};
+
 export type AdvanceStatus = 'available' | 'applied' | 'refunded';
 
 export type CustomerAdvance = {
@@ -89,6 +99,13 @@ export type Customer = {
     credit_limit: string | null;
     credit_days: number | null;
     price_tier: PriceTier | null;
+    customer_group_id: number | null;
+    group?: CustomerGroup | null;
+    /**
+     * Percentage the customer's group takes off unpriced invoice lines.
+     * Only the invoice form ships it; everywhere else it is absent.
+     */
+    group_discount_percent?: number;
     preferred_contact_channel: ContactChannel | null;
     referral_source: string | null;
     tags: string[] | null;

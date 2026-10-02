@@ -106,6 +106,13 @@ export default function ShowCustomer({
                             <Badge variant="outline" className="capitalize">
                                 {customer.customer_type}
                             </Badge>
+                            {customer.group && (
+                                <Badge variant="secondary">
+                                    {customer.group.name}
+                                    {Number(customer.group.discount_percent) > 0 &&
+                                        ` · ${Number(customer.group.discount_percent)}%`}
+                                </Badge>
+                            )}
                         </div>
                     </div>
 

@@ -126,9 +126,17 @@ class InvoiceController extends Controller
 
         $invoice = DB::transaction(function () use ($request) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
+
+            // Loaded first: its active group decides what the unpriced lines
+            // on this document are worth before anything is computed.
+            $customer = Customer::query()
+                ->with('group:id,discount_percent,is_active')
+                ->findOrFail($request->validated('customer_id'));
+
             $computed = $this->calculator->calculate([
                 ...$request->validated(),
                 'rounding_mode' => $business->rounding_mode,
+                'group_discount_percent' => $customer->groupDiscountPercent(),
             ]);
             $documentType = $request->validated('document_type', DocumentType::JewelryInvoice->value);
 
@@ -139,8 +147,6 @@ class InvoiceController extends Controller
 
             // A credit-limited customer must be caught before the document is
             // written, so the block runs outside the write path.
-            $customer = Customer::findOrFail($request->validated('customer_id'));
-
             if ($this->credit->exceeds($customer, $documentType, (float) $computed['grand_total'])) {
                 throw ValidationException::withMessages([
                     'customer_id' => $this->credit->errorMessage($customer, (float) $computed['grand_total']),
@@ -277,12 +283,16 @@ class InvoiceController extends Controller
 
         DB::transaction(function () use ($request, $invoice) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
+            $customer = Customer::query()
+                ->with('group:id,discount_percent,is_active')
+                ->findOrFail($request->validated('customer_id'));
+
             $computed = $this->calculator->calculate([
                 ...$request->validated(),
                 'rounding_mode' => $business->rounding_mode,
+                'group_discount_percent' => $customer->groupDiscountPercent(),
             ]);
             $documentType = $request->validated('document_type', $invoice->document_type->value);
-            $customer = Customer::findOrFail($request->validated('customer_id'));
 
             // Notes are simple one-line documents: corrections are made by
             // cancelling and re-issuing rather than editing history.
@@ -660,8 +670,19 @@ class InvoiceController extends Controller
                 ->values()
                 ->all(),
             'customers' => Customer::query()
+                // Eager loaded so the form can price a line the way the
+                // server will once it is stored, without a query per customer.
+                ->with('group:id,discount_percent,is_active')
                 ->orderBy('full_name')
-                ->get(['id', 'full_name', 'mobile_number', 'state_code']),
+                ->get(['id', 'full_name', 'mobile_number', 'state_code', 'customer_group_id'])
+                ->map(fn (Customer $customer) => [
+                    'id' => $customer->id,
+                    'full_name' => $customer->full_name,
+                    'mobile_number' => $customer->mobile_number,
+                    'state_code' => $customer->state_code,
+                    'group_discount_percent' => $customer->groupDiscountPercent(),
+                ])
+                ->values(),
             'staff' => User::query()->orderBy('name')->get(['id', 'name']),
             'chargeTypes' => ChargeType::query()
                 ->active()

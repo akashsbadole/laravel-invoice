@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { AttributesEditor } from '@/components/attributes-editor';
-import type { Customer, Staff } from '@/types/customer';
+import type { Customer, CustomerGroup, Staff } from '@/types/customer';
 
 type Props = {
     customer?: Partial<Customer>;
     staff: Staff[];
+    customerGroups: CustomerGroup[];
     errors: Record<string, string>;
 };
 
@@ -51,7 +52,12 @@ const CONTACT_CHANNEL_OPTIONS = [
  * so the comma-separated box keeps local state and emits one hidden input per
  * tag.
  */
-export default function CustomerFormFields({ customer, staff, errors }: Props) {
+export default function CustomerFormFields({
+    customer,
+    staff,
+    customerGroups,
+    errors,
+}: Props) {
     const [tags, setTags] = useState(customer?.tags ?? []);
 
     return (
@@ -228,6 +234,42 @@ export default function CustomerFormFields({ customer, staff, errors }: Props) {
                         </SelectContent>
                     </Select>
                     <InputError message={errors.price_tier} />
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="customer_group_id">
+                        Customer group (optional)
+                    </Label>
+                    <Select
+                        name="customer_group_id"
+                        defaultValue={
+                            customer?.customer_group_id
+                                ? String(customer.customer_group_id)
+                                : undefined
+                        }
+                    >
+                        <SelectTrigger
+                            id="customer_group_id"
+                            className="w-full"
+                        >
+                            <SelectValue placeholder="No group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {customerGroups.map((group) => (
+                                <SelectItem key={group.id} value={String(group.id)}>
+                                    {group.name}
+                                    {Number(group.discount_percent) > 0 &&
+                                        ` — ${Number(group.discount_percent)}% off`}
+                                    {!group.is_active && ' (inactive)'}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                        The group takes its percentage off every invoice line
+                        you leave unpriced.
+                    </p>
+                    <InputError message={errors.customer_group_id} />
                 </div>
 
                 <div className="grid gap-2">

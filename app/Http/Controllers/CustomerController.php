@@ -6,6 +6,7 @@ use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Http\Requests\Customers\UpdateCustomerRequest;
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use App\Models\CustomerGroup;
 use App\Models\MessageLog;
 use App\Models\Payment;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Support\Attributes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -65,6 +67,7 @@ class CustomerController extends Controller
 
         return Inertia::render('customers/create', [
             'staff' => User::query()->orderBy('name')->get(['id', 'name']),
+            'customerGroups' => $this->customerGroups(),
         ]);
     }
 
@@ -90,6 +93,7 @@ class CustomerController extends Controller
     {
         $customer->load([
             'assignedStaff:id,name',
+            'group:id,name,discount_percent,is_active',
             'invoices' => fn ($query) => $query->latest('invoice_date')->limit(10),
             'notesLog' => fn ($query) => $query->with('creator:id,name')->latest(),
             'followups' => fn ($query) => $query->with('assignee:id,name')->orderBy('followup_date'),
@@ -122,6 +126,7 @@ class CustomerController extends Controller
         return Inertia::render('customers/edit', [
             'customer' => $customer,
             'staff' => User::query()->orderBy('name')->get(['id', 'name']),
+            'customerGroups' => $this->customerGroups(),
         ]);
     }
 
@@ -274,5 +279,18 @@ class CustomerController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="customers.csv"',
         ]);
+    }
+
+    /**
+     * Pricing tiers for the customer editor. Inactive groups are included so a
+     * customer already filed under one still renders their own selection.
+     *
+     * @return Collection<int,CustomerGroup>
+     */
+    protected function customerGroups()
+    {
+        return CustomerGroup::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'discount_percent', 'is_active', 'sort_order']);
     }
 }

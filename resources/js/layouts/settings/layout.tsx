@@ -26,6 +26,7 @@ const settingsNav: SettingsNavItem[] = [
     { titleKey: 'nav.activityLog', href: '/settings/activity-log' },
     { titleKey: 'nav.metalRates', href: '/settings/metal-rates', capability: 'metal_rates' },
     { titleKey: 'nav.chargeTypes', href: '/settings/charge-types' },
+    { titleKey: 'nav.customerGroups', href: '/settings/customer-groups' },
     { titleKey: 'nav.invoiceTemplates', href: '/settings/invoice-templates' },
 ];
 

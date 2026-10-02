@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { index, show } from '@/routes/customers';
 import { dashboard } from '@/routes';
-import type { Customer, Staff } from '@/types/customer';
+import type { Customer, CustomerGroup, Staff } from '@/types/customer';
 
 export default function EditCustomer({
     customer,
     staff,
+    customerGroups,
 }: {
     customer: Customer;
     staff: Staff[];
+    customerGroups: CustomerGroup[];
 }) {
     return (
         <>
@@ -37,6 +39,7 @@ export default function EditCustomer({
                                     <CustomerFormFields
                                         customer={customer}
                                         staff={staff}
+                                        customerGroups={customerGroups}
                                         errors={errors}
                                     />
 

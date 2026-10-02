@@ -6,9 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { create, index } from '@/routes/customers';
 import { dashboard } from '@/routes';
-import type { Staff } from '@/types/customer';
+import type { CustomerGroup, Staff } from '@/types/customer';
 
-export default function CreateCustomer({ staff }: { staff: Staff[] }) {
+export default function CreateCustomer({
+    staff,
+    customerGroups,
+}: {
+    staff: Staff[];
+    customerGroups: CustomerGroup[];
+}) {
     return (
         <>
             <Head title="New customer" />
@@ -30,6 +36,7 @@ export default function CreateCustomer({ staff }: { staff: Staff[] }) {
                                 <>
                                     <CustomerFormFields
                                         staff={staff}
+                                        customerGroups={customerGroups}
                                         errors={errors}
                                     />
 

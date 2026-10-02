@@ -24,6 +24,8 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 - [x] All fields (name, mobile, email, address, tax no., notes, type, staff)
 - [x] Profile: invoices, totals, paid/outstanding, last invoice, payments, follow-ups, share history
 - [x] Create / edit / search / filter / export CSV / invoice history
+- [x] Customer groups: named percentage tiers under settings, assigned per
+      customer, badge on the profile, deleting a group frees its customers
 
 ## 3a. Catalog and inventory
 - [x] Products with a field registry that drives form, validation and CSV/Excel
@@ -41,6 +43,8 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 - [x] Rounding setting (nearest rupee / two decimals) shared by preview, PDF
 - [x] TCS added to the total, TDS withheld from the balance due
 - [x] Credit and debit notes against an invoice (own series, linked, report-safe)
+- [x] Customer group discount fills every unpriced line, server-side, before GST;
+      a hand-typed discount always wins and exchange credit is never discounted
 
 ## 5. Payments
 - [x] Record / partial / full / multiple, date, 6 methods, ref no., notes
@@ -71,7 +75,7 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 - [x] `/invoices` `/invoices/create` `/invoices/{id}` `/invoices/{id}/edit`
       `/invoices/{id}/preview` (dedicated route) · `/follow-ups` (dedicated route)
 - [x] `/payments` `/reports` `/settings/business` `/settings/invoice-templates`
-      `/settings/users` + profile/security/appearance
+      `/settings/users` `/settings/customer-groups` + profile/security/appearance
 - [x] `/register` (signup) · `/billing` (subscription) · `/portal/*` (customer portal)
 
 ## Boot fix (usePage provider)
@@ -103,3 +107,4 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 - [x] Subscription receipt emails (checkout verify + webhook activation)
 - [x] Customer portal (magic-link login, invoice list/detail/PDF, per-customer isolation)
 - [x] Per-tenant SMS gateway settings (log/Twilio/custom HTTP, write-only secrets)
+- [x] Customer groups with automatic wholesale discount on unpriced invoice lines

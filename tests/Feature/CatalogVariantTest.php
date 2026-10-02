@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DocumentType;
+use App\Enums\LineType;
 use App\Models\CatalogItem;
 use App\Models\CatalogVariant;
 use App\Models\InventoryMovement;
@@ -407,6 +409,80 @@ class CatalogVariantTest extends TestCase
             ['Opening stock'],
             InventoryMovement::query()->pluck('reason')->all(),
         );
+    }
+
+    public function test_converting_a_quotation_carries_the_variant_and_the_line_type_across(): void
+    {
+        $user = $this->adminFor();
+        $customer = $this->customerFor($user);
+
+        $this->actingAs($user)
+            ->post(route('catalog.store'), $this->productPayload([
+                'variants' => [$this->variantRow()],
+            ]))
+            ->assertRedirect();
+
+        $item = CatalogItem::sole();
+        $variant = $item->variants()->sole();
+
+        $this->actingAs($user)
+            ->post(route('invoices.store'), [
+                'document_type' => DocumentType::Quotation->value,
+                'customer_id' => $customer->id,
+                'invoice_date' => now()->toDateString(),
+                'pricing_mode' => 'manual',
+                'tax_mode' => 'single',
+                'tax_rate' => 0,
+                'discount' => 0,
+                'invoice_charges' => [],
+                'items' => [
+                    [
+                        'sort_order' => 1,
+                        'line_type' => LineType::Sale->value,
+                        'item_name' => 'Solitaire Ring (Size 12)',
+                        'catalog_item_id' => $item->id,
+                        'catalog_variant_id' => $variant->id,
+                        'attributes' => ['job_number' => 'J-1'],
+                        'quantity' => 1,
+                        'rate_type' => 'fixed',
+                        'rate' => 12000,
+                        'tax_rate' => 0,
+                        'discount' => 0,
+                        'charges' => [],
+                    ],
+                    [
+                        'sort_order' => 2,
+                        'line_type' => LineType::ExchangeCredit->value,
+                        'item_name' => 'Old gold exchange',
+                        'quantity' => 1,
+                        'rate_type' => 'fixed',
+                        'rate' => 3000,
+                        'tax_rate' => 0,
+                        'discount' => 0,
+                        'charges' => [],
+                    ],
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $quotation = Invoice::sole();
+
+        $this->actingAs($user)
+            ->post(route('invoices.convert', $quotation), [
+                'document_type' => DocumentType::GeneralInvoice->value,
+            ])
+            ->assertRedirect();
+
+        $invoice = $quotation->refresh()->convertedTo;
+        $lines = $invoice->items()->orderBy('sort_order')->get();
+
+        $this->assertSame(LineType::Sale, $lines[0]->line_type);
+        $this->assertSame($variant->id, $lines[0]->catalog_variant_id);
+        $this->assertSame($item->id, $lines[0]->catalog_item_id);
+        $this->assertSame(['job_number' => 'J-1'], $lines[0]->attributes);
+
+        $this->assertSame(LineType::ExchangeCredit, $lines[1]->line_type);
     }
 
     public function test_a_variant_name_lands_on_the_line_so_the_invoice_says_which_form_was_sold(): void

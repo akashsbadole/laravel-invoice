@@ -34,6 +34,7 @@ class UpdateCustomerRequest extends FormRequest
             'credit_limit' => ['nullable', 'numeric', 'min:0'],
             'credit_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'price_tier' => ['nullable', Rule::enum(PriceTier::class)],
+            'customer_group_id' => ['nullable', Rule::exists('customer_groups', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'preferred_contact_channel' => ['nullable', Rule::enum(ContactChannel::class)],
             'referral_source' => ['nullable', 'string', 'max:100'],
             'tags' => ['nullable', 'array'],

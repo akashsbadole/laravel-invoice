@@ -35,7 +35,8 @@ class Customer extends Model
     protected $fillable = [
         'full_name', 'mobile_number', 'email', 'address', 'tax_number',
         'gstin_type', 'state_code', 'place_of_supply',
-        'credit_limit', 'credit_days', 'price_tier', 'preferred_contact_channel',
+        'credit_limit', 'credit_days', 'price_tier', 'customer_group_id',
+        'preferred_contact_channel',
         'referral_source', 'tags',
         'birthday', 'anniversary', 'attributes',
         'notes', 'customer_type', 'assigned_staff_id', 'created_by',
@@ -64,6 +65,25 @@ class Customer extends Model
     public function assignedStaff(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_staff_id');
+    }
+
+    /**
+     * The pricing tier this customer bills under, if any.
+     *
+     * @return BelongsTo<CustomerGroup, $this>
+     */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(CustomerGroup::class, 'customer_group_id');
+    }
+
+    /**
+     * Percentage this customer's group takes off unpriced invoice lines.
+     * Zero when they have no group, or the group has been switched off.
+     */
+    public function groupDiscountPercent(): float
+    {
+        return $this->group?->effectiveDiscountPercent() ?? 0.0;
     }
 
     /**

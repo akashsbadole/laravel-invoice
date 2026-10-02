@@ -215,6 +215,9 @@ as toast notifications, not silent failures.
   the line quantity is the litres being billed).
 - Per-line and per-invoice charges, discounts, single or split tax, and
   rounding.
+- **Customer group discount** — a customer's pricing tier is applied
+  automatically to every unpriced line (see
+  [Customer group pricing](#customer-group-pricing)).
 - **Installments**: split an invoice into a schedule of dated amounts, with
   payment matching settling installments oldest-first.
 - **Credit limits and credit days**: customers can carry a numeric limit and
@@ -314,10 +317,38 @@ as toast notifications, not silent failures.
   place of supply, credit limit/days, price tier, preferred contact channel,
   referral source and tags. The customer page shows the live credit position
   and tag badges; the customer list filters by exact tag.
+- **Customer groups** — named pricing tiers (Wholesale, Staff, VIP) carrying a
+  percentage discount, created under Settings → Customer Groups and assigned on
+  the customer's record. See [Customer group pricing](#customer-group-pricing).
 - **Activity timeline** per customer combining notes, invoices, payments and
   message history.
 - Follow-up scheduling with reminders, and occasion tracking.
 - Customer notes and follow-ups are permission-controlled.
+
+### Customer group pricing
+
+Half a shop's sales go to the same handful of dealers, and the same wholesale
+discount used to be re-typed on every invoice. A customer group says it once.
+
+- Each group is a **percentage**. Any invoice or quotation raised for a customer
+  in that group takes the percentage off every line the shopkeeper left blank.
+- **A discount you typed yourself always wins**, even a smaller one — a
+  one-off negotiated rate on a single line is never quietly overruled. The
+  line's discount box names the group and the amount it applied while the box
+  is still empty.
+- The discount lands **before GST**, so tax is charged on the lower value. An
+  old-gold exchange line is never discounted, because handing back the
+  customer's own metal is not a supply.
+- It prints as an ordinary **"Item discounts"** row, so the bill explains
+  itself and the figure is visible on the quotation, the invoice and the PDF.
+- The rate is resolved **on the server from the customer's own group**, so a
+  tampered request cannot claim a discount it was not given. The live preview
+  receives the same figure and totals identically.
+- **Switching a group off** stops it applying to the next bill; **re-pricing a
+  group** never re-prices an invoice that already went out. Invoices keep the
+  discount they were issued with.
+- Deleting a group frees its customers rather than orphaning them — membership
+  clears and their next invoice is back at face value.
 
 ---
 
@@ -388,16 +419,19 @@ match.
 
 ## 12. Verification
 
-`379 tests / 2468 assertions`, with Pint, TypeScript, ESLint and a production
+`406 tests / 2646 assertions`, with Pint, TypeScript, ESLint and a production
 build all passing. Coverage spans catalog and CSV/Excel round-tripping, catalog
 status lifecycle (draft, active, inactive, discontinued), product variants
 (code collisions, per-variant stock ledger, variant sold on the line),
-inventory ledger behaviour, credit/debit notes, advance receipts, rounding and
-TDS/TCS, quotation lifecycle and expiry, PDF rendering for all four
-delivery paths, litre-based line pricing, payment reminders and preferred
-channels, customer credit terms and tag filtering, sales-report exclusions,
-ageing/top-items/conversion reports, free-mode guarantees, role permissions and
-super-admin isolation.
+customer-group pricing (automatic tier discount, manual override winning,
+discount landing before GST, exchange credit exempt, inactive groups, tamper
+resistance, group deletion freeing customers), quotation-to-invoice conversion
+keeping the whole line, inventory ledger behaviour, credit/debit notes, advance
+receipts, rounding and TDS/TCS, quotation lifecycle and expiry, PDF rendering
+for all four delivery paths, litre-based line pricing, payment reminders and
+preferred channels, customer credit terms and tag filtering, sales-report
+exclusions, ageing/top-items/conversion reports, free-mode guarantees, role
+permissions and super-admin isolation.
 
 Every failure reaches the owner as a toast: flash messages, validation errors,
 expired session (419), non-Inertia server responses and thrown request errors
@@ -459,6 +493,9 @@ Problems an owner actually faces
 - validity window, expiry overlay, accepted/rejected/converted tracking, conversion reporting.
 - Credit behavior:
 - limits, over-limit blocking for payable documents, credit-day due dates.
+- Customer group pricing:
+- a customer's tier discount fills in every unpriced line, server-side and in the
+  live preview alike; a discount typed by hand is never overwritten.
 - Catalog behavior:
 - industry-driven fields/rate types/charges/CSV/Excel columns;
 - inventory ledger instead of silent stock edits;

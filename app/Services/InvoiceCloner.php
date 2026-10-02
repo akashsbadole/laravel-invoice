@@ -58,13 +58,13 @@ class InvoiceCloner
             ]);
 
             foreach ($source->items as $item) {
-                $newItem = $copy->items()->create($item->only([
-                    'sort_order', 'item_name', 'description', 'item_code', 'hsn_code',
-                    'metal_type', 'purity', 'huid_number', 'stone_clarity', 'stone_color',
-                    'stone_carat', 'certificate_number', 'quantity', 'gross_weight',
-                    'net_weight', 'stone_weight', 'rate_type', 'rate', 'base_value',
-                    'discount', 'tax_rate', 'tax', 'total',
-                ]));
+                // Copy the whole line rather than a hand-picked subset: a
+                // converted quotation must arrive as the same document, and
+                // every column added since (line type, product and variant
+                // links, attributes) has to survive the trip.
+                $newItem = $copy->items()->create(
+                    $item->only(array_diff($item->getFillable(), ['invoice_id'])),
+                );
 
                 foreach ($item->charges as $charge) {
                     $newItem->charges()->create($charge->only([

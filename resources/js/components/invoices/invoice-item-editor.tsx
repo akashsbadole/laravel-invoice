@@ -41,6 +41,7 @@ export default function InvoiceItemEditor({
     catalogItems,
     metalRates,
     industry,
+    groupDiscountPercent = 0,
     errors = {},
     onChange,
     onRemove,
@@ -53,13 +54,15 @@ export default function InvoiceItemEditor({
     catalogItems: CatalogItem[];
     metalRates: MetalRate[];
     industry: IndustryConfig;
+    /** Customer-group percentage, so this line totals like the invoice does. */
+    groupDiscountPercent?: number;
     errors?: Record<string, string>;
     onChange: (index: number, patch: Partial<InvoiceItemForm>) => void;
     onRemove: (index: number) => void;
     canRemove: boolean;
 }) {
     const chargeTypesById = new Map(itemChargeTypes.map((ct) => [ct.id, ct]));
-    const computed = computeItem(item, pricingMode, chargeTypesById);
+    const computed = computeItem(item, pricingMode, chargeTypesById, groupDiscountPercent);
     const area = computeArea(item);
     const isExchange = item.line_type === 'exchange_credit';
 
@@ -663,6 +666,14 @@ export default function InvoiceItemEditor({
                 <div className="grid gap-1.5 sm:w-1/3">
                     <Label>Item discount (₹)</Label>
                     <Input type="number" step="0.01" min={0} {...field('discount')} />
+                    {/* The group price is already in the totals, so the empty
+                        box has to say where the discount came from. */}
+                    {groupDiscountPercent > 0 && !isExchange && (item.discount || 0) <= 0 && (
+                        <p className="text-xs text-muted-foreground">
+                            {groupDiscountPercent}% group discount applied — ₹
+                            {currency.format(computed.discount)}
+                        </p>
+                    )}
                 </div>
 
                 {pricingMode === 'jewelry_calculated' && itemChargeTypes.length > 0 && (

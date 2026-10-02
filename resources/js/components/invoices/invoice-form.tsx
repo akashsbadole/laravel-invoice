@@ -118,6 +118,11 @@ export default function InvoiceForm({
     const { data, setData, post, put, processing, errors } = useForm<InvoiceFormData>(initialData);
 
     const customerStateCode = customers.find((c) => c.id === data.customer_id)?.state_code ?? null;
+    // What this customer's group takes off every line the shopkeeper leaves
+    // unpriced. The server resolves the same figure from the customer's own
+    // group when the document is stored.
+    const groupDiscountPercent =
+        customers.find((c) => c.id === data.customer_id)?.group_discount_percent ?? 0;
     const suggestedTaxMode = businessStateCode && customerStateCode
         ? (businessStateCode === customerStateCode ? 'cgst_sgst' : 'igst')
         : null;
@@ -159,6 +164,7 @@ export default function InvoiceForm({
                 roundingMode,
                 data.tcs_rate || 0,
                 data.tds_rate || 0,
+                groupDiscountPercent,
             ),
         [
             data.items,
@@ -169,6 +175,7 @@ export default function InvoiceForm({
             data.tax_mode,
             data.tcs_rate,
             data.tds_rate,
+            groupDiscountPercent,
             roundingMode,
             chargeTypes,
         ],
@@ -425,6 +432,7 @@ export default function InvoiceForm({
                         catalogItems={catalogItems}
                         metalRates={metalRates}
                         industry={industryConfig}
+                        groupDiscountPercent={groupDiscountPercent}
                         errors={itemErrors(index)}
                         onChange={updateItem}
                         onRemove={removeItem}

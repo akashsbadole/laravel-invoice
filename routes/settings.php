@@ -4,6 +4,7 @@ use App\Http\Controllers\FirmSwitchController;
 use App\Http\Controllers\Settings\ActivityLogController;
 use App\Http\Controllers\Settings\BusinessController;
 use App\Http\Controllers\Settings\ChargeTypeController;
+use App\Http\Controllers\Settings\CustomerGroupController;
 use App\Http\Controllers\Settings\InvoiceTemplateController;
 use App\Http\Controllers\Settings\MetalRateController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -28,6 +29,11 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::post('settings/charge-types', [ChargeTypeController::class, 'store'])->name('charge-types.store');
     Route::put('settings/charge-types/{chargeType}', [ChargeTypeController::class, 'update'])->name('charge-types.update');
     Route::delete('settings/charge-types/{chargeType}', [ChargeTypeController::class, 'destroy'])->name('charge-types.destroy');
+
+    Route::get('settings/customer-groups', [CustomerGroupController::class, 'index'])->name('customer-groups.index');
+    Route::post('settings/customer-groups', [CustomerGroupController::class, 'store'])->name('customer-groups.store');
+    Route::put('settings/customer-groups/{customerGroup}', [CustomerGroupController::class, 'update'])->name('customer-groups.update');
+    Route::delete('settings/customer-groups/{customerGroup}', [CustomerGroupController::class, 'destroy'])->name('customer-groups.destroy');
 
     Route::get('settings/users', [UserController::class, 'index'])->name('users.index');
     Route::post('settings/users', [UserController::class, 'store'])->name('users.store');
