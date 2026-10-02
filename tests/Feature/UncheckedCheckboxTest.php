@@ -23,20 +23,21 @@ class UncheckedCheckboxTest extends TestCase
             'name' => 'Gold Ring',
             'rate_type' => 'fixed',
             'default_rate' => 5000,
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ]));
 
-        // The browser omits is_active when the box is cleared.
+        // Submitting status=inactive sets the item to inactive.
         $this->actingAs($user)
             ->put(route('catalog.update', $item), [
                 'name' => 'Gold Ring',
                 'rate_type' => 'fixed',
                 'default_rate' => 5000,
+                'status' => 'inactive',
             ])
             ->assertRedirect();
 
-        $this->assertFalse($item->refresh()->is_active);
+        $this->assertSame('inactive', $item->refresh()->status->value);
     }
 
     public function test_a_charge_type_can_be_deactivated_from_the_edit_form(): void

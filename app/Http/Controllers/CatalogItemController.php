@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CatalogStatus;
 use App\Enums\Permission;
 use App\Http\Requests\Catalog\StoreCatalogItemRequest;
 use App\Http\Requests\Catalog\UpdateCatalogItemRequest;
@@ -38,8 +39,9 @@ class CatalogItemController extends Controller
                     ->orWhere('item_code', 'like', "%{$search}%")
                     ->orWhere('brand', 'like', "%{$search}%")
                     ->orWhere('barcode', 'like', "%{$search}%"))
-                ->when($status === 'active', fn ($q) => $q->where('is_active', true))
-                ->when($status === 'inactive', fn ($q) => $q->where('is_active', false))
+                ->when($status === 'active', fn ($q) => $q->where('status', CatalogStatus::Active->value))
+                ->when($status === 'draft', fn ($q) => $q->where('status', CatalogStatus::Draft->value))
+                ->when($status === 'inactive', fn ($q) => $q->where('status', CatalogStatus::Inactive->value))
                 ->when($status === 'low_stock', fn ($q) => $q->where('stock_tracked', true)
                     ->whereColumn('stock_quantity', '<=', 'reorder_level')
                     ->where('reorder_level', '>', 0))
@@ -54,6 +56,9 @@ class CatalogItemController extends Controller
                 ->where('stock_tracked', true)
                 ->whereColumn('stock_quantity', '<=', 'reorder_level')
                 ->where('reorder_level', '>', 0)
+                ->count(),
+            'draftCount' => CatalogItem::query()
+                ->where('status', CatalogStatus::Draft->value)
                 ->count(),
         ]);
     }
@@ -78,11 +83,12 @@ class CatalogItemController extends Controller
                 'id', 'name', 'item_code', 'barcode', 'brand', 'model_number',
                 'hsn_code', 'rate_type', 'default_rate', 'cost_price',
                 'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
-                'image_path', 'is_active',
+                'image_path', 'status',
             ]),
             'rate_type' => $item->rate_type?->value,
             'image_url' => $item->image_path ? Storage::disk('public')->url($item->image_path) : null,
             'is_low_stock' => $item->isLowOnStock(),
+            'is_active' => $item->isActive(),
         ];
     }
 
@@ -114,8 +120,8 @@ class CatalogItemController extends Controller
         $payload['image_path'] = $this->storeImage($request);
         $payload['created_by'] = $request->user()->id;
 
-        // New products start active; the create form has no toggle.
-        $payload['is_active'] = $request->boolean('is_active', true);
+        // New products default to active unless explicitly saved as a draft.
+        $payload['status'] = $payload['status'] ?? CatalogStatus::Active->value;
 
         // Opening stock has to be recorded, not just stored, or the ledger
         // cannot explain the balance later.
@@ -126,6 +132,11 @@ class CatalogItemController extends Controller
 
         if ($request->boolean('stock_tracked') && $opening !== 0.0) {
             $this->inventory->setOpeningStock($item, $opening, $request->user()->id);
+        }
+
+        // Auto-activate: a draft that now has stock is clearly ready to sell.
+        if ($item->isDraft() && $opening !== 0.0) {
+            $item->update(['status' => CatalogStatus::Active]);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Product added to the catalog.')]);
@@ -156,7 +167,52 @@ class CatalogItemController extends Controller
             $this->inventory->setOpeningStock($catalogItem, $submitted, $request->user()->id);
         }
 
+        // Auto-activate: a draft that now has stock is ready to sell.
+        if ($catalogItem->isDraft() && $submitted !== 0.0) {
+            $catalogItem->update(['status' => CatalogStatus::Active]);
+        }
+
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Catalog item updated.')]);
+
+        return back();
+    }
+
+    /**
+     * Publish a single draft catalog item.
+     */
+    public function activate(Request $request, CatalogItem $catalogItem): RedirectResponse
+    {
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
+
+        if (! $catalogItem->isDraft()) {
+            return back()->withErrors(['status' => __('Only draft items can be activated.')]);
+        }
+
+        $catalogItem->update(['status' => CatalogStatus::Active]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Catalog item activated.')]);
+
+        return back();
+    }
+
+    /**
+     * Publish multiple draft items in one go.
+     */
+    public function activateSelected(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->canDo(Permission::ManageCatalog), 403);
+
+        $validated = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:catalog_items,id'],
+        ]);
+
+        $count = CatalogItem::query()
+            ->whereIn('id', $validated['ids'])
+            ->where('status', CatalogStatus::Draft->value)
+            ->update(['status' => CatalogStatus::Active->value]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __("Activated {$count} draft product(s).")]);
 
         return back();
     }

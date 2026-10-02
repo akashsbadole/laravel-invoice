@@ -222,7 +222,7 @@ class InvoiceCreationByIndustryTest extends TestCase
             'default_rate' => 55,
             'default_length' => 60,
             'default_width' => 60,
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ]));
 

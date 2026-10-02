@@ -79,6 +79,7 @@ export default function Dashboard({
     catalog: {
         total: number;
         active: number;
+        drafts: number;
         recent: {
             id: number;
             name: string;
@@ -297,6 +298,14 @@ export default function Dashboard({
                                     </span>{' '}
                                     <span className="font-semibold">
                                         {catalog.active}
+                                    </span>
+                                </span>
+                                <span>
+                                    <span className="text-muted-foreground">
+                                        Drafts
+                                    </span>{' '}
+                                    <span className="font-semibold">
+                                        {catalog.drafts}
                                     </span>
                                 </span>
                             </div>

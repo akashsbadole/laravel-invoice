@@ -1,6 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import {
     AlertTriangle,
+    Check,
+    Clock,
     Download,
     FileDown,
     ImageIcon,
@@ -43,7 +45,7 @@ import type { CatalogFieldSpec, IndustryConfig } from '@/lib/industries';
 import { download as catalogDownload, template as catalogTemplate } from '@/routes/catalog';
 import { dashboard } from '@/routes';
 import type { Paginated } from '@/types/customer';
-import type { CatalogItem } from '@/types/invoice';
+import type { CatalogItem, CatalogStatus } from '@/types/invoice';
 
 export default function CatalogPage({
     items,
@@ -51,16 +53,19 @@ export default function CatalogPage({
     industry,
     fields,
     lowStockCount,
+    draftCount,
 }: {
     items: Paginated<CatalogItem>;
     filters: { search?: string; status?: string };
     industry: IndustryConfig;
     fields: CatalogFieldSpec[];
     lowStockCount: number;
+    draftCount: number;
 }) {
     const statuses = [
         { key: '', label: 'All' },
         { key: 'active', label: 'Active' },
+        { key: 'draft', label: `Draft (${draftCount})` },
         { key: 'inactive', label: 'Inactive' },
         { key: 'low_stock', label: `Low stock (${lowStockCount})` },
     ];
@@ -165,7 +170,16 @@ export default function CatalogPage({
                                                         {item.item_code}
                                                     </Badge>
                                                 )}
-                                                {item.is_active === false && (
+                                                {item.status === 'draft' && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-xs"
+                                                    >
+                                                        <Clock className="size-3" />
+                                                        draft
+                                                    </Badge>
+                                                )}
+                                                {item.status === 'inactive' && (
                                                     <Badge
                                                         variant="secondary"
                                                         className="text-xs"
@@ -213,6 +227,24 @@ export default function CatalogPage({
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {item.status === 'draft' && (
+                                            <Form
+                                                {...CatalogItemController.activate.form(
+                                                    item.id,
+                                                )}
+                                            >
+                                                {({ processing }) => (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        disabled={processing}
+                                                    >
+                                                        <Check className="size-3" />
+                                                        Activate
+                                                    </Button>
+                                                )}
+                                            </Form>
+                                        )}
                                         {item.stock_tracked && (
                                             <StockDialog item={item} />
                                         )}
@@ -648,6 +680,22 @@ function AddItemDialog({
                                 industry={industry}
                                 fields={fields}
                             />
+                            <div className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="new-status"
+                                    name="status"
+                                    value="draft"
+                                    className="mt-0.5 size-4"
+                                />
+                                <Label
+                                    htmlFor="new-status"
+                                    className="font-normal"
+                                >
+                                    Save as draft (not visible in quotations
+                                    until activated)
+                                </Label>
+                            </div>
                             <DialogFooter>
                                 <DialogClose asChild>
                                     <Button
@@ -705,17 +753,32 @@ function EditItemDialog({
                                 industry={industry}
                                 fields={fields}
                             />
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id={`active-${item.id}`}
-                                    name="is_active"
-                                    defaultChecked={item.is_active !== false}
-                                    className="size-4"
-                                />
-                                <Label htmlFor={`active-${item.id}`}>
-                                    Active (shown in invoice picker)
+                            <div className="grid gap-2">
+                                <Label htmlFor={`status-${item.id}`}>
+                                    Status
                                 </Label>
+                                <Select
+                                    name="status"
+                                    defaultValue={item.status ?? 'active'}
+                                >
+                                    <SelectTrigger
+                                        id={`status-${item.id}`}
+                                        className="w-full"
+                                    >
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="draft">
+                                            Draft (not visible in quotations)
+                                        </SelectItem>
+                                        <SelectItem value="active">
+                                            Active
+                                        </SelectItem>
+                                        <SelectItem value="inactive">
+                                            Inactive
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>

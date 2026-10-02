@@ -44,7 +44,7 @@ class CatalogRouteTest extends TestCase
         $this->assertDatabaseHas('catalog_items', [
             'name' => 'Ball Valve 2 inch',
             'brand' => 'Jindal',
-            'is_active' => true,
+            'status' => 'active',
         ]);
     }
 
@@ -55,7 +55,7 @@ class CatalogRouteTest extends TestCase
         $item = $this->inTenant($user, fn () => CatalogItem::create([
             'name' => 'Old product',
             'rate_type' => 'per_piece',
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ]));
 

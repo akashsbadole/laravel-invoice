@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Quotations\StoreQuotationDraftRequest;
+use App\Enums\CatalogStatus;
 use App\Models\CatalogItem;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -24,7 +25,7 @@ class QuotationController extends Controller
     public function products()
     {
         return CatalogItem::query()
-            ->where('is_active', true)
+            ->where('status', CatalogStatus::Active->value)
             ->orderBy('name')
             ->get([
                 'id', 'name', 'brand', 'item_code', 'model_number', 'hsn_code',

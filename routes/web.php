@@ -120,6 +120,8 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::get('catalog/export', [CatalogItemImportController::class, 'exportCsv'])->name('catalog.export');
     Route::post('catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload');
     Route::post('catalog/{catalogItem}/stock', [CatalogItemController::class, 'adjustStock'])->name('catalog.stock');
+    Route::post('catalog/{catalogItem}/activate', [CatalogItemController::class, 'activate'])->name('catalog.activate');
+    Route::post('catalog/activate', [CatalogItemController::class, 'activateSelected'])->name('catalog.activate-selected');
     Route::put('catalog/{catalogItem}', [CatalogItemController::class, 'update'])->name('catalog.update');
     Route::delete('catalog/{catalogItem}', [CatalogItemController::class, 'destroy'])->name('catalog.destroy');
 

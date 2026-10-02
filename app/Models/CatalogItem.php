@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
+use App\Enums\CatalogStatus;
 use App\Enums\RateType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,7 +30,7 @@ class CatalogItem extends Model
         'batch_number', 'boxes',
         'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
         'image_path',
-        'attributes', 'description', 'is_active', 'created_by',
+        'attributes', 'description', 'status', 'created_by',
     ];
 
     protected function casts(): array
@@ -53,7 +54,7 @@ class CatalogItem extends Model
             'stock_quantity' => 'decimal:3',
             'reorder_level' => 'decimal:3',
             'attributes' => 'array',
-            'is_active' => 'boolean',
+            'status' => CatalogStatus::class,
         ];
     }
 
@@ -75,6 +76,19 @@ class CatalogItem extends Model
         return $this->stock_tracked
             && (float) $this->reorder_level > 0
             && (float) $this->stock_quantity <= (float) $this->reorder_level;
+    }
+
+    /**
+     * Whether the item is live in the quotation builder and invoice picker.
+     */
+    public function isActive(): bool
+    {
+        return $this->status === CatalogStatus::Active;
+    }
+
+    public function isDraft(): bool
+    {
+        return $this->status === CatalogStatus::Draft;
     }
 
     /**

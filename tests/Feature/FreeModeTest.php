@@ -230,7 +230,7 @@ class FreeModeTest extends TestCase
             'stock_tracked' => true,
             'stock_quantity' => 10,
             'reorder_level' => 2,
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $admin->id,
         ]));
 

@@ -30,7 +30,7 @@ class QuotationBuilderTest extends TestCase
             'default_length' => 60,
             'default_width' => 60,
             'default_wastage_percent' => 5,
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ], $overrides)));
     }
@@ -197,7 +197,7 @@ class QuotationBuilderTest extends TestCase
     public function test_inactive_products_are_not_offered_to_the_builder(): void
     {
         $user = $this->adminFor($this->tilesTenant());
-        $this->product($user, ['is_active' => false]);
+        $this->product($user, ['status' => 'inactive']);
 
         $this->actingAs($user)
             ->get(route('invoices.index'))

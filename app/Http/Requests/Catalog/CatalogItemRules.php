@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Catalog;
 
+use App\Enums\CatalogStatus;
 use App\Support\Attributes;
 use App\Support\CatalogField;
 use App\Support\Industry;
@@ -128,6 +129,10 @@ trait CatalogItemRules
 
         $rules['name'] = ['required', 'string', 'max:255'];
 
+        // Status is a form concern (not a registry field) but validated here
+        // so the enum is enforced centrally.
+        $rules['status'] = ['nullable', Rule::enum(CatalogStatus::class)];
+
         return $rules;
     }
 
@@ -192,8 +197,9 @@ trait CatalogItemRules
             }
         }
 
-        // is_active is a form concern rather than a registry field.
-        $payload['is_active'] = $this->boolean('is_active');
+        // Status is a form concern rather than a registry field. Defaults to
+        // active when the request omits it (the create form pre-selects it).
+        $payload['status'] = $this->input('status', CatalogStatus::Active->value);
 
         return $payload;
     }

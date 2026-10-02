@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\CatalogItem;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
@@ -102,7 +103,7 @@ class CatalogImportTest extends TestCase
             'item_code' => 'BV-1',
             'rate_type' => 'per_piece',
             'default_rate' => 100,
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ]));
 
@@ -172,7 +173,7 @@ class CatalogImportTest extends TestCase
         // binary type) for a .csv, which a strict `mimes:csv` rule rejects.
         $this->actingAs($user)
             ->post(route('catalog.upload'), [
-                'file' => $this->realCsv('name,default_rate' . "\n" . 'Ball Valve,750' . "\n", 'application/vnd.ms-excel'),
+                'file' => $this->realCsv('name,default_rate'."\n".'Ball Valve,750'."\n", 'application/vnd.ms-excel'),
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
@@ -180,19 +181,19 @@ class CatalogImportTest extends TestCase
         $this->assertDatabaseHas('catalog_items', ['name' => 'Ball Valve']);
     }
 
-public function test_a_php_upload_is_rejected(): void
+    public function test_a_php_upload_is_rejected(): void
     {
         $user = $this->adminFor();
 
         $this->actingAs($user)
             ->post(route('catalog.upload'), [
-                'file' => $this->realCsv('name' . "\n" . 'Ball Valve' . "\n", 'text/plain', 'evil.php'),
+                'file' => $this->realCsv('name'."\n".'Ball Valve'."\n", 'text/plain', 'evil.php'),
             ])
             ->assertRedirect()
             ->assertSessionHasErrors('file');
     }
 
-public function test_an_empty_file_is_reported_clearly(): void
+    public function test_an_empty_file_is_reported_clearly(): void
     {
         $user = $this->adminFor();
 
@@ -204,7 +205,7 @@ public function test_an_empty_file_is_reported_clearly(): void
             ->assertSessionHasErrors('file');
     }
 
-public function test_the_is_active_column_can_deactivate_a_product(): void
+    public function test_the_status_column_can_deactivate_a_product(): void
     {
         $user = $this->adminFor();
 
@@ -212,21 +213,21 @@ public function test_the_is_active_column_can_deactivate_a_product(): void
             'name' => 'Ball Valve',
             'item_code' => 'BV-1',
             'rate_type' => 'per_piece',
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ]));
 
         $this->actingAs($user)
             ->post(route('catalog.upload'), [
-                'file' => $this->csv("name,item_code,is_active\nBall Valve,BV-1,0\n"),
+                'file' => $this->csv("name,item_code,status\nBall Valve,BV-1,inactive\n"),
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $this->assertFalse(CatalogItem::firstOrFail()->is_active);
+        $this->assertSame('inactive', CatalogItem::firstOrFail()->status->value);
     }
 
-protected function realCsv(string $contents, string $mime, string $filename = 'catalog.csv'): UploadedFile
+    protected function realCsv(string $contents, string $mime, string $filename = 'catalog.csv'): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'csv');
         file_put_contents($path, $contents);
@@ -244,7 +245,7 @@ protected function realCsv(string $contents, string $mime, string $filename = 'c
             'brand' => 'Jindal',
             'rate_type' => 'per_piece',
             'default_rate' => 750,
-            'is_active' => true,
+            'status' => 'active',
             'created_by' => $user->id,
         ]));
 
@@ -263,7 +264,7 @@ protected function realCsv(string $contents, string $mime, string $filename = 'c
     public function test_importing_requires_write_permission(): void
     {
         $admin = $this->adminFor();
-        $viewer = $this->inTenant($admin, fn () => \App\Models\User::create([
+        $viewer = $this->inTenant($admin, fn () => User::create([
             'tenant_id' => $admin->tenant_id,
             'name' => 'Viewer',
             'email' => 'viewer@example.test',

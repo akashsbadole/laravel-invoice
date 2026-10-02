@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CatalogStatus;
 use App\Enums\Permission;
 use App\Models\BusinessSetting;
 use App\Models\CatalogItem;
@@ -37,7 +38,7 @@ class CatalogItemImportController extends Controller
         'default_net_weight', 'default_gross_weight',
         'default_length', 'default_width', 'default_wastage_percent',
         'stock_tracked', 'stock_quantity', 'reorder_level', 'stock_unit',
-        'image_path', 'attributes', 'is_active',
+        'image_path', 'attributes', 'status',
     ];
 
     /**
@@ -85,7 +86,7 @@ class CatalogItemImportController extends Controller
                     'stock_tracked' => '1',
                     'stock_quantity' => '0',
                     'reorder_level' => '0',
-                    'is_active' => '1',
+                    'status' => 'active',
                     'attributes' => 'thread=2x40;finish=matte',
                     'description' => 'Sample row',
                     default => '',
@@ -295,8 +296,8 @@ class CatalogItemImportController extends Controller
             return $this->stringifyAttributes($item->attributes);
         }
 
-        if ($column === 'is_active') {
-            return $item->is_active ? '1' : '0';
+        if ($column === 'status') {
+            return $item->status?->value ?? CatalogStatus::Active->value;
         }
 
         $value = $item->{$column} ?? '';
@@ -323,6 +324,23 @@ class CatalogItemImportController extends Controller
     }
 
     /**
+     * Map a raw CSV cell to a valid CatalogStatus, falling back to active
+     * when the cell is blank or holds an unrecognised value.
+     */
+    protected function statusFrom(?string $value): string
+    {
+        if ($value === null || trim($value) === '') {
+            return CatalogStatus::Active->value;
+        }
+
+        $normalized = strtolower(trim($value));
+
+        return CatalogStatus::tryFrom($normalized)
+            ? $normalized
+            : CatalogStatus::Active->value;
+    }
+
+    /**
      * Turn one extracted CSV row into model attributes, applying the same
      * coercion rules the form uses.
      *
@@ -337,9 +355,9 @@ class CatalogItemImportController extends Controller
                 ? $data['rate_type']
                 : $defaultRateType,
             'attributes' => $this->parseAttributes($data['attributes'] ?? null),
-            // Importing is an explicit act, so a product with no is_active
-            // column is treated as active.
-            'is_active' => $this->booleanOrDefault($data['is_active'] ?? null),
+            // Importing is an explicit act, so a product with no status column
+            // is treated as active. Valid values: draft, active, inactive.
+            'status' => $this->statusFrom($data['status'] ?? null),
             'tax_inclusive' => $this->booleanOrDefault($data['tax_inclusive'] ?? null, false),
             'stock_tracked' => $this->booleanOrDefault($data['stock_tracked'] ?? null, false),
         ];
@@ -358,7 +376,7 @@ class CatalogItemImportController extends Controller
                 // Fall back to the registry default: several numeric columns
                 // are NOT NULL, so a blank CSV cell must not write null.
                 'number' => $this->numberOrNull($value) ?? ($field['default'] ?? null),
-                'boolean' => $this->booleanOrDefault($value, $name === 'is_active'),
+                'boolean' => $this->booleanOrDefault($value, false),
                 default => filled($value) ? $value : null,
             };
         }

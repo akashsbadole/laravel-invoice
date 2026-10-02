@@ -27,6 +27,8 @@ export type InvoiceStatus =
     | 'sent'
     | 'accepted'
     | 'converted';
+
+export type CatalogStatus = 'draft' | 'active' | 'inactive';
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'card' | 'upi' | 'cheque' | 'other';
 
 export type ChargeType = {
@@ -313,7 +315,7 @@ export type CatalogItem = {
     default_wastage_percent: string | null;
     attributes: Record<string, string> | null;
     description: string | null;
-    is_active?: boolean;
+    status: CatalogStatus;
 
     // Commercial
     cost_price: string | null;

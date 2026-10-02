@@ -26,7 +26,7 @@ class CatalogEnrichmentTest extends TestCase
             'name' => 'Vitrified Tile',
             'rate_type' => 'per_sqft',
             'default_rate' => 55,
-            'is_active' => true,
+            'status' => 'active',
         ], $overrides));
     }
 

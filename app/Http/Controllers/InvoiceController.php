@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CatalogStatus;
 use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
@@ -490,7 +491,7 @@ class InvoiceController extends Controller
                 ->orderBy('sort_order')
                 ->get(['id', 'name', 'code', 'calculation_type', 'applies_to', 'default_rate', 'is_taxable']),
             'catalogItems' => CatalogItem::query()
-                ->where('is_active', true)
+                ->where('status', CatalogStatus::Active->value)
                 ->orderBy('name')
                 ->get([
                     'id', 'name', 'brand', 'item_code', 'model_number', 'hsn_code',

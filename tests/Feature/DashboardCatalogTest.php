@@ -20,14 +20,14 @@ class DashboardCatalogTest extends TestCase
                 'brand' => 'Nirogran',
                 'rate_type' => 'per_sqft',
                 'default_rate' => 55,
-                'is_active' => true,
+                'status' => 'active',
                 'created_by' => $user->id,
             ]);
 
             CatalogItem::create([
                 'name' => 'Retired Mosaic',
                 'rate_type' => 'per_sqft',
-                'is_active' => false,
+                'status' => 'inactive',
                 'created_by' => $user->id,
             ]);
         });

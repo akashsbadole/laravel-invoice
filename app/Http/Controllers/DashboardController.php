@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CatalogStatus;
 use App\Enums\InvoiceStatus;
 use App\Models\CatalogItem;
 use App\Models\Customer;
@@ -86,7 +87,8 @@ class DashboardController extends Controller
             // stocked it is rather than hiding it in Settings.
             'catalog' => [
                 'total' => CatalogItem::query()->count(),
-                'active' => CatalogItem::query()->where('is_active', true)->count(),
+                'active' => CatalogItem::query()->where('status', CatalogStatus::Active->value)->count(),
+                'drafts' => CatalogItem::query()->where('status', CatalogStatus::Draft->value)->count(),
                 'recent' => CatalogItem::query()->latest('id')->limit(5)->get(['id', 'name', 'brand', 'rate_type', 'default_rate']),
             ],
             'reminderCount' => $due['payments']->count() + $due['followups']->count() + $due['birthdays']->count()
