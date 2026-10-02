@@ -134,7 +134,10 @@ class EInvoiceService
      */
     protected function supplyType(Invoice $invoice, ?Customer $customer): string
     {
-        return $customer?->tax_number ? 'B2B' : 'B2C';
+        // An explicit gstin_type decides this. Without one, fall back to whether
+        // the customer actually holds a GSTIN, which is the historical
+        // behaviour.
+        return $customer?->isBusinessBuyer() ? 'B2B' : 'B2C';
     }
 
     /**
@@ -145,14 +148,20 @@ class EInvoiceService
         $business = BusinessSetting::forTenant($invoice->tenant_id);
 
         // B2C has no registered buyer, so the place of supply is the seller's
-        // state; B2B follows the buyer's.
+        // state; B2B follows the buyer's. A customer can override their home
+        // state with an explicit place_of_supply, because goods are frequently
+        // delivered somewhere other than where they are registered.
+        $state = $supTyp === 'B2B'
+            ? $customer?->effectivePlaceOfSupply()
+            : $business->state_code;
+
         return [
-            'Gstin' => $customer?->tax_number,
+            'Gstin' => $supTyp === 'B2B' ? $customer?->tax_number : null,
             'LglNm' => $customer?->full_name,
             'Addr1' => $customer?->address,
             'Pin' => null,
-            'Stcd' => $supTyp === 'B2B' ? $customer?->state_code : $business->state_code,
-            'Pos' => $supTyp === 'B2B' ? $customer?->state_code : $business->state_code,
+            'Stcd' => $state,
+            'Pos' => $state,
         ];
     }
 

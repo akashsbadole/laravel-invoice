@@ -45,6 +45,16 @@ export type InvoiceSummary = {
     balance_amount: string;
 };
 
+export type GstinType = 'regular' | 'composition' | 'unregistered' | 'consumer';
+
+export type ContactChannel =
+    | 'whatsapp'
+    | 'sms'
+    | 'email'
+    | 'call';
+
+export type PriceTier = 'a' | 'b' | 'c';
+
 export type Customer = {
     id: number;
     full_name: string;
@@ -58,6 +68,18 @@ export type Customer = {
     birthday: string | null;
     anniversary: string | null;
     attributes?: Record<string, string> | null;
+    gstin_type: GstinType | null;
+    place_of_supply: string | null;
+    credit_limit: string | null;
+    credit_days: number | null;
+    price_tier: PriceTier | null;
+    preferred_contact_channel: ContactChannel | null;
+    referral_source: string | null;
+    tags: string[] | null;
+    /** Outstanding balance that counts against the credit limit. */
+    credit_outstanding?: string;
+    /** Null when the business does not extend credit to this customer. */
+    credit_overrun?: string | null;
     assigned_staff_id: number | null;
     assigned_staff?: Staff | null;
     total_invoiced?: string | null;

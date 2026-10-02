@@ -20,6 +20,7 @@ use App\Models\InvoiceTemplate;
 use App\Models\MetalRate;
 use App\Models\RecurringProfile;
 use App\Models\User;
+use App\Services\CreditLimitService;
 use App\Services\EInvoiceService;
 use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -42,6 +44,7 @@ class InvoiceController extends Controller
     public function __construct(
         private readonly InvoiceCalculationService $calculator,
         private readonly QuotationService $quotations,
+        private readonly CreditLimitService $credit,
     ) {}
 
     public function index(Request $request): Response
@@ -122,6 +125,16 @@ class InvoiceController extends Controller
             $computed = $this->calculator->calculate($request->validated());
             $documentType = $request->validated('document_type', DocumentType::JewelryInvoice->value);
 
+            // A credit-limited customer must be caught before the document is
+            // written, so the block runs outside the write path.
+            $customer = Customer::findOrFail($request->validated('customer_id'));
+
+            if ($this->credit->exceeds($customer, $documentType, (float) $computed['grand_total'])) {
+                throw ValidationException::withMessages([
+                    'customer_id' => $this->credit->errorMessage($customer, (float) $computed['grand_total']),
+                ]);
+            }
+
             $invoice = Invoice::create([
                 'customer_id' => $request->validated('customer_id'),
                 'document_type' => $documentType,
@@ -134,7 +147,11 @@ class InvoiceController extends Controller
                     default => $business->nextInvoiceNumber(),
                 },
                 'invoice_date' => $request->validated('invoice_date'),
-                'due_date' => $request->validated('due_date'),
+                'due_date' => $this->credit->dueDate(
+                    $customer,
+                    $request->validated('invoice_date'),
+                    $request->validated('due_date'),
+                ),
                 // Only a quotation carries a validity window; storing it on an
                 // invoice would make the expiry sweep pick up a sale.
                 'quotation_valid_until' => $documentType === DocumentType::Quotation->value
@@ -231,13 +248,27 @@ class InvoiceController extends Controller
 
         DB::transaction(function () use ($request, $invoice) {
             $computed = $this->calculator->calculate($request->validated());
+            $documentType = $request->validated('document_type', $invoice->document_type->value);
+            $customer = Customer::findOrFail($request->validated('customer_id'));
+
+            // Pass the existing invoice so its current balance is not counted
+            // twice when re-saving.
+            if ($this->credit->exceeds($customer, $documentType, (float) $computed['grand_total'], $invoice)) {
+                throw ValidationException::withMessages([
+                    'customer_id' => $this->credit->errorMessage($customer, (float) $computed['grand_total']),
+                ]);
+            }
 
             $invoice->update([
                 'customer_id' => $request->validated('customer_id'),
-                'document_type' => $request->validated('document_type', $invoice->document_type->value),
+                'document_type' => $documentType,
                 'invoice_date' => $request->validated('invoice_date'),
-                'due_date' => $request->validated('due_date'),
-                'quotation_valid_until' => $request->validated('document_type', $invoice->document_type->value) === DocumentType::Quotation->value
+                'due_date' => $this->credit->dueDate(
+                    $customer,
+                    $request->validated('invoice_date'),
+                    $request->validated('due_date'),
+                ),
+                'quotation_valid_until' => $documentType === DocumentType::Quotation->value
                     ? $request->validated('quotation_valid_until')
                     : null,
                 'reference_number' => $request->validated('reference_number'),

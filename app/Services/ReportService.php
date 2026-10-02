@@ -4,11 +4,15 @@ namespace App\Services;
 
 use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
+use App\Enums\LineType;
+use App\Enums\QuotationStatus;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Single source for every report: the on-screen table, CSV, Excel and PDF
@@ -26,6 +30,9 @@ class ReportService
         'tax' => 'Tax report (GST)',
         'salesperson' => 'Salesperson report',
         'monthly' => 'Monthly revenue',
+        'ageing' => 'Customer ageing',
+        'top_items' => 'Top selling items',
+        'quotation_conversion' => 'Quotation conversion',
     ];
 
     /**
@@ -45,6 +52,9 @@ class ReportService
             'tax' => $this->tax($filters),
             'salesperson' => $this->salesperson($filters),
             'monthly' => $this->monthly($filters),
+            'ageing' => $this->ageing($filters),
+            'top_items' => $this->topItems($filters),
+            'quotation_conversion' => $this->quotationConversion($filters),
             // The one report that is a document listing rather than a money
             // total, so it keeps quotations and challans and labels the type.
             default => $this->invoiceList('Document report', $filters, null, includeNonSales: true),
@@ -245,6 +255,222 @@ class ReportService
     }
 
     /**
+     * Outstanding balances bucketed by how long they have been unpaid.
+     *
+     * Days are measured from the due date where one exists, because that is the
+     * date the customer agreed to pay by; an invoice with no due date falls
+     * back to its invoice date so it still ages rather than disappearing.
+     *
+     * @param  array<string,mixed>  $f
+     * @return array<string,mixed>
+     */
+    protected function ageing(array $f): array
+    {
+        $today = Carbon::parse($f['to'] ?? today()->toDateString())->startOfDay();
+
+        $buckets = [
+            'current' => ['label' => 'Not yet due', 'min' => null, 'max' => 0],
+            '1-30' => ['label' => '1–30 days', 'min' => 1, 'max' => 30],
+            '31-60' => ['label' => '31–60 days', 'min' => 31, 'max' => 60],
+            '61-90' => ['label' => '61–90 days', 'min' => 61, 'max' => 90],
+            '90+' => ['label' => '90+ days', 'min' => 91, 'max' => null],
+        ];
+
+        $rows = $this->invoiceQuery($f, null, true)
+            ->where('balance_amount', '>', 0)
+            ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'balance_amount', 'customer_id'])
+            ->map(function (Invoice $invoice) use ($today, $buckets) {
+                $reference = $invoice->due_date ?? $invoice->invoice_date;
+                $overdueDays = max(0, $today->diffInDays($reference, false));
+
+                $bucket = 'current';
+
+                foreach ($buckets as $key => $definition) {
+                    if ($definition['min'] === null) {
+                        continue;
+                    }
+
+                    if ($overdueDays >= $definition['min']
+                        && ($definition['max'] === null || $overdueDays <= $definition['max'])) {
+                        $bucket = $key;
+
+                        break;
+                    }
+                }
+
+                return [
+                    'invoice_number' => $invoice->invoice_number,
+                    'customer' => $invoice->customer?->full_name ?? '-',
+                    'due_date' => $reference?->format('Y-m-d'),
+                    'days_overdue' => $overdueDays,
+                    'bucket' => $bucket,
+                    'bucket_label' => $buckets[$bucket]['label'],
+                    'balance' => (float) $invoice->balance_amount,
+                ];
+            })
+            // Oldest debt first: that is what needs chasing.
+            ->sortByDesc('days_overdue')
+            ->values()
+            ->all();
+
+        return [
+            'title' => 'Customer ageing',
+            'columns' => [
+                $this->col('invoice_number', 'Invoice'), $this->col('customer', 'Customer'),
+                $this->col('due_date', 'Due', 'date'), $this->col('days_overdue', 'Days overdue', 'number'),
+                $this->col('bucket_label', 'Bucket'), $this->col('balance', 'Outstanding', 'money'),
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * Best sellers by line item.
+     *
+     * Aggregated from invoice_items rather than the invoice header so a single
+     * large invoice does not hide a product that sells steadily. Exchange credit
+     * lines are excluded: they reduce a sale, they are not one.
+     *
+     * Built as its own query rather than on top of invoiceQuery(): joining
+     * invoice_items makes `id` and `document_type` ambiguous, and the shared
+     * base applies an ORDER BY that would fight the ranking here.
+     *
+     * @param  array<string,mixed>  $f
+     * @return array<string,mixed>
+     */
+    protected function topItems(array $f, int $limit = 20): array
+    {
+        $rows = InvoiceItem::query()
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->whereIn('invoices.document_type', $this->saleDocumentTypes())
+            ->whereNotIn('invoices.status', [InvoiceStatus::Cancelled->value, InvoiceStatus::Refunded->value])
+            ->where('invoice_items.line_type', LineType::Sale->value)
+            ->when($f['from'] ?? null, fn ($q, $v) => $q->whereDate('invoices.invoice_date', '>=', $v))
+            ->when($f['to'] ?? null, fn ($q, $v) => $q->whereDate('invoices.invoice_date', '<=', $v))
+            ->when($f['customer_id'] ?? null, fn ($q, $v) => $q->where('invoices.customer_id', $v))
+            ->when($f['staff_id'] ?? null, fn ($q, $v) => $q->where('invoices.salesperson_id', $v))
+            ->groupBy('invoice_items.item_name')
+            ->orderByDesc(DB::raw('SUM(invoice_items.total)'))
+            ->limit($limit)
+            ->get([
+                'invoice_items.item_name',
+                DB::raw('COUNT(*) as lines'),
+                DB::raw('SUM(invoice_items.quantity) as quantity'),
+                DB::raw('SUM(invoice_items.total) as revenue'),
+            ])
+            ->map(fn ($row) => [
+                'item_name' => $row->item_name,
+                'lines' => (int) $row->lines,
+                'quantity' => round((float) $row->quantity, 2),
+                'revenue' => round((float) $row->revenue, 2),
+            ])
+            ->all();
+
+        return [
+            'title' => 'Top selling items',
+            'columns' => [
+                $this->col('item_name', 'Item'), $this->col('lines', 'Invoices', 'number'),
+                $this->col('quantity', 'Quantity', 'number'), $this->col('revenue', 'Revenue', 'money'),
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * Document types that count as realised revenue.
+     *
+     * @return list<string>
+     */
+    protected function saleDocumentTypes(): array
+    {
+        return array_values(array_map(
+            fn (DocumentType $type) => $type->value,
+            array_filter(DocumentType::cases(), fn (DocumentType $type) => $type->isSale()),
+        ));
+    }
+
+    /**
+     * How many quotations actually turn into invoices.
+     *
+     * Conversion is measured by converted_to_id, which is set the moment staff
+     * convert, rather than by quotation_status, which can also be moved by hand.
+     *
+     * @param  array<string,mixed>  $f
+     * @return array<string,mixed>
+     */
+    protected function quotationConversion(array $f): array
+    {
+        $quotations = Invoice::query()
+            ->where('document_type', DocumentType::Quotation->value)
+            ->when($f['from'] ?? null, fn ($q, $v) => $q->whereDate('invoice_date', '>=', $v))
+            ->when($f['to'] ?? null, fn ($q, $v) => $q->whereDate('invoice_date', '<=', $v))
+            ->when($f['staff_id'] ?? null, fn ($q, $v) => $q->where('salesperson_id', $v))
+            ->get();
+
+        $total = $quotations->count();
+
+        $converted = $quotations->whereNotNull('converted_to_id')->count();
+        $accepted = $quotations->where('quotation_status', QuotationStatus::Accepted->value)->count();
+        $rejected = $quotations->where('quotation_status', QuotationStatus::Rejected->value)->count();
+        $expired = $quotations->filter(
+            fn (Invoice $q) => app(QuotationService::class)->currentStatus($q) === QuotationStatus::Expired
+        )->count();
+
+        // Won back: a rejected quote that was later converted anyway.
+        $wonBack = $quotations
+            ->filter(fn (Invoice $q) => $q->quotation_status === QuotationStatus::Rejected->value
+                && $q->converted_to_id !== null)
+            ->count();
+
+        $value = fn (callable $filter) => round((float) $quotations->filter($filter)
+            ->sum('grand_total'), 2);
+
+        return [
+            'title' => 'Quotation conversion',
+            'columns' => [
+                $this->col('metric', 'Metric'), $this->col('count', 'Count', 'number'),
+                $this->col('share', 'Share', 'percent'), $this->col('value', 'Value', 'money'),
+            ],
+            'rows' => [
+                $this->conversionRow('Quotations raised', $total, $total, $quotations),
+                $this->conversionRow('Accepted', $accepted, $total, $quotations, QuotationStatus::Accepted),
+                $this->conversionRow('Rejected', $rejected, $total, $quotations, QuotationStatus::Rejected),
+                $this->conversionRow('Expired', $expired, $total, $quotations),
+                $this->conversionRow('Converted to invoice', $converted, $total, $quotations, null, true),
+                $this->conversionRow('Won back after rejection', $wonBack, $total, $quotations),
+            ],
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int,Invoice>  $quotations
+     * @return array<string,mixed>
+     */
+    protected function conversionRow(
+        string $label,
+        int $count,
+        int $total,
+        Collection $quotations,
+        ?QuotationStatus $status = null,
+        bool $byConversion = false,
+    ): array {
+        $subset = $quotations->filter(function (Invoice $quotation) use ($status, $byConversion) {
+            if ($byConversion) {
+                return $quotation->converted_to_id !== null;
+            }
+
+            return $status !== null && $quotation->quotation_status === $status;
+        });
+
+        return [
+            'metric' => $label,
+            'count' => $count,
+            'share' => $total > 0 ? round($count / $total * 100, 1) : 0.0,
+            'value' => round((float) $subset->sum('grand_total'), 2),
+        ];
+    }
+
+    /**
      * @param  array<string,mixed>  $f
      * @return array<string,mixed>
      */
@@ -333,14 +559,9 @@ class ReportService
     ): Builder {
         $status = $f['status'] ?? 'all';
 
-        $saleTypes = array_values(array_map(
-            fn (DocumentType $type) => $type->value,
-            array_filter(DocumentType::cases(), fn (DocumentType $type) => $type->isSale()),
-        ));
-
         return Invoice::query()
             ->with(['customer:id,full_name,mobile_number,tax_number', 'salesperson:id,name'])
-            ->when($includeNonSales, fn ($q) => null, fn ($q) => $q->whereIn('document_type', $saleTypes))
+            ->when($includeNonSales, fn ($q) => null, fn ($q) => $q->whereIn('document_type', $this->saleDocumentTypes()))
             ->when($f['from'] ?? null, fn ($q, $v) => $q->whereDate('invoice_date', '>=', $v))
             ->when($f['to'] ?? null, fn ($q, $v) => $q->whereDate('invoice_date', '<=', $v))
             ->when($f['customer_id'] ?? null, fn ($q, $v) => $q->where('customer_id', $v))

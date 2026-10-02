@@ -93,6 +93,11 @@ class CustomerController extends Controller
                 'total_paid' => (float) $customer->totalPaid(),
                 'total_outstanding' => (float) $customer->totalOutstanding(),
                 'last_invoice_date' => $customer->invoices()->max('invoice_date'),
+                // Credit position, so the page can show how close this customer
+                // is to their limit without the UI re-deriving it.
+                'credit_limit' => $customer->credit_limit !== null ? (float) $customer->credit_limit : null,
+                'credit_outstanding' => $customer->creditOutstanding(),
+                'credit_overrun' => $customer->creditOverrun(),
             ],
             'staff' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);

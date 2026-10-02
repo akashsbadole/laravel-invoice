@@ -61,6 +61,10 @@ type Stats = {
     total_paid: number;
     total_outstanding: number;
     last_invoice_date: string | null;
+    /** Null when this business does not extend credit to the customer. */
+    credit_limit: number | null;
+    credit_outstanding: number;
+    credit_overrun: number | null;
 };
 
 type TimelineEvent = {
@@ -163,11 +167,88 @@ export default function ShowCustomer({
                         value={currency.format(stats.total_outstanding)}
                         emphasize={stats.total_outstanding > 0}
                     />
-                    <StatCard
+<StatCard
                         label="Last invoice"
                         value={stats.last_invoice_date ?? '—'}
                     />
                 </div>
+
+                {/* Credit position. Only shown for customers the business
+                    actually extends credit to. */}
+                {stats.credit_limit !== null && (
+                    <Card
+                        className={
+                            (stats.credit_overrun ?? 0) > 0
+                                ? 'border-destructive/50'
+                                : undefined
+                        }
+                    >
+                        <CardHeader>
+                            <CardTitle>Credit</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                    Limit
+                                </span>
+                                <span className="font-medium">
+                                    {currency.format(stats.credit_limit)}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                    Outstanding
+                                </span>
+                                <span className="font-medium">
+                                    {currency.format(
+                                        stats.credit_outstanding,
+                                    )}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">
+                                    Available
+                                </span>
+                                <span
+                                    className={
+                                        (stats.credit_overrun ?? 0) > 0
+                                            ? 'font-medium text-destructive'
+                                            : 'font-medium'
+                                    }
+                                >
+                                    {(stats.credit_overrun ?? 0) > 0
+                                        ? `Over by ${currency.format(
+                                              stats.credit_overrun ?? 0,
+                                          )}`
+                                        : currency.format(
+                                              Math.max(
+                                                  0,
+                                                  stats.credit_limit -
+                                                      stats.credit_outstanding,
+                                              ),
+                                          )}
+                                </span>
+                            </div>
+                            {customer.credit_days !== null && (
+                                <p className="pt-1 text-xs text-muted-foreground">
+                                    Net {customer.credit_days} days — the
+                                    invoice due date is filled in
+                                    automatically.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {(customer.tags?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                        {customer.tags?.map((tag) => (
+                            <Badge key={tag} variant="outline">
+                                {tag}
+                            </Badge>
+                        ))}
+                    </div>
+                )}
 
                 {customer.attributes &&
                     Object.keys(customer.attributes).length > 0 && (

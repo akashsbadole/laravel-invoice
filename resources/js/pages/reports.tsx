@@ -22,6 +22,18 @@ const currency = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 });
 function fmt(value: string | number | null, type: string): string {
     if (value === null || value === '') return '';
     if (type === 'money') return currency.format(Number(value));
+    if (type === 'number') {
+        return new Intl.NumberFormat('en-IN', {
+            maximumFractionDigits: 2,
+        }).format(Number(value));
+    }
+    if (type === 'percent') return `${value}%`;
+    if (type === 'date') {
+        const parsed = new Date(String(value));
+        return Number.isNaN(parsed.getTime())
+            ? String(value)
+            : parsed.toLocaleDateString();
+    }
     return String(value);
 }
 
@@ -170,7 +182,7 @@ export default function ReportsPage({
                                     {report.columns.map((col) => (
                                         <th
                                             key={col.key}
-                                            className={`px-3 py-2 font-medium ${['money', 'number'].includes(col.type) ? 'text-right' : ''}`}
+                                            className={`px-3 py-2 font-medium ${['money', 'number', 'percent'].includes(col.type) ? 'text-right' : ''}`}
                                         >
                                             {col.label}
                                         </th>
@@ -190,7 +202,7 @@ export default function ReportsPage({
                                             {report.columns.map((col) => (
                                                 <td
                                                     key={col.key}
-                                                    className={`px-3 py-2 ${['money', 'number'].includes(col.type) ? 'text-right' : ''}`}
+                                                    className={`px-3 py-2 ${['money', 'number', 'percent'].includes(col.type) ? 'text-right' : ''}`}
                                                 >
                                                     {fmt(row[col.key], col.type)}
                                                 </td>
@@ -205,7 +217,7 @@ export default function ReportsPage({
                                         {report.columns.map((col) => (
                                             <td
                                                 key={col.key}
-                                                className={`px-3 py-2 ${['money', 'number'].includes(col.type) ? 'text-right' : ''}`}
+                                                className={`px-3 py-2 ${['money', 'number', 'percent'].includes(col.type) ? 'text-right' : ''}`}
                                             >
                                                 {fmt(report.totals?.[col.key] ?? null, col.type)}
                                             </td>

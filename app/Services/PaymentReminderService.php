@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ContactChannel;
 use App\Mail\PaymentReminderMail;
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
@@ -43,9 +44,20 @@ class PaymentReminderService
         $due = $invoice->due_date;
         $amount = number_format((float) $invoice->balance_amount, 2);
         $link = $this->shareUrl($invoice);
+        $preference = $invoice->customer?->preferred_contact_channel;
+
+        // A customer who asked for one channel should not get both. WhatsApp
+        // and SMS are both delivered by the SMS driver here, so WhatsApp maps
+        // onto the text send.
+        $wantsText = $preference === null
+            || in_array($preference, [ContactChannel::Sms, ContactChannel::WhatsApp], true);
+        $wantsEmail = $preference === null || $preference === ContactChannel::Email;
+        // `call` is a human channel, so automation stands down entirely and the
+        // reminder surfaces on the staff dashboard instead.
+        $automate = $preference?->isAutomatable() ?? true;
 
         // SMS goes to the mobile number the customer gave us.
-        if ($settings->sms_payment_reminders && $invoice->customer?->mobile_number) {
+        if ($automate && $wantsText && $settings->sms_payment_reminders && $invoice->customer?->mobile_number) {
             $message = sprintf(
                 'Dear %s, a reminder that invoice %s has Rs.%s outstanding%s. %s',
                 $invoice->customer->full_name,
@@ -64,11 +76,14 @@ class PaymentReminderService
 
         // Email goes to the address on file, gated separately from SMS so a
         // tenant can run either channel on its own.
-        if ($settings->email_payment_reminders && $invoice->customer?->email) {
+        if ($automate && $wantsEmail && $settings->email_payment_reminders && $invoice->customer?->email) {
             $sent['email'] = $this->email($invoice, $amount, $due, $link, $byUserId);
         }
 
-        if ($sent !== []) {
+        // Stamp the invoice either way: when a message went out so the throttle
+        // applies, and when the customer asked for a call so the nightly job
+        // does not reconsider the same invoice every night.
+        if ($sent !== [] || ! $automate) {
             $invoice->forceFill(['last_reminder_sent_at' => now()])->saveQuietly();
         }
 
