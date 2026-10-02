@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CatalogStatus;
+use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
 use App\Models\CatalogItem;
 use App\Models\Customer;
@@ -25,6 +26,11 @@ class DashboardController extends Controller
         $open = $values(InvoiceStatus::openStatuses());
         $counted = $values([InvoiceStatus::Unpaid, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid, InvoiceStatus::Overdue]);
 
+        // Credit and debit notes are corrections of an invoice already
+        // counted here, so they never appear as documents of their own.
+        $withoutNotes = fn ($query) => $query
+            ->whereNotIn('document_type', DocumentType::adjustmentValues());
+
         // Overdue = still owed and past its due date, regardless of whether the
         // nightly job has flipped the status yet.
         $overdue = fn () => Invoice::query()
@@ -34,8 +40,8 @@ class DashboardController extends Controller
             ->whereDate('due_date', '<', $today);
 
         $stats = [
-            'total_invoices' => Invoice::query()->count(),
-            'invoices_this_month' => Invoice::query()
+            'total_invoices' => $withoutNotes(Invoice::query())->count(),
+            'invoices_this_month' => $withoutNotes(Invoice::query())
                 ->whereBetween('invoice_date', [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()])->count(),
             'paid' => Invoice::query()->where('status', InvoiceStatus::Paid->value)->count(),
             'unpaid' => Invoice::query()->where('status', InvoiceStatus::Unpaid->value)->count(),
@@ -69,7 +75,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'stats' => $stats,
             'months' => $months,
-            'recentInvoices' => Invoice::query()->with('customer:id,full_name')->latest()->limit(5)
+            'recentInvoices' => $withoutNotes(Invoice::query())->with('customer:id,full_name')->latest()->limit(5)
                 ->get(['id', 'customer_id', 'invoice_number', 'invoice_date', 'status', 'grand_total', 'balance_amount']),
             'recentCustomers' => Customer::query()->latest()->limit(5)->get(['id', 'full_name', 'mobile_number', 'created_at']),
             'upcomingFollowups' => CustomerFollowup::query()

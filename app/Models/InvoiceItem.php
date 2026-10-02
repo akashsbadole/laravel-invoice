@@ -15,7 +15,8 @@ class InvoiceItem extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'invoice_id', 'sort_order', 'item_name', 'line_type', 'description', 'item_code', 'catalog_item_id', 'hsn_code',
+        'invoice_id', 'sort_order', 'item_name', 'line_type', 'description', 'item_code',
+        'catalog_item_id', 'catalog_variant_id', 'hsn_code',
         'brand', 'model_number', 'serial_number', 'warranty_months',
         'size_label', 'finish', 'grade', 'specification', 'batch_number',
         'length', 'width', 'height', 'wastage_percent', 'boxes', 'attributes',
@@ -67,6 +68,16 @@ class InvoiceItem extends Model
     public function catalogItem(): BelongsTo
     {
         return $this->belongsTo(CatalogItem::class, 'catalog_item_id');
+    }
+
+    /**
+     * The specific variant (size/colour) sold on this line, if any.
+     *
+     * @return BelongsTo<CatalogVariant, $this>
+     */
+    public function catalogVariant(): BelongsTo
+    {
+        return $this->belongsTo(CatalogVariant::class, 'catalog_variant_id');
     }
 
     /**

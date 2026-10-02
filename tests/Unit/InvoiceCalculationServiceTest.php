@@ -262,4 +262,73 @@ class InvoiceCalculationServiceTest extends TestCase
         $this->assertSame(1000.0, $result['subtotal']);
         $this->assertSame(1180.0, $result['grand_total']);
     }
+
+    public function test_totals_round_to_the_nearest_rupee_by_default(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'items' => [$this->item(['rate' => 999.5])],
+        ]));
+
+        $this->assertSame(999.5, $result['subtotal']);
+        $this->assertSame(1000.0, $result['grand_total']);
+        $this->assertSame(0.5, $result['round_off']);
+    }
+
+    public function test_two_decimal_mode_keeps_the_paise_and_reports_no_round_off(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'rounding_mode' => 'two_decimals',
+            'items' => [$this->item(['rate' => 999.5])],
+        ]));
+
+        $this->assertSame(999.5, $result['grand_total']);
+        $this->assertSame(0.0, $result['round_off']);
+    }
+
+    public function test_an_unrecognised_rounding_mode_falls_back_to_the_nearest_rupee(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'rounding_mode' => 'half_a_crown',
+            'items' => [$this->item(['rate' => 999.5])],
+        ]));
+
+        $this->assertSame(1000.0, $result['grand_total']);
+    }
+
+    public function test_tcs_is_charged_on_top_of_the_invoice_value(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'tcs_rate' => 1,
+            'items' => [$this->item(['rate' => 1000])],
+        ]));
+
+        $this->assertSame(10.0, $result['tcs_amount']);
+        $this->assertSame(1.0, $result['tcs_rate']);
+        $this->assertSame(1010.0, $result['grand_total']);
+    }
+
+    public function test_tds_is_computed_but_never_inflates_the_invoice_total(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'tds_rate' => 10,
+            'items' => [$this->item(['rate' => 1000])],
+        ]));
+
+        $this->assertSame(100.0, $result['tds_amount']);
+        $this->assertSame(1000.0, $result['grand_total']);
+        // The round-off line must not swallow the withheld tax either.
+        $this->assertSame(0.0, $result['round_off']);
+    }
+
+    public function test_tcs_and_tds_are_both_zero_when_neither_rate_is_set(): void
+    {
+        $result = $this->calculator->calculate($this->invoice([
+            'items' => [$this->item(['rate' => 1000])],
+        ]));
+
+        $this->assertSame(0.0, $result['tcs_amount']);
+        $this->assertSame(0.0, $result['tds_amount']);
+        $this->assertSame(0.0, $result['tcs_rate']);
+        $this->assertSame(0.0, $result['tds_rate']);
+    }
 }

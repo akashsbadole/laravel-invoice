@@ -93,6 +93,7 @@ class CustomerController extends Controller
             'invoices' => fn ($query) => $query->latest('invoice_date')->limit(10),
             'notesLog' => fn ($query) => $query->with('creator:id,name')->latest(),
             'followups' => fn ($query) => $query->with('assignee:id,name')->orderBy('followup_date'),
+            'advances' => fn ($query) => $query->with('creator:id,name')->latest('advance_date'),
         ]);
 
         return Inertia::render('customers/show', [
@@ -108,6 +109,7 @@ class CustomerController extends Controller
                 'credit_limit' => $customer->credit_limit !== null ? (float) $customer->credit_limit : null,
                 'credit_outstanding' => $customer->creditOutstanding(),
                 'credit_overrun' => $customer->creditOverrun(),
+                'available_advance' => $customer->availableAdvance(),
             ],
             'staff' => User::query()->orderBy('name')->get(['id', 'name']),
         ]);
@@ -179,6 +181,16 @@ class CustomerController extends Controller
                 'label' => 'Payment received '.number_format((float) $payment->amount, 2),
                 'detail' => $payment->payment_method->value,
                 'href' => route('invoices.show', $payment->invoice_id),
+            ];
+        }
+
+        foreach ($customer->advances()->latest('advance_date')->get() as $advance) {
+            $events[] = [
+                'at' => (string) $advance->advance_date,
+                'kind' => 'advance',
+                'label' => 'Advance received '.number_format((float) $advance->amount, 2),
+                'detail' => $advance->status->label().' · '.$advance->payment_method->value,
+                'href' => null,
             ];
         }
 

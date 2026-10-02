@@ -232,8 +232,9 @@ class ReportService
                 'invoice_number' => $i->invoice_number,
                 'customer' => $i->customer?->full_name ?? '-',
                 'gstin' => $i->customer?->tax_number ?? '-',
-                // Value before tax (after discounts, incl. all charges, before round-off)
-                'taxable' => round((float) $i->grand_total - (float) $i->round_off - (float) $i->tax, 2),
+                // Value before tax (after discounts, incl. all charges, before
+                // round-off and before TCS, which is collected on top)
+                'taxable' => round((float) $i->grand_total - (float) $i->round_off - (float) $i->tax - (float) $i->tcs_amount, 2),
                 'cgst' => $sum('CGST'),
                 'sgst' => $sum('SGST'),
                 'igst' => $sum('IGST'),

@@ -168,8 +168,14 @@
                     @else
                         <tr><td class="label">Tax</td><td class="right">Rs. {{ number_format((float) $invoice->tax, 2) }}</td></tr>
                     @endif
+                    @if((float) $invoice->tcs_amount > 0)
+                        <tr><td class="label">TCS @ {{ $invoice->tcs_rate }}%</td><td class="right">Rs. {{ number_format((float) $invoice->tcs_amount, 2) }}</td></tr>
+                    @endif
                     <tr><td class="label">Round off</td><td class="right">Rs. {{ number_format((float) $invoice->round_off, 2) }}</td></tr>
                     <tr class="grand-total"><td>Grand Total</td><td class="right">Rs. {{ number_format((float) $invoice->grand_total, 2) }}</td></tr>
+                    @if((float) $invoice->tds_amount > 0)
+                        <tr><td class="label">TDS @ {{ $invoice->tds_rate }}% (deducted)</td><td class="right">- Rs. {{ number_format((float) $invoice->tds_amount, 2) }}</td></tr>
+                    @endif
                     <tr><td class="label">Paid</td><td class="right">Rs. {{ number_format((float) $invoice->paid_amount, 2) }}</td></tr>
                     <tr><td class="label"><strong>Balance due</strong></td><td class="right"><strong>Rs. {{ number_format((float) $invoice->balance_amount, 2) }}</strong></td></tr>
                 </table>

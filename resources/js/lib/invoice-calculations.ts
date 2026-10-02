@@ -165,6 +165,14 @@ export function computeInvoiceCharge(
 export type ChargeSummaryRow = { code: string; label: string; amount: number };
 export type TaxBreakdownRow = { label: string; rate: number; amount: number };
 
+/** Mirror of App\Enums\RoundingMode. */
+export type RoundingMode = 'nearest_rupee' | 'two_decimals';
+
+function applyRounding(mode: RoundingMode, value: number): number {
+    if (mode === 'two_decimals') return round2(value);
+    return Math.round(value);
+}
+
 export type ComputedInvoice = {
     items: ComputedItem[];
     invoiceCharges: ItemChargeComputed[];
@@ -173,8 +181,12 @@ export type ComputedInvoice = {
     subtotal: number;
     discount: number;
     tax: number;
+    tcsAmount: number;
+    tdsAmount: number;
     roundOff: number;
     grandTotal: number;
+    /** What the customer still owes: total less TDS withheld. */
+    balanceDue: number;
 };
 
 function fmtRate(rate: number): string {
@@ -213,6 +225,9 @@ export function computeInvoice(
     invoiceDiscount: number,
     invoiceTaxRate: number,
     taxMode: TaxMode = 'single',
+    roundingMode: RoundingMode = 'nearest_rupee',
+    tcsRate = 0,
+    tdsRate = 0,
 ): ComputedInvoice {
     const chargeTypesById = new Map(chargeTypes.map((ct) => [ct.id, ct]));
     const computedItems = items.map((item) => computeItem(item, pricingMode, chargeTypesById));
@@ -259,9 +274,14 @@ export function computeInvoice(
             ? round2(taxBreakdown.reduce((sum, r) => sum + r.amount, 0))
             : round2(itemsTax + invoiceLevelTax);
 
-    const beforeRounding = round2(subtotal + invoiceChargesTotal + tax - invoiceDiscount);
+    const beforeTaxation = round2(subtotal + invoiceChargesTotal + tax - invoiceDiscount);
+    // TCS rides on top of the invoice value; TDS is withheld from the payment
+    // later, so it never inflates the billed amount.
+    const tcsAmount = tcsRate > 0 ? round2(beforeTaxation * (tcsRate / 100)) : 0;
+    const tdsAmount = tdsRate > 0 ? round2(beforeTaxation * (tdsRate / 100)) : 0;
+    const beforeRounding = round2(beforeTaxation + tcsAmount);
     // An exchange credit can outweigh the goods — never go negative.
-    const grandTotal = Math.max(Math.round(beforeRounding), 0);
+    const grandTotal = Math.max(applyRounding(roundingMode, beforeRounding), 0);
     const roundOff = round2(grandTotal - beforeRounding);
 
     const summary = new Map<string, ChargeSummaryRow>();
@@ -284,7 +304,10 @@ export function computeInvoice(
         subtotal: round2(baseSubtotal),
         discount: invoiceDiscount,
         tax,
+        tcsAmount,
+        tdsAmount,
         roundOff,
         grandTotal,
+        balanceDue: Math.max(round2(grandTotal - tdsAmount), 0),
     };
 }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\InstallmentStatus;
 use App\Http\Requests\Invoices\StorePaymentRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -46,7 +45,7 @@ class PaymentController extends Controller
         $payment = $this->payments->record($invoice, $request->validated(), $request->user());
 
         // Collecting against an agreed plan settles the oldest unpaid slice.
-        $this->settleMatchingInstallments($invoice, $payment);
+        $this->payments->settleMatchingInstallments($invoice, $payment);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
 
@@ -78,28 +77,5 @@ class PaymentController extends Controller
         ]);
 
         return back();
-    }
-
-    /**
-     * Mark any pending installment the payment fully covers, oldest first, so
-     * the plan and the payment ledger never disagree.
-     */
-    protected function settleMatchingInstallments(Invoice $invoice, Payment $payment): void
-    {
-        $remaining = (float) $payment->amount;
-
-        foreach ($invoice->installments()->where('status', 'pending')->get() as $installment) {
-            if ($remaining + 0.005 < (float) $installment->amount) {
-                break;
-            }
-
-            $installment->update([
-                'status' => InstallmentStatus::Paid,
-                'payment_id' => $payment->id,
-                'paid_at' => now(),
-            ]);
-
-            $remaining -= (float) $installment->amount;
-        }
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Catalog;
 
 use App\Enums\CatalogStatus;
+use App\Models\CatalogItem;
+use App\Models\CatalogVariant;
 use App\Support\Attributes;
 use App\Support\CatalogField;
 use App\Support\Industry;
@@ -133,7 +135,76 @@ trait CatalogItemRules
         // so the enum is enforced centrally.
         $rules['status'] = ['nullable', Rule::enum(CatalogStatus::class)];
 
-        return $rules;
+        // Optional one-to-many: sizes, colours or purities of this product.
+        // Omitted entirely by clients that do not use variants.
+        return $rules + $this->variantRules();
+    }
+
+    /**
+     * Nested rows for the repeatable variant editor.
+     *
+     * @return array<string,mixed>
+     */
+    protected function variantRules(): array
+    {
+        $tenantId = $this->user()->tenant_id;
+
+        return [
+            'variants' => ['sometimes', 'array', 'max:50'],
+            // An HTML form cannot post an empty array, so "the last variant
+            // was deleted" arrives as an explicit flag rather than as
+            // `variants => []`.
+            'clear_variants' => ['sometimes', 'boolean'],
+            'variants.*.id' => ['nullable', 'integer'],
+            'variants.*.label' => ['required', 'string', 'max:100'],
+            'variants.*.rate' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.stock_quantity' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.is_active' => ['sometimes', 'boolean'],
+            // A variant's SKU shares the tenant's uniqueness space with
+            // product codes, so one namespace covers the whole catalog and
+            // the CSV importer can never collide with a row it cannot see.
+            'variants.*.item_code' => ['nullable', 'string', 'max:100', function (string $attribute, mixed $value, $fail) use ($tenantId): void {
+                if ($value === null || $value === '') {
+                    return;
+                }
+
+                $rows = $this->input('variants');
+                $index = (int) explode('.', $attribute)[1];
+                $ownId = $rows[$index]['id'] ?? null;
+
+                // Two rows in the same submit have not hit the database yet,
+                // so the database cannot be the only thing asked.
+                foreach ((array) $rows as $siblingIndex => $sibling) {
+                    if ((int) $siblingIndex === $index) {
+                        continue;
+                    }
+
+                    if (blank($sibling['item_code'] ?? null)) {
+                        continue;
+                    }
+
+                    if ((string) $sibling['item_code'] === (string) $value) {
+                        $fail(__('This item code is already used in your catalog.'));
+
+                        return;
+                    }
+                }
+
+                $taken = CatalogVariant::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('item_code', $value)
+                    ->when($ownId, fn ($q) => $q->where('id', '!=', $ownId))
+                    ->exists()
+                    || CatalogItem::query()
+                        ->where('tenant_id', $tenantId)
+                        ->where('item_code', $value)
+                        ->exists();
+
+                if ($taken) {
+                    $fail(__('This item code is already used in your catalog.'));
+                }
+            }],
+        ];
     }
 
     /**
@@ -202,6 +273,44 @@ trait CatalogItemRules
         $payload['status'] = $this->input('status', CatalogStatus::Active->value);
 
         return $payload;
+    }
+
+    /**
+     * The validated variant rows ready to be diffed against what the product
+     * already has. Returns null when the request does not touch variants at
+     * all, so an API client that has never heard of them cannot wipe them.
+     *
+     * @return list<array{id:int|null,label:string,item_code:string|null,rate:float|null,stock_quantity:float|null,is_active:bool,sort_order:int}>|null
+     */
+    public function variantsPayload(): ?array
+    {
+        if ($this->boolean('clear_variants')) {
+            return [];
+        }
+
+        $rows = $this->validated('variants');
+
+        if ($rows === null) {
+            return null;
+        }
+
+        $clean = [];
+
+        foreach (array_values($rows) as $position => $row) {
+            $clean[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
+                'label' => (string) $row['label'],
+                'item_code' => blank($row['item_code'] ?? null) ? null : (string) $row['item_code'],
+                'rate' => isset($row['rate']) && $row['rate'] !== '' ? (float) $row['rate'] : null,
+                'stock_quantity' => isset($row['stock_quantity']) && $row['stock_quantity'] !== ''
+                    ? (float) $row['stock_quantity']
+                    : null,
+                'is_active' => ! array_key_exists('is_active', $row) || filter_var($row['is_active'], FILTER_VALIDATE_BOOLEAN),
+                'sort_order' => $position,
+            ];
+        }
+
+        return $clean;
     }
 
     /**

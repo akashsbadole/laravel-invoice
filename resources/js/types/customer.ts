@@ -55,6 +55,22 @@ export type ContactChannel =
 
 export type PriceTier = 'a' | 'b' | 'c';
 
+export type AdvanceStatus = 'available' | 'applied' | 'refunded';
+
+export type CustomerAdvance = {
+    id: number;
+    customer_id: number;
+    amount: string;
+    applied_amount: string;
+    advance_date: string;
+    payment_method: string;
+    reference_number: string | null;
+    notes: string | null;
+    status: AdvanceStatus;
+    created_at: string;
+    creator?: Staff | null;
+};
+
 export type Customer = {
     id: number;
     full_name: string;
@@ -89,6 +105,7 @@ export type Customer = {
     invoices?: InvoiceSummary[];
     followups?: CustomerFollowup[];
     notes_log?: CustomerNote[];
+    advances?: CustomerAdvance[];
 };
 
 export type PaginationLink = {

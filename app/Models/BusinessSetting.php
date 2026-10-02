@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
 use App\Concerns\TenantScope;
+use App\Enums\DocumentType;
+use App\Enums\RoundingMode;
 use App\Support\Industry;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,6 +19,8 @@ class BusinessSetting extends Model
         'tax_number', 'bank_details', 'invoice_prefix', 'invoice_number_start',
         'quotation_prefix', 'next_quotation_sequence',
         'challan_prefix', 'next_challan_sequence',
+        'credit_note_prefix', 'next_credit_note_sequence',
+        'debit_note_prefix', 'next_debit_note_sequence',
         'next_invoice_sequence', 'default_tax_rate', 'default_currency',
         'invoice_terms', 'footer_text', 'signature_image_path', 'stamp_image_path',
         'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
@@ -25,6 +29,7 @@ class BusinessSetting extends Model
         'sms_birthday_wishes', 'sms_anniversary_wishes',
         'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
         'sms_driver', 'sms_country_code',
+        'rounding_mode',
         'sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from',
         'sms_http_url', 'sms_http_token', 'sms_http_to_field', 'sms_http_message_field',
     ];
@@ -37,6 +42,8 @@ class BusinessSetting extends Model
             'next_invoice_sequence' => 'integer',
             'next_quotation_sequence' => 'integer',
             'next_challan_sequence' => 'integer',
+            'next_credit_note_sequence' => 'integer',
+            'next_debit_note_sequence' => 'integer',
             'default_tax_rate' => 'decimal:2',
             'sms_payment_reminders' => 'boolean',
             'email_payment_reminders' => 'boolean',
@@ -49,6 +56,7 @@ class BusinessSetting extends Model
             'quotation_customer_decisions' => 'boolean',
             'quotation_show_updates' => 'boolean',
             'show_all_catalog_fields' => 'boolean',
+            'rounding_mode' => 'string',
         ];
     }
 
@@ -69,8 +77,13 @@ class BusinessSetting extends Model
             [
                 'business_name' => $tenant?->name ?? 'My Store',
                 'industry' => $tenant?->industry ?? Industry::default(),
+                // Set explicitly so a freshly created row already carries the
+                // attribute; DB defaults are not hydrated back onto the model.
+                'rounding_mode' => RoundingMode::NearestRupee->value,
             ],
         );
+
+        $settings->rounding_mode ??= RoundingMode::NearestRupee->value;
 
         // Outside a request (console commands, queued jobs) the BelongsToTenant
         // hook has no tenant context to read, so stamp it explicitly.
@@ -80,6 +93,35 @@ class BusinessSetting extends Model
         }
 
         return $settings;
+    }
+
+    /**
+     * Build the next credit or debit note number (e.g. CN-2026-00001).
+     *
+     * Each adjustment type owns its sequence so a credit note never consumes
+     * a debit note's number. Callers should hold the same row lock used for
+     * invoice numbering.
+     */
+    public function nextAdjustmentNumber(DocumentType $type, ?int $year = null): string
+    {
+        $isCredit = $type === DocumentType::CreditNote;
+        $year ??= (int) now()->format('Y');
+        $sequence = max(
+            (int) ($isCredit ? $this->next_credit_note_sequence : $this->next_debit_note_sequence),
+            1,
+        );
+        $prefix = ($isCredit ? $this->credit_note_prefix : $this->debit_note_prefix)
+            ?: ($isCredit ? 'CN' : 'DN');
+        $number = sprintf('%s-%d-%05d', $prefix, $year, $sequence);
+
+        if ($isCredit) {
+            $this->next_credit_note_sequence = $sequence + 1;
+        } else {
+            $this->next_debit_note_sequence = $sequence + 1;
+        }
+        $this->save();
+
+        return $number;
     }
 
     /**

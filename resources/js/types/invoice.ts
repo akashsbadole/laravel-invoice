@@ -26,7 +26,8 @@ export type InvoiceStatus =
     | 'draft'
     | 'sent'
     | 'accepted'
-    | 'converted';
+    | 'converted'
+    | 'closed';
 
 export type CatalogStatus = 'draft' | 'active' | 'inactive' | 'discontinued';
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'card' | 'upi' | 'cheque' | 'other';
@@ -68,6 +69,7 @@ export type InvoiceItemForm = {
     description: string;
     item_code: string;
     catalog_item_id: number | null;
+    catalog_variant_id: number | null;
     hsn_code: string;
     brand: string;
     model_number: string;
@@ -119,6 +121,10 @@ export type InvoiceFormData = {
     tax_mode: TaxMode;
     discount: number;
     tax_rate: number;
+    /** TCS collected at source — added on top of the invoice total. */
+    tcs_rate: number;
+    /** TDS deducted at source — withheld from the amount the customer pays. */
+    tds_rate: number;
     notes: string;
     terms: string;
     attributes?: Record<string, string>;
@@ -134,6 +140,7 @@ export type InvoiceItem = {
     description: string | null;
     item_code: string | null;
     catalog_item_id: number | null;
+    catalog_variant_id: number | null;
     hsn_code: string | null;
     brand: string | null;
     model_number: string | null;
@@ -242,7 +249,13 @@ export type ChargesSummaryRow = {
     amount: number;
 };
 
-export type DocumentType = 'jewelry_invoice' | 'general_invoice' | 'quotation' | 'delivery_challan';
+export type DocumentType =
+    | 'jewelry_invoice'
+    | 'general_invoice'
+    | 'quotation'
+    | 'delivery_challan'
+    | 'credit_note'
+    | 'debit_note';
 
 export type EInvoiceStatus = 'not_required' | 'pending' | 'generated' | 'failed';
 
@@ -255,6 +268,7 @@ export type Invoice = {
     reference_number: string | null;
     document_type: DocumentType;
     converted_to_id: number | null;
+    parent_invoice_id: number | null;
     quotation_status: QuotationStatus | null;
     quotation_response: string | null;
     quotation_responded_at: string | null;
@@ -273,6 +287,10 @@ export type Invoice = {
     charges_summary: ChargesSummaryRow[] | null;
     discount: string;
     tax: string;
+    tds_rate: string;
+    tds_amount: string;
+    tcs_rate: string;
+    tcs_amount: string;
     round_off: string;
     grand_total: string;
     paid_amount: string;
@@ -290,6 +308,15 @@ export type Invoice = {
     share_links: ShareLink[];
     notes_log: CustomerNote[];
     installments: Installment[];
+    /** The invoice a credit/debit note corrects — loaded on the show page. */
+    parent_invoice?: {
+        id: number;
+        invoice_number: string;
+        document_type: DocumentType;
+        status: InvoiceStatus;
+    } | null;
+    /** Credit/debit notes issued against this invoice — show page only. */
+    adjustment_notes?: Invoice[];
 };
 
 export type CatalogItem = {
@@ -342,6 +369,20 @@ export type CatalogItem = {
     // Media
     image_path?: string | null;
     image_url?: string | null;
+
+    // One product, many sellable forms: sizes, colours, purities. Only the
+    // active ones are offered when the product is picked on an invoice line.
+    variants?: CatalogVariant[];
+};
+
+export type CatalogVariant = {
+    id: number;
+    label: string;
+    item_code: string | null;
+    rate: string | number | null;
+    stock_quantity: string | number;
+    is_active: boolean;
+    sort_order: number;
 };
 
 export type InvoiceTemplateOption = {

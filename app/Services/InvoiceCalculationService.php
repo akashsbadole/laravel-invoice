@@ -7,6 +7,7 @@ use App\Enums\ChargeCalculationType;
 use App\Enums\LineType;
 use App\Enums\PricingMode;
 use App\Enums\RateType;
+use App\Enums\RoundingMode;
 use App\Enums\TaxMode;
 use App\Models\ChargeType;
 use Illuminate\Support\Collection;
@@ -19,8 +20,9 @@ use Illuminate\Support\Collection;
  * (resources/js/lib/invoice-calculations.ts) only powers the live preview.
  *
  * Displayed identity:
- *   subtotal + sum(charges_summary) + tax - discount + round_off = grand_total
- * where charges_summary includes a negative "Item discounts" row.
+ *   subtotal + sum(charges_summary) + tax - discount + tcs + round_off = grand_total
+ * where charges_summary includes a negative "Item discounts" row. TDS is
+ * withheld later (it shrinks the balance, not the invoice total).
  */
 class InvoiceCalculationService
 {
@@ -32,6 +34,10 @@ class InvoiceCalculationService
     {
         $pricingMode = PricingMode::from($input['pricing_mode'] ?? PricingMode::JewelryCalculated->value);
         $taxMode = TaxMode::tryFrom($input['tax_mode'] ?? '') ?? TaxMode::Single;
+        $roundingMode = RoundingMode::tryFrom($input['rounding_mode'] ?? '')
+            ?? RoundingMode::NearestRupee;
+        $tcsRate = max((float) ($input['tcs_rate'] ?? 0), 0);
+        $tdsRate = max((float) ($input['tds_rate'] ?? 0), 0);
 
         // Only load the charge catalogue when the submission actually
         // references charges — a charge-free invoice needs no query at all.
@@ -84,10 +90,20 @@ class InvoiceCalculationService
             ? round(array_sum(array_column($taxBreakdown, 'amount')), 2)
             : round($itemsTaxTotal + $invoiceLevelTax, 2);
 
-        $beforeRounding = round($subtotal + $invoiceChargesTotal + $tax - $discount, 2);
+        $beforeTaxation = round($subtotal + $invoiceChargesTotal + $tax - $discount, 2);
+
+        // TCS (collected at source) rides on top of the invoice value and is
+        // part of what the customer is billed, so it lands before rounding.
+        $tcsAmount = $tcsRate > 0 ? round($beforeTaxation * ($tcsRate / 100), 2) : 0.0;
+        // TDS (deducted at source) is withheld from the payment, so it never
+        // inflates the invoice — Invoice::recalculatePaymentStatus() subtracts
+        // it from the balance instead.
+        $tdsAmount = $tdsRate > 0 ? round($beforeTaxation * ($tdsRate / 100), 2) : 0.0;
+
+        $beforeRounding = round($beforeTaxation + $tcsAmount, 2);
         // An exchange credit can outweigh the goods; the customer then owes
         // nothing (or is owed change) rather than a negative invoice.
-        $grandTotal = max((float) round($beforeRounding, 0), 0.0);
+        $grandTotal = max($roundingMode->apply($beforeRounding), 0.0);
         $roundOff = round($grandTotal - $beforeRounding, 2);
 
         return [
@@ -98,6 +114,10 @@ class InvoiceCalculationService
             'tax' => $tax,
             'tax_mode' => $taxMode->value,
             'tax_breakdown' => $taxBreakdown,
+            'tds_rate' => $tdsRate,
+            'tds_amount' => $tdsAmount,
+            'tcs_rate' => $tcsRate,
+            'tcs_amount' => $tcsAmount,
             'round_off' => $roundOff,
             'grand_total' => $grandTotal,
             'charges_summary' => $this->summarizeCharges($items, $invoiceCharges, round($itemDiscounts, 2)),
@@ -199,6 +219,9 @@ class InvoiceCalculationService
             'description' => $itemInput['description'] ?? null,
             'item_code' => $itemInput['item_code'] ?? null,
             'catalog_item_id' => $itemInput['catalog_item_id'] ?? null,
+            'catalog_variant_id' => isset($itemInput['catalog_variant_id']) && $itemInput['catalog_variant_id'] !== ''
+                ? (int) $itemInput['catalog_variant_id']
+                : null,
             'hsn_code' => $itemInput['hsn_code'] ?? null,
             'brand' => $itemInput['brand'] ?? null,
             'model_number' => $itemInput['model_number'] ?? null,

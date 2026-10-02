@@ -92,6 +92,21 @@ class CatalogItem extends Model
     }
 
     /**
+     * The sellable versions of this product (sizes, colours, purities).
+     *
+     * @return HasMany<CatalogVariant, $this>
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(CatalogVariant::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function hasVariants(): bool
+    {
+        return $this->variants()->exists();
+    }
+
+    /**
      * Invoice lines built from this product.
      *
      * @return HasMany<InvoiceItem, $this>

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Invoices;
 use App\Enums\DocumentType;
 use App\Enums\LineType;
 use App\Enums\Permission;
+use App\Models\CatalogVariant;
 use App\Support\Attributes;
 use App\Support\Industry;
 use Illuminate\Foundation\Http\FormRequest;
@@ -72,6 +73,10 @@ class StoreInvoiceRequest extends FormRequest
             'tax_mode' => ['nullable', 'in:single,cgst_sgst,igst'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            // Optional withholding at source, per invoice: TCS is collected on
+            // top of the total, TDS is deducted from what the customer pays.
+            'tcs_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tds_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'terms' => ['nullable', 'string', 'max:2000'],
             ...Attributes::rules(),
@@ -82,6 +87,29 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.description' => ['nullable', 'string', 'max:1000'],
             'items.*.item_code' => ['nullable', 'string', 'max:100'],
             'items.*.catalog_item_id' => ['nullable', Rule::exists('catalog_items', 'id')->where('tenant_id', $this->user()->tenant_id)],
+            // The variant has to exist in this tenant *and* belong to the
+            // product on the same line — otherwise a crafted payload could
+            // hang one product's size off another product's row.
+            'items.*.catalog_variant_id' => ['nullable', 'integer', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value === null || $value === '') {
+                    return;
+                }
+
+                $index = (int) explode('.', $attribute)[1];
+                $rows = $this->input('items');
+                $row = is_array($rows) ? ($rows[$index] ?? []) : [];
+                $productId = $row['catalog_item_id'] ?? null;
+
+                $variant = CatalogVariant::query()
+                    ->whereKey((int) $value)
+                    ->where('tenant_id', $this->user()->tenant_id)
+                    ->first();
+
+                if ($variant === null
+                    || ($productId !== null && (int) $variant->catalog_item_id !== (int) $productId)) {
+                    $fail(__('The selected variant does not belong to this product.'));
+                }
+            }],
             'items.*.hsn_code' => ['nullable', 'string', 'max:20'],
             'items.*.brand' => ['nullable', 'string', 'max:100'],
             'items.*.model_number' => ['nullable', 'string', 'max:100'],

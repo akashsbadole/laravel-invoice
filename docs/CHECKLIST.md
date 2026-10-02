@@ -25,15 +25,27 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 - [x] Profile: invoices, totals, paid/outstanding, last invoice, payments, follow-ups, share history
 - [x] Create / edit / search / filter / export CSV / invoice history
 
+## 3a. Catalog and inventory
+- [x] Products with a field registry that drives form, validation and CSV/Excel
+- [x] Statuses: draft / active / inactive / discontinued + one-click Activate
+- [x] Stock opt-in per product, movement ledger, reorder-level low-stock filter
+- [x] Product variants (sizes, colours, purities): per-variant code, price and
+      stock, product balance is the sum, variant recorded on the invoice line
+- [x] CSV + Excel template, import with preview and validation, export
+
 ## 4. Invoices
 - [x] Info header (number, dates, customer, salesperson, status, reference)
 - [x] Jewelry items (metal, purity, weights, stone, charges, discount, tax)
 - [x] Full totals incl. round-off, paid, balance
 - [x] Manual + jewelry-calculated pricing modes
+- [x] Rounding setting (nearest rupee / two decimals) shared by preview, PDF
+- [x] TCS added to the total, TDS withheld from the balance due
+- [x] Credit and debit notes against an invoice (own series, linked, report-safe)
 
 ## 5. Payments
 - [x] Record / partial / full / multiple, date, 6 methods, ref no., notes
 - [x] Receipt, remaining balance, statuses (unpaid → refunded)
+- [x] Advance receipts: hold money per customer, apply to invoices or refund
 
 ## 6. PDF
 - [x] Preview / download / print / email / share link / copy / WhatsApp / regenerate / template select
@@ -73,12 +85,13 @@ Status as of 2026-09-30. Legend: ✅ done · 🔶 partial · ⬜ todo
 - [x] Razorpay checkout + webhooks (Stripe switchable), billing enforcement middleware
 
 ## Design
-- [x] Luxury jewelry-house theme (emerald + champagne gold, serif display)
-- [x] Reskinned app screens + luxury PDF letterhead
+- [x] Flat purple + navy theme (accent `#7C3AED`, mirrored into the PDF template)
+- [x] Reskinned app screens + PDF letterhead
 
 ## Stability (Phase A)
 - [x] PWA service worker dev-safe + cache versioned (no more stale-bundle blank pages)
 - [x] Toast notifications wired (backend flashes → sonner)
+- [x] Global failure toasts (expired session, server errors, dropped requests) in `app.tsx`
 - [x] React error boundary with branded fallback + cache-clear reload
 - [x] Dashboard stat overflow fixed
 - [x] Ops runbook (`docs/RUNBOOK.md`): SMTP, cron, backups, webhooks, tenancy notes

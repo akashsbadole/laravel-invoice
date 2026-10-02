@@ -6,6 +6,7 @@ import { AttributesList } from '@/components/attributes-editor';
 import InstallmentController from '@/actions/App/Http/Controllers/InstallmentController';
 import InvoiceShareLinkController from '@/actions/App/Http/Controllers/InvoiceShareLinkController';
 import PaymentController from '@/actions/App/Http/Controllers/PaymentController';
+import CustomerAdvanceController from '@/actions/App/Http/Controllers/CustomerAdvanceController';
 import InputError from '@/components/input-error';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { pdf as pdfRoute, receipt as receiptRoute } from '@/routes/invoices';
+import AdjustmentNoteDialog from '@/components/invoices/adjustment-note-dialog';
 import { buildMailtoUrl, buildPublicInvoiceUrl, buildShareMessage, buildUpiCollectUrl, buildWhatsAppShareUrl } from '@/lib/share-invoice';
 import type { Auth } from '@/types/auth';
 import type { Installment, Invoice } from '@/types/invoice';
@@ -46,7 +48,16 @@ type RecurringProfile = {
     is_active: boolean;
 } | null;
 
-export default function ShowInvoice({ invoice, recurringProfile, business, installmentPlan, capabilities }: { invoice: Invoice; recurringProfile: RecurringProfile; business: { default_currency: string; business_name: string; upi_id: string | null }; installmentPlan: { planned_total: number; collected_total: number; count: number }; capabilities?: { metal_rates?: boolean } }) {
+export type AvailableAdvance = {
+    id: number;
+    amount: string;
+    applied_amount: string;
+    advance_date: string;
+    reference_number: string | null;
+    notes: string | null;
+};
+
+export default function ShowInvoice({ invoice, recurringProfile, business, installmentPlan, capabilities, availableAdvances }: { invoice: Invoice; recurringProfile: RecurringProfile; business: { default_currency: string; business_name: string; upi_id: string | null }; installmentPlan: { planned_total: number; collected_total: number; count: number }; capabilities?: { metal_rates?: boolean }; availableAdvances?: AvailableAdvance[] }) {
     const usesWeightFields =
         capabilities?.metal_rates !== false && invoice.items.some((i) => i.metal_type || i.purity);
     const hasAreaItems = invoice.items.some((i) => i.length && i.width);
@@ -63,6 +74,19 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
     const isAdmin = auth.user.role === 'admin';
     const activeLink = invoice.share_links.find((link) => link.is_active);
     const canWrite = auth.user.role === 'admin' || auth.user.role === 'invoice_creator';
+    const isPayable =
+        invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice';
+    const isAdjustment = invoice.document_type === 'credit_note' || invoice.document_type === 'debit_note';
+    const documentLabels: Record<string, string> = {
+        jewelry_invoice: 'Jewelry invoice',
+        general_invoice: 'General invoice',
+        quotation: 'Quotation',
+        delivery_challan: 'Delivery challan',
+        credit_note: 'Credit note',
+        debit_note: 'Debit note',
+    };
+    const adjustmentNotes = invoice.adjustment_notes ?? [];
+    const advances = availableAdvances ?? [];
 
     function markSent(via: 'whatsapp' | 'email' | 'copy') {
         if (!activeLink) return;
@@ -128,11 +152,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             </Badge>
                             {invoice.document_type !== 'jewelry_invoice' && (
                                 <Badge variant="outline">
-                                    {invoice.document_type === 'quotation'
-                                        ? 'Quotation'
-                                        : invoice.document_type === 'delivery_challan'
-                                            ? 'Delivery challan'
-                                            : 'General invoice'}
+                                    {documentLabels[invoice.document_type] ?? 'General invoice'}
                                 </Badge>
                             )}
                         </div>
@@ -149,7 +169,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 <Receipt className="size-4" />
                             </a>
                         </Button>
-                        {canWrite && invoice.status !== 'cancelled' && (
+                        {canWrite && !isAdjustment && invoice.status !== 'cancelled' && (
                             <Button variant="outline" asChild>
                                 <Link href={`/invoices/${invoice.id}/edit`}>
                                     <Pencil className="size-4" />
@@ -161,10 +181,24 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             <Form {...InvoiceController.cancel.form(invoice.id)}>
                                 {({ processing }) => (
                                     <Button variant="outline" type="submit" disabled={processing}>
-                                        Cancel invoice
+                                        {isAdjustment ? 'Cancel note' : 'Cancel invoice'}
                                     </Button>
                                 )}
                             </Form>
+                        )}
+                        {canWrite && isPayable && invoice.status !== 'cancelled' && (
+                            <>
+                                <AdjustmentNoteDialog
+                                    invoiceId={invoice.id}
+                                    type="credit_note"
+                                    balance={invoice.balance_amount}
+                                />
+                                <AdjustmentNoteDialog
+                                    invoiceId={invoice.id}
+                                    type="debit_note"
+                                    balance={invoice.balance_amount}
+                                />
+                            </>
                         )}
                         {canWrite && invoice.document_type === 'quotation' && (
                             <QuotationStatusCard invoice={invoice} />
@@ -255,6 +289,25 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         )}
                     </div>
                 </div>
+
+                {invoice.parent_invoice && (
+                    <Card className="border-brand/40 bg-brand/5">
+                        <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
+                            <span className="text-muted-foreground">
+                                {documentLabels[invoice.document_type] ?? 'Adjustment'} against
+                            </span>
+                            <Link
+                                href={`/invoices/${invoice.parent_invoice.id}`}
+                                className="font-medium hover:underline"
+                            >
+                                {invoice.parent_invoice.invoice_number}
+                            </Link>
+                            <Badge variant="secondary" className="capitalize">
+                                {invoice.parent_invoice.status.replace('_', ' ')}
+                            </Badge>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card>
                     <CardHeader>
@@ -383,12 +436,58 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         ) : (
                             <TotalRow label="Tax" value={invoice.tax} />
                         )}
+                        {Number(invoice.tcs_amount) > 0 && (
+                            <TotalRow
+                                label={`TCS @ ${invoice.tcs_rate}%`}
+                                value={invoice.tcs_amount}
+                            />
+                        )}
                         <TotalRow label="Round off" value={invoice.round_off} />
                         <TotalRow label="Grand total" value={invoice.grand_total} emphasize />
+                        {Number(invoice.tds_amount) > 0 && (
+                            <TotalRow
+                                label={`TDS @ ${invoice.tds_rate}% (deducted)`}
+                                value={`-${invoice.tds_amount}`}
+                            />
+                        )}
                         <TotalRow label="Paid" value={invoice.paid_amount} />
                         <TotalRow label="Balance due" value={invoice.balance_amount} emphasize />
                     </CardContent>
                 </Card>
+
+                {adjustmentNotes.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Credit &amp; debit notes</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {adjustmentNotes.map((note) => (
+                                <div
+                                    key={note.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Link
+                                            href={`/invoices/${note.id}`}
+                                            className="font-medium hover:underline"
+                                        >
+                                            {note.invoice_number}
+                                        </Link>
+                                        <Badge variant="outline" className="text-[11px]">
+                                            {documentLabels[note.document_type] ?? 'Adjustment'}
+                                        </Badge>
+                                        <Badge variant="secondary" className="capitalize">
+                                            {note.status.replace('_', ' ')}
+                                        </Badge>
+                                    </div>
+                                    <span className="font-medium">
+                                        {currency.format(Number(note.grand_total))}
+                                    </span>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card>
 <CardHeader className="flex-row items-center justify-between">
@@ -396,6 +495,9 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0 && (
                                 <div className="flex gap-2">
                                     <RemindCustomerButton invoiceId={invoice.id} />
+                                    {advances.length > 0 && (
+                                        <ApplyAdvanceDialog invoiceId={invoice.id} advances={advances} />
+                                    )}
                                     <RecordPaymentDialog
                                         invoiceId={invoice.id}
                                         balance={invoice.balance_amount}
@@ -544,7 +646,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                     </Card>
                 )}
 
-                {canWrite && invoice.document_type !== 'quotation' && invoice.status !== 'cancelled' && (
+                {canWrite && isPayable && invoice.status !== 'cancelled' && (
                     <Card>
                         <CardHeader>
                             <CardTitle>Recurring</CardTitle>
@@ -606,7 +708,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                 )}
 
                 {canWrite &&
-                    invoice.document_type !== 'quotation' &&
+                    isPayable &&
                     invoice.status !== 'cancelled' &&
                     Number(invoice.balance_amount) > 0 && (
                         <Card>
@@ -1138,6 +1240,86 @@ function RemindCustomerButton({ invoiceId }: { invoiceId: number }) {
                                 </DialogClose>
                                 <Button disabled={processing}>
                                     {processing ? 'Sending…' : 'Send reminder'}
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function ApplyAdvanceDialog({ invoiceId, advances }: { invoiceId: number; advances: AvailableAdvance[] }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                    Apply advance
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Apply an advance</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                    Moves money this customer already paid onto this invoice.
+                </p>
+                <Form
+                    {...CustomerAdvanceController.apply.form(invoiceId)}
+                    options={{ preserveScroll: true }}
+                    onSuccess={() => setOpen(false)}
+                    className="space-y-4"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="advance_id">Advance</Label>
+                                <Select name="advance_id" defaultValue={String(advances[0].id)}>
+                                    <SelectTrigger id="advance_id" className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {advances.map((advance) => {
+                                            const available =
+                                                Number(advance.amount) -
+                                                Number(advance.applied_amount);
+                                            return (
+                                                <SelectItem key={advance.id} value={String(advance.id)}>
+                                                    {currency.format(available)} available ·{' '}
+                                                    {new Date(advance.advance_date).toLocaleDateString()}
+                                                    {advance.reference_number
+                                                        ? ` · ${advance.reference_number}`
+                                                        : ''}
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.advance_id} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="apply-amount">Amount (optional — full available if blank)</Label>
+                                <Input
+                                    id="apply-amount"
+                                    name="amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    placeholder="Full available amount"
+                                />
+                                <InputError message={errors.amount} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="secondary" type="button">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button disabled={processing}>
+                                    {processing ? 'Applying…' : 'Apply advance'}
                                 </Button>
                             </DialogFooter>
                         </>

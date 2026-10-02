@@ -29,6 +29,10 @@ type PublicInvoice = {
     discount: string;
     tax: string;
     tax_breakdown: { label: string; amount: number }[] | null;
+    tds_rate: string;
+    tds_amount: string;
+    tcs_rate: string;
+    tcs_amount: string;
     round_off: string;
     grand_total: string;
     paid_amount: string;
@@ -257,7 +261,17 @@ export default function PublicInvoicePage({
                             ) : (
                                 <Row label="Tax" value={invoice.tax} />
                             )}
+                            {Number(invoice.tcs_amount) > 0 && (
+                                <Row label={`TCS @ ${invoice.tcs_rate}%`} value={invoice.tcs_amount} />
+                            )}
+                            <Row label="Round off" value={invoice.round_off} />
                             <Row label="Grand total" value={invoice.grand_total} emphasize />
+                            {Number(invoice.tds_amount) > 0 && (
+                                <Row
+                                    label={`TDS @ ${invoice.tds_rate}% (deducted)`}
+                                    value={`-${invoice.tds_amount}`}
+                                />
+                            )}
                             <Row label="Paid" value={invoice.paid_amount} />
                             <Row label="Balance due" value={invoice.balance_amount} emphasize />
                         </div>

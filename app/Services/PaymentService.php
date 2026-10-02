@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InstallmentStatus;
 use App\Enums\InvoiceEventType;
 use App\Models\Invoice;
 use App\Models\InvoiceEvent;
@@ -40,5 +41,28 @@ class PaymentService
 
             return $payment;
         });
+    }
+
+    /**
+     * Collecting against an agreed plan settles the oldest unpaid slice, so
+     * the plan and the payment ledger never disagree.
+     */
+    public function settleMatchingInstallments(Invoice $invoice, Payment $payment): void
+    {
+        $remaining = (float) $payment->amount;
+
+        foreach ($invoice->installments()->where('status', 'pending')->get() as $installment) {
+            if ($remaining + 0.005 < (float) $installment->amount) {
+                break;
+            }
+
+            $installment->update([
+                'status' => InstallmentStatus::Paid,
+                'payment_id' => $payment->id,
+                'paid_at' => now(),
+            ]);
+
+            $remaining -= (float) $installment->amount;
+        }
     }
 }

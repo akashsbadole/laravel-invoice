@@ -32,6 +32,7 @@ const statusColors: Record<InvoiceStatus, string> = {
     sent: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
     accepted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
     converted: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+    closed: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
 };
 
 const documentLabels: Record<string, string> = {
@@ -39,6 +40,8 @@ const documentLabels: Record<string, string> = {
     general_invoice: 'Sales invoice',
     quotation: 'Quotation',
     delivery_challan: 'Challan',
+    credit_note: 'Credit note',
+    debit_note: 'Debit note',
 };
 
 export default function InvoicesIndex({
@@ -61,6 +64,8 @@ export default function InvoicesIndex({
         { value: 'general_invoice', label: 'Sales invoices' },
         { value: 'quotation', label: 'Quotations' },
         { value: 'delivery_challan', label: 'Challans' },
+        { value: 'credit_note', label: 'Credit notes' },
+        { value: 'debit_note', label: 'Debit notes' },
     ];
 
     return (
@@ -147,6 +152,7 @@ export default function InvoicesIndex({
                                                 <SelectItem value="overdue">Overdue</SelectItem>
                                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                                                 <SelectItem value="refunded">Refunded</SelectItem>
+                                                <SelectItem value="closed">Closed</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

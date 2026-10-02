@@ -65,6 +65,9 @@
     @endif
     <hr class="accent">
     <div class="row grand"><span>TOTAL</span><span>Rs. {{ number_format((float) $invoice->grand_total, 2) }}</span></div>
+    @if((float) $invoice->tds_amount > 0)
+        <div class="row"><span>TDS @ {{ $invoice->tds_rate }}%</span><span>-{{ number_format((float) $invoice->tds_amount, 2) }}</span></div>
+    @endif
     <div class="row"><span>Paid</span><span>{{ number_format((float) $invoice->paid_amount, 2) }}</span></div>
     <div class="row b"><span>Balance</span><span>{{ number_format((float) $invoice->balance_amount, 2) }}</span></div>
     @if($invoice->payments->isNotEmpty())

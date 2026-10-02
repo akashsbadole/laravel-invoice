@@ -1,6 +1,7 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
+import CustomerAdvanceController from '@/actions/App/Http/Controllers/CustomerAdvanceController';
 import CustomerFollowupController from '@/actions/App/Http/Controllers/CustomerFollowupController';
 import CustomerNoteController from '@/actions/App/Http/Controllers/CustomerNoteController';
 import Heading from '@/components/heading';
@@ -32,7 +33,7 @@ import { dashboard } from '@/routes';
 import { edit as editCustomer, index } from '@/routes/customers';
 import { update as updateFollowup } from '@/routes/customers/followups';
 import type { Auth } from '@/types/auth';
-import type { Customer, CustomerFollowup, Staff } from '@/types/customer';
+import type { Customer, CustomerAdvance, CustomerFollowup, Staff } from '@/types/customer';
 import { cn } from '@/lib/utils';
 
 const currency = new Intl.NumberFormat('en-IN', {
@@ -65,11 +66,13 @@ type Stats = {
     credit_limit: number | null;
     credit_outstanding: number;
     credit_overrun: number | null;
+    /** Advance money this customer has paid that no invoice has consumed. */
+    available_advance: number;
 };
 
 type TimelineEvent = {
     at: string;
-    kind: 'invoice' | 'payment' | 'note' | 'followup' | 'message' | 'activity';
+    kind: 'invoice' | 'payment' | 'note' | 'followup' | 'message' | 'activity' | 'advance';
     label: string;
     detail: string | null;
     href: string | null;
@@ -301,6 +304,38 @@ export default function ShowCustomer({
                                         </Badge>
                                         <span>{currency.format(Number(invoice.grand_total))}</span>
                                     </Link>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex-row items-center justify-between">
+                        <CardTitle>Advances</CardTitle>
+                        <RecordAdvanceDialog customerId={customer.id} />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                            Available to apply:{' '}
+                            <span className="font-medium text-foreground">
+                                {currency.format(stats.available_advance)}
+                            </span>
+                            {' — '}apply it from any unpaid invoice of this
+                            customer.
+                        </p>
+                        {!customer.advances || customer.advances.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                No advances recorded.
+                            </p>
+                        ) : (
+                            <div className="divide-y">
+                                {customer.advances.map((advance) => (
+                                    <AdvanceRow
+                                        key={advance.id}
+                                        customerId={customer.id}
+                                        advance={advance}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -654,6 +689,141 @@ function AddFollowupDialog({
                                     </Button>
                                 </DialogClose>
                                 <Button disabled={processing}>Schedule</Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AdvanceRow({ customerId, advance }: { customerId: number; advance: CustomerAdvance }) {
+    const available = Math.max(
+        0,
+        Number(advance.amount) - Number(advance.applied_amount),
+    );
+    const canRefund =
+        advance.status === 'available' && Number(advance.applied_amount) === 0;
+
+    return (
+        <div className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">
+                    {currency.format(Number(advance.amount))}
+                </span>
+                <span className="text-muted-foreground">
+                    {new Date(advance.advance_date).toLocaleDateString()}
+                </span>
+                <span className="text-muted-foreground capitalize">
+                    · {advance.payment_method.replace('_', ' ')}
+                </span>
+                <Badge
+                    variant="outline"
+                    className={cn(
+                        'capitalize',
+                        advance.status === 'refunded' && 'text-muted-foreground line-through',
+                        advance.status === 'available' && available > 0 && 'text-emerald-700 dark:text-emerald-400',
+                    )}
+                >
+                    {advance.status === 'available' && available > 0
+                        ? `${currency.format(available)} available`
+                        : statusLabel(advance.status)}
+                </Badge>
+            </div>
+            {canRefund && (
+                <Form {...CustomerAdvanceController.refund.form(customerId, advance.id)}>
+                    {({ processing }) => (
+                        <Button variant="ghost" size="sm" disabled={processing}>
+                            Refund
+                        </Button>
+                    )}
+                </Form>
+            )}
+        </div>
+    );
+}
+
+function RecordAdvanceDialog({ customerId }: { customerId: number }) {
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                    <Plus className="size-4" />
+                    Record advance
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Record an advance</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                    Booking fees or part-payments taken before an invoice —
+                    apply them to any invoice later.
+                </p>
+                <Form
+                    {...CustomerAdvanceController.store.form(customerId)}
+                    resetOnSuccess
+                    className="space-y-4"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="adv_amount">Amount</Label>
+                                <Input
+                                    id="adv_amount"
+                                    name="amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    required
+                                />
+                                <InputError message={errors.amount} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="adv_date">Received on</Label>
+                                <Input
+                                    id="adv_date"
+                                    name="advance_date"
+                                    type="date"
+                                    defaultValue={new Date().toISOString().slice(0, 10)}
+                                    required
+                                />
+                                <InputError message={errors.advance_date} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="adv_method">Method</Label>
+                                <Select name="payment_method" defaultValue="cash">
+                                    <SelectTrigger id="adv_method" className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cash">Cash</SelectItem>
+                                        <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                                        <SelectItem value="card">Card</SelectItem>
+                                        <SelectItem value="upi">UPI</SelectItem>
+                                        <SelectItem value="cheque">Cheque</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.payment_method} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="adv_reference">Reference no. (optional)</Label>
+                                <Input id="adv_reference" name="reference_number" />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="adv_notes">Notes (optional)</Label>
+                                <Textarea id="adv_notes" name="notes" rows={2} />
+                                <InputError message={errors.notes} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="secondary" type="button">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button disabled={processing}>Record advance</Button>
                             </DialogFooter>
                         </>
                     )}

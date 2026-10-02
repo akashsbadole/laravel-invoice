@@ -1,6 +1,7 @@
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/manrope';
 import { StrictMode, type ComponentType, type ReactNode } from 'react';
+import { createRoot } from 'react-dom/client';
 import { createInertiaApp, router } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { ErrorBoundary } from '@/components/error-boundary';

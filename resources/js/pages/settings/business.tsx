@@ -56,6 +56,7 @@ type BusinessSettings = {
     receipt_show_gstin: boolean;
     receipt_footer: string | null;
     default_tax_rate: string;
+    rounding_mode: string;
     default_currency: string;
     invoice_terms: string | null;
     footer_text: string | null;
@@ -525,6 +526,42 @@ export default function BusinessSettingsPage({
                                         <InputError
                                             message={errors.default_tax_rate}
                                         />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="rounding_mode">
+                                            Invoice rounding
+                                        </Label>
+                                        {/* Controlled, so the option label and
+                                            the submitted value stay in sync
+                                            when the setting comes back from
+                                            the server. */}
+                                        <Select
+                                            name="rounding_mode"
+                                            defaultValue={
+                                                settings.rounding_mode
+                                            }
+                                        >
+                                            <SelectTrigger
+                                                id="rounding_mode"
+                                                className="w-full"
+                                            >
+                                                <SelectValue placeholder="Pick a rounding rule" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="nearest_rupee">
+                                                    Nearest rupee (₹999 → ₹1,000)
+                                                </SelectItem>
+                                                <SelectItem value="two_decimals">
+                                                    Two decimals (keep paise)
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-muted-foreground">
+                                            Applies to every new invoice total.
+                                            Round-off is shown as its own
+                                            line item.
+                                        </p>
+                                        <InputError message={errors.rounding_mode} />
                                     </div>
                                 </div>
 

@@ -15,6 +15,7 @@ import CatalogItemImportController from '@/actions/App/Http/Controllers/CatalogI
 import { AttributesEditor } from '@/components/attributes-editor';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { VariantsEditor } from '@/components/variants-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -250,8 +251,19 @@ export default function CatalogPage({
                                                             ? ` ${item.stock_unit}`
                                                             : ''
                                                     }`}
-                                            </p>
-                                        </div>
+                                                </p>
+                                                {(item.variants?.length ?? 0) > 0 && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="w-fit"
+                                                    >
+                                                        {item.variants!.length}{' '}
+                                                        {item.variants!.length === 1
+                                                            ? 'variant'
+                                                            : 'variants'}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {item.status !== 'active' && (
@@ -272,9 +284,10 @@ export default function CatalogPage({
                                                 )}
                                             </Form>
                                         )}
-                                        {item.stock_tracked && (
-                                            <StockDialog item={item} />
-                                        )}
+                                        {item.stock_tracked &&
+                                            !item.variants?.length && (
+                                                <StockDialog item={item} />
+                                            )}
                                         <EditItemDialog
                                             item={item}
                                             industry={industry}
@@ -707,6 +720,7 @@ function AddItemDialog({
                                 industry={industry}
                                 fields={fields}
                             />
+                            <VariantsEditor errors={errors} />
                             <div className="flex items-start gap-2">
                                 <input
                                     type="checkbox"
@@ -779,6 +793,11 @@ function EditItemDialog({
                                 idPrefix={`edit-${item.id}`}
                                 industry={industry}
                                 fields={fields}
+                            />
+                            <VariantsEditor
+                                initial={item.variants ?? []}
+                                errors={errors}
+                                defaultRate={item.default_rate}
                             />
                             <div className="grid gap-2">
                                 <Label htmlFor={`status-${item.id}`}>

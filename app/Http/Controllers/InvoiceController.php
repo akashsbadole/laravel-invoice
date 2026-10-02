@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AdvanceStatus;
 use App\Enums\CatalogStatus;
 use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
+use App\Enums\PricingMode;
 use App\Enums\QuotationStatus;
+use App\Http\Requests\Invoices\StoreAdjustmentNoteRequest;
 use App\Http\Requests\Invoices\StoreInvoiceRequest;
 use App\Http\Requests\Invoices\UpdateInvoiceRequest;
 use App\Mail\InvoicePdfMail;
@@ -123,8 +126,16 @@ class InvoiceController extends Controller
 
         $invoice = DB::transaction(function () use ($request) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
-            $computed = $this->calculator->calculate($request->validated());
+            $computed = $this->calculator->calculate([
+                ...$request->validated(),
+                'rounding_mode' => $business->rounding_mode,
+            ]);
             $documentType = $request->validated('document_type', DocumentType::JewelryInvoice->value);
+
+            // Credit and debit notes only exist against an invoice; they are
+            // issued through storeNote(), never composed from scratch.
+            abort_if(in_array($documentType, DocumentType::adjustmentValues(), true), 422,
+                'Credit and debit notes are issued against an invoice.');
 
             // A credit-limited customer must be caught before the document is
             // written, so the block runs outside the write path.
@@ -169,10 +180,16 @@ class InvoiceController extends Controller
                 'charges_summary' => $computed['charges_summary'],
                 'discount' => $computed['discount'],
                 'tax' => $computed['tax'],
+                'tds_rate' => $computed['tds_rate'],
+                'tds_amount' => $computed['tds_amount'],
+                'tcs_rate' => $computed['tcs_rate'],
+                'tcs_amount' => $computed['tcs_amount'],
                 'round_off' => $computed['round_off'],
                 'grand_total' => $computed['grand_total'],
                 'paid_amount' => 0,
-                'balance_amount' => $computed['grand_total'],
+                // TDS is withheld by the buyer at settlement, so it never
+                // shows up as money the customer still owes.
+                'balance_amount' => max($computed['grand_total'] - $computed['tds_amount'], 0),
                 'notes' => $request->validated('notes'),
                 'terms' => $request->validated('terms'),
                 // Free-form per-invoice detail (site reference, job number).
@@ -205,6 +222,8 @@ class InvoiceController extends Controller
             'shareLinks' => fn ($q) => $q->latest(),
             'notesLog' => fn ($q) => $q->with('creator:id,name')->latest(),
             'installments' => fn ($q) => $q->with('payment:id,amount,payment_date'),
+            'parentInvoice:id,invoice_number,document_type,status',
+            'adjustmentNotes' => fn ($q) => $q->latest('invoice_date'),
         ]);
 
         $settings = BusinessSetting::current();
@@ -223,6 +242,15 @@ class InvoiceController extends Controller
             'recurringProfile' => RecurringProfile::query()
                 ->where('source_invoice_id', $invoice->id)
                 ->first(['id', 'frequency', 'next_run_at', 'last_run_at', 'is_active']),
+            // Advances this invoice's customer still holds, so the apply
+            // dialog can open with real options instead of an empty picker.
+            'availableAdvances' => $invoice->document_type->isPayable()
+                ? $invoice->customer->advances()
+                    ->where('status', AdvanceStatus::Available->value)
+                    ->whereRaw('amount > applied_amount')
+                    ->latest('advance_date')
+                    ->get(['id', 'amount', 'applied_amount', 'advance_date', 'reference_number', 'notes'])
+                : [],
         ]);
     }
 
@@ -248,9 +276,18 @@ class InvoiceController extends Controller
         Gate::authorize('update', $invoice);
 
         DB::transaction(function () use ($request, $invoice) {
-            $computed = $this->calculator->calculate($request->validated());
+            $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
+            $computed = $this->calculator->calculate([
+                ...$request->validated(),
+                'rounding_mode' => $business->rounding_mode,
+            ]);
             $documentType = $request->validated('document_type', $invoice->document_type->value);
             $customer = Customer::findOrFail($request->validated('customer_id'));
+
+            // Notes are simple one-line documents: corrections are made by
+            // cancelling and re-issuing rather than editing history.
+            abort_if($invoice->document_type->isAdjustment(), 422,
+                'Credit and debit notes cannot be edited — cancel and issue a new one.');
 
             // Pass the existing invoice so its current balance is not counted
             // twice when re-saving.
@@ -282,6 +319,10 @@ class InvoiceController extends Controller
                 'charges_summary' => $computed['charges_summary'],
                 'discount' => $computed['discount'],
                 'tax' => $computed['tax'],
+                'tds_rate' => $computed['tds_rate'],
+                'tds_amount' => $computed['tds_amount'],
+                'tcs_rate' => $computed['tcs_rate'],
+                'tcs_amount' => $computed['tcs_amount'],
                 'round_off' => $computed['round_off'],
                 'grand_total' => $computed['grand_total'],
                 'notes' => $request->validated('notes'),
@@ -314,7 +355,15 @@ class InvoiceController extends Controller
     {
         Gate::authorize('delete', $invoice);
 
+        // Notes travel with the invoice they correct — an orphaned credit
+        // note would still claim to adjust a document that no longer exists.
+        if (! $invoice->document_type->isAdjustment()) {
+            $invoice->adjustmentNotes()->delete();
+        }
+
         $invoice->delete();
+
+        $this->recalculateParentOf($invoice);
 
         ActivityLog::record('invoice.deleted', $invoice, "Deleted invoice {$invoice->invoice_number}");
 
@@ -329,12 +378,134 @@ class InvoiceController extends Controller
 
         $invoice->update(['status' => InvoiceStatus::Cancelled, 'cancelled_at' => now()]);
 
+        // A cancelled note must stop reducing (or adding to) the balance
+        // immediately.
+        $this->recalculateParentOf($invoice);
+
         InvoiceEvent::log($invoice, InvoiceEventType::Cancelled, [], auth()->id());
         ActivityLog::record('invoice.cancelled', $invoice, "Cancelled invoice {$invoice->invoice_number}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice cancelled.')]);
 
         return back();
+    }
+
+    /**
+     * Issue a credit note or debit note against an invoice.
+     *
+     * The note is a real document — its own number, line item, tax and PDF —
+     * but it is always built from the parent so the reference can never be
+     * missing or point at the wrong tenant.
+     */
+    public function storeNote(StoreAdjustmentNoteRequest $request, Invoice $invoice): RedirectResponse
+    {
+        Gate::authorize('update', $invoice);
+
+        abort_unless($invoice->document_type->isPayable(), 422,
+            'Credit and debit notes can only be issued against an invoice.');
+        abort_if($invoice->status === InvoiceStatus::Cancelled, 422,
+            'A cancelled invoice cannot be adjusted.');
+
+        $validated = $request->validated();
+        $type = DocumentType::from($validated['type']);
+
+        $note = DB::transaction(function () use ($request, $invoice, $validated, $type) {
+            $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
+
+            // 'fixed' exists for every industry, but fall back to the first
+            // allowed rate type rather than failing on a custom config.
+            $allowedRateTypes = Industry::rateTypes($request->user()->tenant?->industry);
+            $rateType = in_array('fixed', $allowedRateTypes, true) ? 'fixed' : $allowedRateTypes[0];
+
+            $computed = $this->calculator->calculate([
+                'customer_id' => $invoice->customer_id,
+                'pricing_mode' => PricingMode::Manual->value,
+                'tax_mode' => $invoice->tax_mode->value,
+                'discount' => 0,
+                'tax_rate' => 0,
+                'rounding_mode' => $business->rounding_mode,
+                'items' => [[
+                    'item_name' => sprintf('%s against %s', $type->label(), $invoice->invoice_number),
+                    'description' => $validated['reason'] ?? null,
+                    'quantity' => 1,
+                    'rate_type' => $rateType,
+                    'rate' => $validated['amount'],
+                    'tax_rate' => $validated['tax_rate'] ?? 0,
+                    'discount' => 0,
+                    'charges' => [],
+                ]],
+                'invoice_charges' => [],
+            ]);
+
+            $note = Invoice::create([
+                'customer_id' => $invoice->customer_id,
+                'invoice_number' => $business->nextAdjustmentNumber($type),
+                'invoice_date' => now()->toDateString(),
+                'document_type' => $type,
+                'status' => InvoiceStatus::Closed,
+                'parent_invoice_id' => $invoice->id,
+                'salesperson_id' => $invoice->salesperson_id,
+                'invoice_template_id' => $invoice->invoice_template_id,
+                'pricing_mode' => PricingMode::Manual->value,
+                'tax_mode' => $computed['tax_mode'],
+                'tax_breakdown' => $computed['tax_breakdown'],
+                'subtotal' => $computed['subtotal'],
+                'charges_summary' => $computed['charges_summary'],
+                'discount' => $computed['discount'],
+                'tax' => $computed['tax'],
+                // A note is a value correction; it never carries withholding.
+                'tds_rate' => 0,
+                'tds_amount' => 0,
+                'tcs_rate' => 0,
+                'tcs_amount' => 0,
+                'round_off' => $computed['round_off'],
+                'grand_total' => $computed['grand_total'],
+                // A note is not money owed or received on its own; the whole
+                // effect lives on the parent invoice's balance.
+                'paid_amount' => 0,
+                'balance_amount' => 0,
+                'notes' => $validated['reason'] ?? null,
+                'created_by' => $request->user()->id,
+            ]);
+
+            $this->persistItemsAndCharges($note, $computed);
+
+            InvoiceEvent::log($note, InvoiceEventType::Created, [
+                'parent_invoice_id' => $invoice->id,
+                'parent_invoice_number' => $invoice->invoice_number,
+            ], $request->user()->id);
+            ActivityLog::record('invoice.created', $note, "Issued {$type->label()} {$note->invoice_number}");
+
+            $invoice->load('payments');
+            $invoice->recalculatePaymentStatus();
+            $invoice->save();
+
+            return $note;
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => sprintf('%s issued.', $type->label())]);
+
+        return to_route('invoices.show', $note);
+    }
+
+    /**
+     * Re-derive the balance of the invoice a credit/debit note corrects.
+     */
+    protected function recalculateParentOf(Invoice $invoice): void
+    {
+        if ($invoice->parent_invoice_id === null) {
+            return;
+        }
+
+        $parent = Invoice::query()->find($invoice->parent_invoice_id);
+
+        if ($parent === null) {
+            return;
+        }
+
+        $parent->load('payments');
+        $parent->recalculatePaymentStatus();
+        $parent->save();
     }
 
     public function convert(Request $request, Invoice $invoice): RedirectResponse
@@ -344,7 +515,10 @@ class InvoiceController extends Controller
         abort_if($invoice->converted_to_id !== null, 422, 'Quotation already converted.');
 
         $validated = $request->validate([
-            'document_type' => ['required', Rule::enum(DocumentType::class), Rule::notIn([DocumentType::Quotation->value])],
+            'document_type' => ['required', Rule::enum(DocumentType::class), Rule::notIn([
+                DocumentType::Quotation->value,
+                ...DocumentType::adjustmentValues(),
+            ])],
         ]);
 
         $documentType = $validated['document_type'];
@@ -366,7 +540,8 @@ class InvoiceController extends Controller
     public function generateEInvoice(Request $request, Invoice $invoice, EInvoiceService $einvoice): RedirectResponse
     {
         Gate::authorize('update', $invoice);
-        abort_if($invoice->document_type === DocumentType::Quotation, 422, 'Quotations do not need e-invoices.');
+        abort_if($invoice->document_type->isQuotation(), 422, 'Quotations do not need e-invoices.');
+        abort_if($invoice->document_type->isAdjustment(), 422, 'Credit and debit notes are not e-invoiced here.');
 
         try {
             $einvoice->generate($invoice, $request->user()->id);
@@ -437,7 +612,9 @@ class InvoiceController extends Controller
     {
         $requested = DocumentType::tryFrom((string) $request->query('document_type', ''));
 
-        if ($requested !== null) {
+        // An adjustment is issued from the invoice it corrects, never
+        // composed blank on the create form.
+        if ($requested !== null && ! $requested->isAdjustment()) {
             if ($requested === DocumentType::JewelryInvoice && ! Industry::usesWeightFields($industry)) {
                 return DocumentType::from(Industry::defaultDocumentType($industry));
             }
@@ -492,6 +669,9 @@ class InvoiceController extends Controller
                 ->get(['id', 'name', 'code', 'calculation_type', 'applies_to', 'default_rate', 'is_taxable']),
             'catalogItems' => CatalogItem::query()
                 ->where('status', CatalogStatus::Active->value)
+                // Inactive variants are still sent: an invoice already
+                // pointing at one has to render its selection back.
+                ->with(['variants' => fn ($q) => $q->orderBy('sort_order')->orderBy('id')])
                 ->orderBy('name')
                 ->get([
                     'id', 'name', 'brand', 'item_code', 'model_number', 'hsn_code',
@@ -518,6 +698,9 @@ class InvoiceController extends Controller
                 'default_tax_rate' => (float) $business->default_tax_rate,
                 'default_currency' => $business->default_currency,
                 'business_state_code' => $business->state_code,
+                // The live preview mirrors the server total, so it has to
+                // round exactly the way this business does.
+                'rounding_mode' => $business->rounding_mode,
                 'invoice_number_preview' => sprintf(
                     '%s-%d-%05d',
                     $business->invoice_prefix,

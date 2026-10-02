@@ -69,6 +69,10 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'quotation_prefix' => ['required', 'string', 'max:10'],
             'challan_prefix' => ['required', 'string', 'max:10'],
             'default_tax_rate' => ['required', 'numeric', 'min:0', 'max:100'],
+            // Nullable rather than required: this endpoint is posted by the
+            // settings page *and* by tests/clients that only touch a few
+            // fields, so omitting rounding_mode must keep the current value.
+            'rounding_mode' => ['sometimes', 'nullable', 'in:nearest_rupee,two_decimals'],
             'default_currency' => ['required', 'string', 'size:3'],
             'invoice_terms' => ['nullable', 'string', 'max:5000'],
             'footer_text' => ['nullable', 'string', 'max:1000'],

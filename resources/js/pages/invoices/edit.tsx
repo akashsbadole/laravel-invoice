@@ -5,6 +5,7 @@ import { dashboard } from '@/routes';
 import { index } from '@/routes/invoices';
 import type { Customer, Staff } from '@/types/customer';
 import type { IndustryConfig } from '@/lib/industries';
+import type { RoundingMode } from '@/lib/invoice-calculations';
 import type {
     CatalogItem,
     ChargeType,
@@ -23,6 +24,7 @@ function toFormItem(item: Invoice['items'][number]): InvoiceItemForm {
         description: item.description ?? '',
         item_code: item.item_code ?? '',
         catalog_item_id: item.catalog_item_id,
+        catalog_variant_id: item.catalog_variant_id,
         hsn_code: item.hsn_code ?? '',
         brand: item.brand ?? '',
         model_number: item.model_number ?? '',
@@ -82,6 +84,7 @@ export default function EditInvoice({
         default_currency: string;
         invoice_number_preview: string;
         business_state_code: string | null;
+        rounding_mode: RoundingMode;
     };
 }) {
     const initialData: InvoiceFormData = {
@@ -96,6 +99,8 @@ export default function EditInvoice({
         pricing_mode: invoice.pricing_mode,
         discount: Number(invoice.discount),
         tax_rate: 0,
+        tcs_rate: Number(invoice.tcs_rate),
+        tds_rate: Number(invoice.tds_rate),
         notes: invoice.notes ?? '',
         terms: invoice.terms ?? '',
         quotation_valid_until: invoice.quotation_valid_until ?? '',
@@ -130,6 +135,7 @@ export default function EditInvoice({
                     businessStateCode={defaults.business_state_code}
                     invoiceNumberPreview={invoice.invoice_number}
                     defaultItemTaxRate={defaults.default_tax_rate}
+                    roundingMode={defaults.rounding_mode}
                 />
             </div>
         </>

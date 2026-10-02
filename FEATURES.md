@@ -94,6 +94,32 @@ from — not a settings screen.
   `huid_number` and `certificate_number` are promoted into the invoice line's
   dedicated HUID/Cert fields instead of printing twice.
 
+### Variants
+
+One product can be split into the forms it is actually sold in — a ring in
+four sizes, a pendant in three purities, a tile in two finishes — without
+duplicating the product row.
+
+- Each variant carries its own **name, code, price override, stock and
+  on-sale flag**. A blank price charges the product's own rate.
+- Codes share a single tenant-wide namespace with product codes: a variant can
+  never take a code a product already uses, including two rows added in the
+  same submit.
+- Stock lives on the variants; `catalog_items.stock_quantity` mirrors their
+  sum, so low-stock checks and reports keep meaning what they say. Every
+  figure still travels through the movement ledger — opening balances, hand
+  corrections and the write-off when a variant is dropped.
+- A split product refuses a product-level stock movement, because the next
+  variant movement would overwrite it. The variant editor is where it is
+  corrected.
+- The invoice line picker offers the variant beside the product, sets the
+  line's name to `Product (Variant)` and its code and price to the variant's,
+  and stores `catalog_variant_id` on the line so the document says exactly
+  which form was sold.
+- The reference on invoice lines and stock movements is deliberately **not** a
+  foreign key: retiring a size must never rewrite an invoice or erase the
+  explanation of a write-off.
+
 ### Product status
 
 Every product carries one of four states:
@@ -126,7 +152,9 @@ change is appended to an `inventory_movements` ledger (`in`, `out`,
 `adjustment`) with the balance afterwards, reason and note. Stock is never
 edited directly — the dialog only produces ledger entries, so a balance can
 always be explained. Products at or below their reorder level are badged and
-filterable via **Low stock**.
+filterable via **Low stock**. A product split into variants keeps one ledger
+per variant, with the product row summing them, and each row names the
+variant it was for.
 
 ### CSV and Excel import and export
 
@@ -183,7 +211,8 @@ as toast notifications, not silent failures.
 
 - **Quotation, invoice and challan** document types with per-industry defaults.
 - Manual pricing or calculated pricing (weight-based for jewelry, area-based
-  for tiles and marble, per metre for pipes).
+  for tiles and marble, per metre for pipes, per litre for paint and liquids —
+  the line quantity is the litres being billed).
 - Per-line and per-invoice charges, discounts, single or split tax, and
   rounding.
 - **Installments**: split an invoice into a schedule of dated amounts, with
@@ -193,6 +222,18 @@ as toast notifications, not silent failures.
   the projected balance; quotations are never blocked by credit. An empty due
   date is filled from credit days, while an explicitly entered date always wins.
 - **Old-gold exchange credit** lines for jewelry, crediting against the total.
+- **Rounding** is a per-business setting — `nearest_rupee` (default) or
+  `two_decimals` — applied identically by the live preview, the stored total,
+  the PDF and the e-invoice breakdown.
+- **TCS** is collected on top of the total; **TDS** is withheld from what the
+  customer pays, so the balance due is the total minus TDS and a payment for
+  that amount settles the invoice exactly.
+- **Credit and debit notes**: a total raised too high is corrected with a
+  credit note, a missed charge with a debit note. Both are adjustment
+  documents on their own numbering series (`CRN`/`DRN`), link back to the
+  parent invoice, are excluded from sales reports and GST exports, and cannot
+  be edited once issued. The parent's balance moves with them and its status
+  closes when nothing is outstanding.
 - Per-tenant, per-industry **charge types** and **invoice templates**
   (accent colour, alignment, and toggles for HUID, stone details, HSN, bank
   details, signature, stamp and QR code).
@@ -205,6 +246,12 @@ as toast notifications, not silent failures.
 - Partial payments and a live balance.
 - **UPI collect** links on the shared invoice, so a customer can pay from the
   link. No payment gateway is required to invoice a customer.
+- **Advance receipts**: money taken before there is an invoice sits on the
+  customer as an advance, on its own numbering series. It is applied to one or
+  more invoices from the invoice page (settling installments oldest-first) or
+  refunded back out, and the customer profile shows what is still held.
+  Applying an advance is a real payment, so statuses, balances and reports all
+  follow without special cases.
 
 ---
 
@@ -341,12 +388,21 @@ match.
 
 ## 12. Verification
 
-`295 tests / 1939 assertions`, with Pint, TypeScript, ESLint and a production
-build all passing. Coverage spans catalog and CSV round-tripping, inventory
-ledger behaviour, quotation lifecycle and expiry, PDF rendering for all four
-delivery paths, payment reminders and preferred channels, customer credit
-terms and tag filtering, sales-report exclusions, ageing/top-items/conversion
-reports, free-mode guarantees, role permissions and super-admin isolation.
+`379 tests / 2468 assertions`, with Pint, TypeScript, ESLint and a production
+build all passing. Coverage spans catalog and CSV/Excel round-tripping, catalog
+status lifecycle (draft, active, inactive, discontinued), product variants
+(code collisions, per-variant stock ledger, variant sold on the line),
+inventory ledger behaviour, credit/debit notes, advance receipts, rounding and
+TDS/TCS, quotation lifecycle and expiry, PDF rendering for all four
+delivery paths, litre-based line pricing, payment reminders and preferred
+channels, customer credit terms and tag filtering, sales-report exclusions,
+ageing/top-items/conversion reports, free-mode guarantees, role permissions and
+super-admin isolation.
+
+Every failure reaches the owner as a toast: flash messages, validation errors,
+expired session (419), non-Inertia server responses and thrown request errors
+are all surfaced globally in `resources/js/app.tsx` rather than leaving a form
+silently doing nothing.
 
 ---
 

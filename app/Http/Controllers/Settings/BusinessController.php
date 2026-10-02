@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Enums\ChargeAppliesTo;
 use App\Enums\ChargeCalculationType;
 use App\Enums\Permission;
+use App\Enums\RoundingMode;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateBusinessSettingsRequest;
 use App\Models\BusinessSetting;
@@ -46,6 +47,7 @@ class BusinessController extends Controller
                     'sms_driver', 'sms_country_code',
                     'sms_twilio_from', 'sms_http_url', 'sms_http_to_field', 'sms_http_message_field',
                     'default_tax_rate', 'default_currency', 'invoice_terms', 'footer_text',
+                    'rounding_mode',
                     'state_code', 'receipt_width', 'sms_payment_reminders', 'email_payment_reminders',
                     'sms_birthday_wishes', 'sms_anniversary_wishes',
                     'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
@@ -123,6 +125,12 @@ class BusinessController extends Controller
         $data['sms_anniversary_wishes'] = $request->boolean('sms_anniversary_wishes');
         $data['quotation_customer_decisions'] = $request->boolean('quotation_customer_decisions');
         $data['quotation_show_updates'] = $request->boolean('quotation_show_updates');
+
+        // sometimes/nullable: an omitted or empty value must keep the rule
+        // rather than write null into the column.
+        $data['rounding_mode'] = ($data['rounding_mode'] ?? '') !== ''
+            ? $data['rounding_mode']
+            : RoundingMode::NearestRupee->value;
 
         $settings->fill($data)->save();
 

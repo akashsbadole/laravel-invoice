@@ -8,6 +8,7 @@ use App\Http\Requests\Catalog\StoreCatalogItemRequest;
 use App\Http\Requests\Catalog\UpdateCatalogItemRequest;
 use App\Models\BusinessSetting;
 use App\Models\CatalogItem;
+use App\Models\CatalogVariant;
 use App\Models\InventoryMovement;
 use App\Services\InventoryService;
 use App\Support\CatalogField;
@@ -35,6 +36,7 @@ class CatalogItemController extends Controller
 
         return Inertia::render('catalog/index', [
             'items' => CatalogItem::query()
+                ->with('variants')
                 ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%")
                     ->orWhere('item_code', 'like', "%{$search}%")
                     ->orWhere('brand', 'like', "%{$search}%")
@@ -90,6 +92,12 @@ class CatalogItemController extends Controller
             'image_url' => $item->image_path ? Storage::disk('public')->url($item->image_path) : null,
             'is_low_stock' => $item->isLowOnStock(),
             'is_active' => $item->isActive(),
+            'variants' => ($item->relationLoaded('variants') ? $item->variants : $item->variants()->get())
+                ->map(fn (CatalogVariant $variant) => $variant->only([
+                    'id', 'label', 'item_code', 'rate', 'stock_quantity', 'is_active', 'sort_order',
+                ]))
+                ->values()
+                ->all(),
         ];
     }
 
@@ -125,18 +133,26 @@ class CatalogItemController extends Controller
         $payload['status'] = $payload['status'] ?? CatalogStatus::Active->value;
 
         // Opening stock has to be recorded, not just stored, or the ledger
-        // cannot explain the balance later.
-        $opening = (float) ($payload['stock_quantity'] ?? 0);
+        // cannot explain the balance later. A product that is split into
+        // variants has no stock of its own — each variant holds its own —
+        // so the product-level figure is ignored whenever the form is
+        // variant-aware at all.
+        $variantRows = $request->variantsPayload();
+        $opening = $variantRows !== null ? 0.0 : (float) ($payload['stock_quantity'] ?? 0);
         $payload['stock_quantity'] = 0;
 
         $item = CatalogItem::create($payload);
 
-        if ($request->boolean('stock_tracked') && $opening !== 0.0) {
+        if ($item->stock_tracked && $opening !== 0.0) {
             $this->inventory->setOpeningStock($item, $opening, $request->user()->id);
         }
 
+        $this->syncVariants($item, $variantRows, $request->user()->id);
+
         // Auto-activate: a draft that now has stock is clearly ready to sell.
-        if ($item->isDraft() && $opening !== 0.0) {
+        // The check runs after variants, since a split product's balance is
+        // made up of the stock its variants brought with them.
+        if ($item->isDraft() && (float) $item->fresh()->stock_quantity !== 0.0) {
             $item->update(['status' => CatalogStatus::Active]);
         }
 
@@ -158,24 +174,111 @@ class CatalogItemController extends Controller
         }
 
         // Stock is only ever changed through the movement ledger, never by
-        // editing the number in the form.
-        $submitted = (float) $request->validated('stock_quantity', $catalogItem->stock_quantity);
+        // editing the number in the form. Same for a split product: its
+        // balance is the sum of its variants, so the product-level entry
+        // carries no stock of its own.
+        $variantRows = $request->variantsPayload();
+        // Empty means the split was removed entirely, which hands ownership
+        // of the balance back to the product row itself.
+        $split = $variantRows !== null && $variantRows !== [];
+        $submitted = $split
+            ? (float) $catalogItem->stock_quantity
+            : (float) $request->validated('stock_quantity', $catalogItem->stock_quantity);
         $payload['stock_quantity'] = $catalogItem->stock_quantity;
 
         $catalogItem->update($payload);
 
-        if ($request->boolean('stock_tracked') && $submitted !== (float) $catalogItem->stock_quantity) {
+        // The split is settled first: dropping every variant writes the
+        // stock off, and only then does the product row get to claim a
+        // balance of its own again.
+        $this->syncVariants($catalogItem, $variantRows, $request->user()->id);
+
+        if (! $split && $catalogItem->stock_tracked && $submitted !== (float) $catalogItem->stock_quantity) {
             $this->inventory->setOpeningStock($catalogItem, $submitted, $request->user()->id);
         }
 
-        // Auto-activate: a draft that now has stock is ready to sell.
-        if ($catalogItem->isDraft() && $submitted !== 0.0) {
+        // Auto-activate: a draft that now has stock is ready to sell. The
+        // check runs after the sync, because a split product's balance is
+        // made up of the stock its variants brought with them.
+        if ($catalogItem->isDraft() && (float) $catalogItem->fresh()->stock_quantity !== 0.0) {
             $catalogItem->update(['status' => CatalogStatus::Active]);
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Catalog item updated.')]);
 
         return back();
+    }
+
+    /**
+     * Diff the submitted variant rows against what the product already has.
+     *
+     * Anything absent from the payload is removed (and its stock written off
+     * so the ledger still balances), rows that keep an id are updated, and
+     * the rest are created. Stock on an existing variant is never taken from
+     * the form — it only moves through the ledger, exactly like the product.
+     *
+     * @param  list<array{id:int|null,label:string,item_code:string|null,rate:float|null,stock_quantity:float|null,is_active:bool,sort_order:int}>|null  $rows
+     */
+    protected function syncVariants(CatalogItem $item, ?array $rows, int $userId): void
+    {
+        if ($rows === null) {
+            return;
+        }
+
+        $submittedIds = array_values(array_filter(array_column($rows, 'id')));
+
+        foreach ($item->variants()->get() as $existing) {
+            if (! in_array($existing->id, $submittedIds, true)) {
+                $this->inventory->removeVariant($item, $existing, $userId);
+            }
+        }
+
+        foreach ($rows as $row) {
+            $opening = $row['stock_quantity'];
+            $attributes = [
+                'label' => $row['label'],
+                'item_code' => $row['item_code'],
+                'rate' => $row['rate'],
+                'is_active' => $row['is_active'],
+                'sort_order' => $row['sort_order'],
+            ];
+
+            if ($row['id'] !== null && ($existing = $item->variants()->whereKey($row['id'])->first()) !== null) {
+                $existing->fill($attributes)->save();
+
+                // The form may correct a balance. It is booked as an
+                // adjustment so the ledger still explains every figure.
+                $wanted = $row['stock_quantity'];
+                $held = round((float) $existing->stock_quantity, 3);
+
+                if ($wanted !== null && round($wanted, 3) !== $held) {
+                    $this->inventory->move(
+                        $item,
+                        InventoryMovement::TYPE_ADJUSTMENT,
+                        round($wanted, 3),
+                        $userId,
+                        ['reason' => 'Stock edited'],
+                        $existing,
+                    );
+                }
+
+                continue;
+            }
+
+            $attributes['stock_quantity'] = 0;
+            $variant = $item->variants()->create($attributes);
+
+            if ($opening !== null && $opening !== 0.0) {
+                $this->inventory->setOpeningStock($item, $opening, $userId, $variant);
+            }
+        }
+
+        // The product row mirrors the sum of its variants whenever any exist.
+        if ($item->variants()->exists()) {
+            $item->forceFill([
+                'stock_quantity' => round((float) $item->variants()->sum('stock_quantity'), 3),
+            ])->save();
+        }
     }
 
     /**
@@ -238,6 +341,11 @@ class CatalogItemController extends Controller
         ]);
 
         abort_unless($catalogItem->stock_tracked, 422, 'Stock tracking is off for this product.');
+
+        // A split product's balance is the sum of its variants, so a
+        // product-level movement would be overwritten by the next variant
+        // movement. The balance is corrected from the variant editor instead.
+        abort_if($catalogItem->hasVariants(), 422, __('This product is split into variants — adjust each variant instead.'));
 
         $this->inventory->move(
             $catalogItem,

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DocumentType;
 use App\Enums\InvoiceStatus;
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
@@ -129,7 +130,7 @@ class GstExportService
     {
         return Invoice::query()
             ->with(['customer:id,full_name,tax_number,state_code', 'items'])
-            ->where('document_type', '!=', 'quotation')
+            ->whereNotIn('document_type', $this->excludedDocumentTypes())
             ->when($filters['from'] ?? null, fn ($q, $from) => $q->whereDate('invoice_date', '>=', $from))
             ->when($filters['to'] ?? null, fn ($q, $to) => $q->whereDate('invoice_date', '<=', $to))
             ->orderBy('invoice_date')
@@ -262,7 +263,7 @@ class GstExportService
     protected function docIssue(array $filters): array
     {
         $numbers = Invoice::query()
-            ->where('document_type', '!=', 'quotation')
+            ->whereNotIn('document_type', $this->excludedDocumentTypes())
             ->when($filters['from'] ?? null, fn ($q, $from) => $q->whereDate('invoice_date', '>=', $from))
             ->when($filters['to'] ?? null, fn ($q, $to) => $q->whereDate('invoice_date', '<=', $to))
             ->orderBy('invoice_number')
@@ -282,6 +283,21 @@ class GstExportService
                 ]],
             ]],
         ];
+    }
+
+    /**
+     * Document types that never belong in an outward-supply export.
+     *
+     * Quotations are proposals; credit and debit notes are corrections of a
+     * supply already counted, and they carry their own serial range — mixing
+     * CN/DN numbers into the invoice serial range would corrupt both the
+     * turnover figure and the doc_issue from/to sequence.
+     *
+     * @return list<string>
+     */
+    protected function excludedDocumentTypes(): array
+    {
+        return [DocumentType::Quotation->value, ...DocumentType::adjustmentValues()];
     }
 
     /**

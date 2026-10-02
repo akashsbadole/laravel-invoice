@@ -218,7 +218,7 @@ class EInvoiceService
     protected function valueBreakdown(Invoice $invoice): array
     {
         $tax = round((float) $invoice->tax, 2);
-        $assessable = round((float) $invoice->grand_total - $tax, 2);
+        $assessable = round((float) $invoice->grand_total - (float) $invoice->round_off - $tax - (float) $invoice->tcs_amount, 2);
 
         $intraState = $invoice->tax_mode === TaxMode::CgstSgst;
         $half = round($tax / 2, 2);

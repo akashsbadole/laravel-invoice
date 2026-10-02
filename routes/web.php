@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CatalogItemController;
 use App\Http\Controllers\CatalogItemImportController;
+use App\Http\Controllers\CustomerAdvanceController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerFollowupController;
 use App\Http\Controllers\CustomerNoteController;
@@ -107,6 +108,9 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::post('customers/{customer}/notes', [CustomerNoteController::class, 'store'])->name('customers.notes.store');
 
+    Route::post('customers/{customer}/advances', [CustomerAdvanceController::class, 'store'])->name('customers.advances.store');
+    Route::post('customers/{customer}/advances/{advance}/refund', [CustomerAdvanceController::class, 'refund'])->name('customers.advances.refund');
+
     Route::post('customers/{customer}/followups', [CustomerFollowupController::class, 'store'])->name('customers.followups.store');
     Route::put('customers/{customer}/followups/{followup}', [CustomerFollowupController::class, 'update'])->name('customers.followups.update');
     Route::delete('customers/{customer}/followups/{followup}', [CustomerFollowupController::class, 'destroy'])->name('customers.followups.destroy');
@@ -134,6 +138,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
 
     Route::resource('invoices', InvoiceController::class);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
+    Route::post('invoices/{invoice}/notes', [InvoiceController::class, 'storeNote'])->name('invoices.notes.store');
     Route::post('invoices/{invoice}/convert', [InvoiceController::class, 'convert'])->name('invoices.convert');
     Route::post('invoices/{invoice}/quotation-status', [InvoiceController::class, 'quotationStatus'])->name('invoices.quotation-status');
     Route::post('invoices/{invoice}/einvoice', [InvoiceController::class, 'generateEInvoice'])->name('invoices.einvoice');
@@ -150,6 +155,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::post('invoices/{invoice}/installments/{installment}/collect', [InstallmentController::class, 'collect'])->name('invoices.installments.collect');
     Route::delete('invoices/{invoice}/installments/{installment}', [InstallmentController::class, 'destroy'])->name('invoices.installments.destroy');
     Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('invoices.payments.store');
+    Route::post('invoices/{invoice}/advances/apply', [CustomerAdvanceController::class, 'apply'])->name('invoices.advances.apply');
     Route::post('invoices/{invoice}/remind', [PaymentController::class, 'remind'])->name('invoices.remind');
 
     Route::post('invoices/{invoice}/share-links', [InvoiceShareLinkController::class, 'store'])->name('invoices.share-links.store');

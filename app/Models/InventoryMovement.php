@@ -18,7 +18,7 @@ class InventoryMovement extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'catalog_item_id', 'type', 'quantity', 'balance_after',
+        'catalog_item_id', 'catalog_variant_id', 'type', 'quantity', 'balance_after',
         'reason', 'note', 'reference_type', 'reference_id', 'created_by',
     ];
 
@@ -37,6 +37,16 @@ class InventoryMovement extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(CatalogItem::class, 'catalog_item_id');
+    }
+
+    /**
+     * The variant this movement was for, when stock is tracked per variant.
+     *
+     * @return BelongsTo<CatalogVariant, $this>
+     */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(CatalogVariant::class, 'catalog_variant_id');
     }
 
     /**

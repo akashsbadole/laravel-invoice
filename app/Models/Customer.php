@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
+use App\Enums\AdvanceStatus;
 use App\Enums\ContactChannel;
 use App\Enums\DocumentType;
 use App\Enums\GstinType;
@@ -101,9 +102,49 @@ class Customer extends Model
         return $this->hasMany(CustomerFollowup::class);
     }
 
+    /**
+     * Booking / advance payments taken before an invoice existed.
+     *
+     * @return HasMany<CustomerAdvance, $this>
+     */
+    public function advances(): HasMany
+    {
+        return $this->hasMany(CustomerAdvance::class);
+    }
+
+    /**
+     * Money this customer has paid ahead that no invoice has consumed yet.
+     */
+    public function availableAdvance(): float
+    {
+        return round(
+            (float) $this->advances()
+                ->where('status', AdvanceStatus::Available->value)
+                ->sum('amount')
+            - (float) $this->advances()
+                ->where('status', AdvanceStatus::Available->value)
+                ->sum('applied_amount'),
+            2,
+        );
+    }
+
     public function totalInvoiced(): string
     {
-        return (string) $this->invoices()->sum('grand_total');
+        $net = (float) $this->invoices()
+            ->whereNotIn('document_type', DocumentType::adjustmentValues())
+            ->sum('grand_total');
+
+        // Returns credited back reduce what this customer was billed for;
+        // debit notes add to it. A cancelled note must not move the figure.
+        $noteEffect = (float) $this->invoices()
+            ->whereIn('document_type', DocumentType::adjustmentValues())
+            ->whereNot('status', InvoiceStatus::Cancelled->value)
+            ->get()
+            ->sum(fn (Invoice $note): float => $note->document_type === DocumentType::CreditNote
+                ? -1 * (float) $note->grand_total
+                : (float) $note->grand_total);
+
+        return (string) round($net + $noteEffect, 2);
     }
 
     public function totalPaid(): string

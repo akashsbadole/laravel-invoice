@@ -14,6 +14,7 @@ enum InvoiceStatus: string
     case Sent = 'sent';
     case Accepted = 'accepted';
     case Converted = 'converted';
+    case Closed = 'closed';
 
     public function label(): string
     {
@@ -28,6 +29,7 @@ enum InvoiceStatus: string
             self::Sent => 'Sent',
             self::Accepted => 'Accepted',
             self::Converted => 'Converted',
+            self::Closed => 'Closed',
         };
     }
 
@@ -44,6 +46,7 @@ enum InvoiceStatus: string
             self::Sent => 'amber',
             self::Accepted => 'green',
             self::Converted => 'blue',
+            self::Closed => 'slate',
         };
     }
 

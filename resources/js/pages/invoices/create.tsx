@@ -5,6 +5,7 @@ import { dashboard } from '@/routes';
 import { create, index } from '@/routes/invoices';
 import type { Customer, Staff } from '@/types/customer';
 import type { IndustryConfig } from '@/lib/industries';
+import type { RoundingMode } from '@/lib/invoice-calculations';
 import type {
     CatalogItem,
     ChargeType,
@@ -51,6 +52,7 @@ function toFormItem(draft: QuotationDraftItem, taxRate: number): InvoiceItemForm
         item_name: draft.item_name,
         item_code: draft.item_code ?? '',
         catalog_item_id: draft.catalog_item_id,
+        catalog_variant_id: null,
         hsn_code: draft.hsn_code ?? '',
         description: draft.description ?? '',
         brand: draft.brand ?? '',
@@ -99,6 +101,7 @@ export default function CreateInvoice({
         default_currency: string;
         invoice_number_preview: string;
         business_state_code: string | null;
+        rounding_mode: RoundingMode;
     };
     requestedDocumentType: DocumentType;
     draftItems?: QuotationDraftItem[];
@@ -120,6 +123,8 @@ export default function CreateInvoice({
         tax_mode: 'single',
         discount: 0,
         tax_rate: 0,
+        tcs_rate: 0,
+        tds_rate: 0,
         notes: '',
         terms: '',
         quotation_valid_until: '',
@@ -134,6 +139,8 @@ export default function CreateInvoice({
         general_invoice: 'New invoice',
         quotation: 'New quotation',
         delivery_challan: 'New delivery challan',
+        credit_note: 'New credit note',
+        debit_note: 'New debit note',
     };
 
     return (
@@ -167,6 +174,7 @@ export default function CreateInvoice({
                     businessStateCode={defaults.business_state_code}
                     invoiceNumberPreview={defaults.invoice_number_preview}
                     defaultItemTaxRate={defaults.default_tax_rate}
+                    roundingMode={defaults.rounding_mode}
                 />
             </div>
         </>

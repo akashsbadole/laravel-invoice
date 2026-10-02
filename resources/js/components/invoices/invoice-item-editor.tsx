@@ -65,6 +65,20 @@ export default function InvoiceItemEditor({
 
     const [catalogQuery, setCatalogQuery] = useState('');
 
+    const selectedCatalog = useMemo(
+        () => catalogItems.find((c) => c.id === item.catalog_item_id),
+        [catalogItems, item.catalog_item_id],
+    );
+    const variants = useMemo(
+        () =>
+            (selectedCatalog?.variants ?? []).filter((v) =>
+                // An inactive size stays on invoices it already appears on,
+                // but never in the picker for a new line.
+                item.catalog_variant_id ? true : v.is_active,
+            ),
+        [selectedCatalog, item.catalog_variant_id],
+    );
+
     const filteredCatalog = useMemo(() => {
         const query = catalogQuery.trim().toLowerCase();
 
@@ -101,11 +115,8 @@ export default function InvoiceItemEditor({
         };
     }
 
-    function applyCatalogItem(catalogId: string) {
-        const catalog = catalogItems.find((c) => String(c.id) === catalogId);
-        if (!catalog) return;
-        onChange(index, {
-            catalog_item_id: catalog.id,
+    function catalogPatch(catalog: CatalogItem): Partial<InvoiceItemForm> {
+        return {
             item_name: catalog.name,
             brand: catalog.brand ?? '',
             item_code: catalog.item_code ?? '',
@@ -129,12 +140,54 @@ export default function InvoiceItemEditor({
                 catalog.default_wastage_percent === null
                     ? null
                     : Number(catalog.default_wastage_percent),
+        };
+    }
+
+    function applyCatalogItem(catalogId: string) {
+        const catalog = catalogItems.find((c) => String(c.id) === catalogId);
+        if (!catalog) return;
+        onChange(index, {
+            catalog_item_id: catalog.id,
+            catalog_variant_id: null,
+            ...catalogPatch(catalog),
+        });
+    }
+
+    /**
+     * Swap one sellable form of a product for another — a size, a purity, a
+     * colour. The SKU and the price both follow the variant when it carries
+     * its own; picking the bare product falls back to the product's own.
+     */
+    function applyVariant(variantId: string) {
+        const catalog = catalogItems.find((c) => c.id === item.catalog_item_id);
+        if (!catalog) return;
+
+        const variants = catalog.variants ?? [];
+        const variant = variants.find((v) => String(v.id) === variantId);
+
+        if (!variant) {
+            onChange(index, { catalog_variant_id: null, ...catalogPatch(catalog) });
+            return;
+        }
+
+        const rate =
+            variant.rate === null || variant.rate === undefined
+                ? catalogPatch(catalog).rate
+                : Number(variant.rate);
+
+        onChange(index, {
+            catalog_item_id: catalog.id,
+            catalog_variant_id: variant.id,
+            ...catalogPatch(catalog),
+            rate,
+            item_name: `${catalog.name} (${variant.label})`,
+            item_code: variant.item_code ?? catalog.item_code ?? '',
         });
     }
 
     function clearCatalogItem() {
         setCatalogQuery('');
-        onChange(index, { catalog_item_id: null });
+        onChange(index, { catalog_item_id: null, catalog_variant_id: null });
     }
 
     function setAttribute(key: string, value: string) {
@@ -253,6 +306,44 @@ export default function InvoiceItemEditor({
                                     ))}
                                 </SelectContent>
                             </Select>
+                        )}
+                        {variants.length > 0 && (
+                            <div className="grid gap-1.5">
+                                <Label htmlFor={`variant-${item.key}`}>
+                                    Variant or size
+                                </Label>
+                                <Select
+                                    value={
+                                        item.catalog_variant_id
+                                            ? String(item.catalog_variant_id)
+                                            : ''
+                                    }
+                                    onValueChange={applyVariant}
+                                >
+                                    <SelectTrigger
+                                        id={`variant-${item.key}`}
+                                        className="w-full"
+                                    >
+                                        <SelectValue placeholder={`${selectedCatalog?.name ?? 'Base product'} (no variant)`} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">
+                                            {`${selectedCatalog?.name ?? 'Base product'} (no variant)`}
+                                        </SelectItem>
+                                        {variants.map((v) => (
+                                            <SelectItem
+                                                key={v.id}
+                                                value={String(v.id)}
+                                            >
+                                                {v.label}
+                                                {v.item_code
+                                                    ? ` (${v.item_code})`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         )}
                     </div>
                 )}

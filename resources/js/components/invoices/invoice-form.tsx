@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { computeInvoice } from '@/lib/invoice-calculations';
+import type { RoundingMode } from '@/lib/invoice-calculations';
 import type { IndustryConfig } from '@/lib/industries';
 import type { Customer, Staff } from '@/types/customer';
 import type {
@@ -39,6 +40,7 @@ function blankItem(defaultTaxRate = 0, rateType: RateType = 'per_gram'): Invoice
         description: '',
         item_code: '',
         catalog_item_id: null,
+        catalog_variant_id: null,
         hsn_code: '',
         brand: '',
         model_number: '',
@@ -95,6 +97,7 @@ export default function InvoiceForm({
     metalRates,
     industryConfig,
     businessStateCode,
+    roundingMode = 'nearest_rupee',
 }: {
     mode: 'create' | 'edit';
     invoiceId?: number;
@@ -109,6 +112,8 @@ export default function InvoiceForm({
     metalRates: MetalRate[];
     industryConfig: IndustryConfig;
     businessStateCode?: string | null;
+    /** Business-level rounding rule so the preview matches the server. */
+    roundingMode?: RoundingMode;
 }) {
     const { data, setData, post, put, processing, errors } = useForm<InvoiceFormData>(initialData);
 
@@ -150,8 +155,23 @@ export default function InvoiceForm({
                 chargeTypes,
                 data.discount || 0,
                 data.tax_rate || 0,
+                data.tax_mode,
+                roundingMode,
+                data.tcs_rate || 0,
+                data.tds_rate || 0,
             ),
-        [data.items, data.invoice_charges, data.pricing_mode, data.discount, data.tax_rate, chargeTypes],
+        [
+            data.items,
+            data.invoice_charges,
+            data.pricing_mode,
+            data.discount,
+            data.tax_rate,
+            data.tax_mode,
+            data.tcs_rate,
+            data.tds_rate,
+            roundingMode,
+            chargeTypes,
+        ],
     );
 
     function itemErrors(index: number): Record<string, string> {
@@ -520,6 +540,28 @@ export default function InvoiceForm({
                                 onChange={(e) => setData('tax_rate', Number(e.target.value))}
                             />
                         </div>
+                        <div className="grid gap-1.5">
+                            <Label>TCS % (collected at source, optional)</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                max={100}
+                                value={data.tcs_rate}
+                                onChange={(e) => setData('tcs_rate', Number(e.target.value))}
+                            />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label>TDS % (deducted at source, optional)</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min={0}
+                                max={100}
+                                value={data.tds_rate}
+                                onChange={(e) => setData('tds_rate', Number(e.target.value))}
+                            />
+                        </div>
                     </div>
 
                     <div className="space-y-1 border-t pt-4 text-sm">
@@ -529,8 +571,23 @@ export default function InvoiceForm({
                         ))}
                         <Row label="Discount" value={-totals.discount} />
                         <Row label="Tax" value={totals.tax} />
+                        {totals.tcsAmount > 0 && (
+                            <Row
+                                label={`TCS @ ${data.tcs_rate}%`}
+                                value={totals.tcsAmount}
+                            />
+                        )}
                         <Row label="Round off" value={totals.roundOff} />
                         <Row label="Grand total" value={totals.grandTotal} emphasize />
+                        {totals.tdsAmount > 0 && (
+                            <>
+                                <Row
+                                    label={`TDS @ ${data.tds_rate}% (deducted)`}
+                                    value={-totals.tdsAmount}
+                                />
+                                <Row label="Amount payable" value={totals.balanceDue} />
+                            </>
+                        )}
                     </div>
                 </CardContent>
             </Card>
