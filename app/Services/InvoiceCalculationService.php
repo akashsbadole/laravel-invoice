@@ -181,6 +181,15 @@ class InvoiceCalculationService
         $tax = round(max($taxableAmount, 0) * ($taxRate / 100), 2);
         $total = round($baseValue + $chargesTotal - $discount + $tax, 2);
 
+        // Reserved attribute keys are promoted into dedicated invoice columns.
+        // A catalog can carry certification identifiers as free-form attributes;
+        // the sold line should surface them in the HUID/Cert fields rather than
+        // duplicating them in the printed attribute list. An explicit line
+        // value always wins.
+        $attributes = $this->normalizeAttributes($itemInput['attributes'] ?? null);
+        $huidNumber = $this->promotedAttribute($itemInput, $attributes, 'huid_number');
+        $certificateNumber = $this->promotedAttribute($itemInput, $attributes, 'certificate_number');
+
         return [
             'sort_order' => $sortOrder,
             'line_type' => $lineType->value,
@@ -205,14 +214,14 @@ class InvoiceCalculationService
             'height' => $this->nullableFloat($itemInput, 'height'),
             'wastage_percent' => $this->nullableFloat($itemInput, 'wastage_percent'),
             'boxes' => $this->nullableFloat($itemInput, 'boxes'),
-            'attributes' => $this->normalizeAttributes($itemInput['attributes'] ?? null),
+            'attributes' => $attributes === [] ? null : $attributes,
             'metal_type' => $itemInput['metal_type'] ?? null,
             'purity' => $itemInput['purity'] ?? null,
-            'huid_number' => $itemInput['huid_number'] ?? null,
+            'huid_number' => $huidNumber,
             'stone_clarity' => $itemInput['stone_clarity'] ?? null,
             'stone_color' => $itemInput['stone_color'] ?? null,
             'stone_carat' => $stoneCarat,
-            'certificate_number' => $itemInput['certificate_number'] ?? null,
+            'certificate_number' => $certificateNumber,
             'quantity' => $quantity,
             'gross_weight' => (float) ($itemInput['gross_weight'] ?? 0),
             'net_weight' => $netWeight,
@@ -287,6 +296,29 @@ class InvoiceCalculationService
         $value = $itemInput[$key] ?? null;
 
         return ($value === null || $value === '') ? null : (float) $value;
+    }
+
+    /**
+     * Promote a reserved free-form attribute into a dedicated line column.
+     *
+     * The key is always removed from the attribute map so the PDF does not
+     * print the same identifier twice.
+     */
+    protected function promotedAttribute(array $itemInput, ?array &$attributes, string $key): ?string
+    {
+        $explicit = trim((string) ($itemInput[$key] ?? ''));
+        $promoted = null;
+
+        if (is_array($attributes) && array_key_exists($key, $attributes)) {
+            $promoted = trim((string) $attributes[$key]);
+            unset($attributes[$key]);
+        }
+
+        if ($explicit !== '') {
+            return mb_substr($explicit, 0, 255);
+        }
+
+        return $promoted === '' || $promoted === null ? null : mb_substr($promoted, 0, 255);
     }
 
     /**

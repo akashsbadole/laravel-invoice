@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Customer;
 use App\Models\Invoice;
 use App\Services\ReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +19,7 @@ class SalesInsightReportsTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected ?\App\Models\Customer $customer = null;
+    protected ?Customer $customer = null;
 
     protected function invoice(
         $user,
@@ -82,10 +83,10 @@ class SalesInsightReportsTest extends TestCase
 
         $byNumber = collect($report['rows'])->keyBy('invoice_number');
 
-        // Newest debt last, oldest first — that is what needs chasing.
-        $this->assertSame('90+ days', $byNumber->last()['bucket_label']);
+        // Oldest debt first — that is what needs chasing.
+        $this->assertSame('90+ days', $byNumber->first()['bucket_label']);
         $this->assertSame('1–30 days', $byNumber->values()[1]['bucket_label']);
-        $this->assertSame('Not yet due', $byNumber->first()['bucket_label']);
+        $this->assertSame('Not yet due', $byNumber->last()['bucket_label']);
 
         $days = collect($report['rows'])->pluck('days_overdue')->all();
         $this->assertSame($days, collect($days)->sortDesc()->values()->all());
@@ -212,21 +213,10 @@ class SalesInsightReportsTest extends TestCase
             'status' => 'rejected',
         ])->assertRedirect();
 
-        fwrite(STDERR, "\nDEBUG after reject: converted=".var_export($quotation->fresh()->converted_to_id, true)
-            .' status='.$quotation->fresh()->quotation_status?->value."\n");
-
         // Staff talk it round and convert anyway.
-        $convert = $this->actingAs($user)->post(route('invoices.convert', $quotation), [
+        $this->actingAs($user)->post(route('invoices.convert', $quotation), [
             'document_type' => 'general_invoice',
-        ]);
-
-        fwrite(STDERR, 'DEBUG convert status='.$convert->getStatusCode()
-            .' errors='.json_encode(session('errors')?->getBag('default')->toArray())."\n");
-
-        $convert->assertRedirect();
-
-        fwrite(STDERR, 'DEBUG after convert: converted='.var_export($quotation->fresh()->converted_to_id, true)
-            .' status='.$quotation->fresh()->quotation_status?->value."\n");
+        ])->assertRedirect();
 
         $metrics = collect(app(ReportService::class)->build('quotation_conversion', [])['rows'])
             ->keyBy('metric');
@@ -256,7 +246,7 @@ class SalesInsightReportsTest extends TestCase
                     ->where('report.type', $type)
                     ->where('filters.type', $type)
                     // `types` is the option list offered in the picker.
-                    ->has('types', fn (array $types) => collect($types)
+                    ->where('types', fn ($types) => collect($types)
                         ->pluck('value')
                         ->contains($type))
                 );

@@ -144,6 +144,22 @@ export default function CustomersIndex({
                                         </Select>
                                     </div>
 
+                                    <div className="grid gap-2 sm:w-48">
+                                        <label
+                                            htmlFor="tag"
+                                            className="text-sm font-medium"
+                                        >
+                                            Tag
+                                        </label>
+                                        <Input
+                                            id="tag"
+                                            name="tag"
+                                            defaultValue={filters.tag ?? ''}
+                                            placeholder="bridal"
+                                            className="w-full"
+                                        />
+                                    </div>
+
                                     <Button type="submit">Filter</Button>
                                 </>
                             )}

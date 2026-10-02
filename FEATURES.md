@@ -15,13 +15,13 @@ Permissions live in `config/permissions.php` and are granted per role, so a
 role can be reshaped in config without touching code. Controllers ask for a
 capability (`canDo(Permission::…)`) rather than testing a role name.
 
-| Role | Summary |
-|---|---|
-| **Super Admin** | Platform operator with **no tenant**. Manages every tenant, plan and subscription. |
-| **Admin** | Full control of one business, including settings and staff. |
-| **Manager** | Runs the day to day — catalog, stock, invoices, reports. No settings or staff administration. |
-| **Invoice Creator** | Quotes and invoices in, records payments. No deletes, no cost visibility. |
-| **Viewer** | Read-only across the board. |
+| Role                | Summary                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| **Super Admin**     | Platform operator with **no tenant**. Manages every tenant, plan and subscription.            |
+| **Admin**           | Full control of one business, including settings and staff.                                   |
+| **Manager**         | Runs the day to day — catalog, stock, invoices, reports. No settings or staff administration. |
+| **Invoice Creator** | Quotes and invoices in, records payments. No deletes, no cost visibility.                     |
+| **Viewer**          | Read-only across the board.                                                                   |
 
 Capabilities include `view_dashboard`, `manage_customers`, `manage_catalog`,
 `manage_inventory`, `manage_quotations`, `create_invoices`, `edit_invoices`,
@@ -89,7 +89,10 @@ from — not a settings screen.
   Made-to-order work simply leaves tracking off.
 - **Images**: one product photo, validated and stored on the public disk.
 - **Custom attributes**: repeatable key/value pairs for anything the standard
-  fields do not cover.
+  fields do not cover. Reserved catalog/invoice keys are contractual:
+  `warranty_terms` and `care_instructions` stay printable product notes, while
+  `huid_number` and `certificate_number` are promoted into the invoice line's
+  dedicated HUID/Cert fields instead of printing twice.
 
 ### Field registry
 
@@ -135,6 +138,10 @@ re-imported without reformatting.
   and the quotation form is prefilled with each product's specification, weights
   and wastage defaults.
 - Lifecycle: `Draft → Sent → Accepted / Rejected / Expired → Converted`.
+- **Validity window**: quotations can carry a `Valid until` date. Lapsed,
+  undecided quotations read as expired, a nightly `quotations:expire` sweep
+  persists that state, and quotes closing soon appear in reminders and the
+  staff digest.
 - **Customer decisions** are a tenant setting: Accept / Reject buttons appear
   on the shared quotation only when enabled.
 - **Live updates feed** — customers see every change made to a shared quotation
@@ -153,6 +160,10 @@ re-imported without reformatting.
   rounding.
 - **Installments**: split an invoice into a schedule of dated amounts, with
   payment matching settling installments oldest-first.
+- **Credit limits and credit days**: customers can carry a numeric limit and
+  Net-N terms. Payable documents that would breach the limit are refused with
+  the projected balance; quotations are never blocked by credit. An empty due
+  date is filled from credit days, while an explicitly entered date always wins.
 - **Old-gold exchange credit** lines for jewelry, crediting against the total.
 - Per-tenant, per-industry **charge types** and **invoice templates**
   (accent colour, alignment, and toggles for HUID, stone details, HSN, bank
@@ -174,6 +185,9 @@ re-imported without reformatting.
 - Configurable **IRN / QR code** generation for B2B and B2C documents.
 - Prerequisite validation before an e-invoice is issued (GSTIN, HSN, unit,
   tax values, seller and buyer details).
+- **Buyer classification**: explicit customer GSTIN type decides B2B vs B2C,
+  falling back to whether a GSTIN is present; explicit place of supply
+  overrides the customer's home state for `BuyerDtls.Pos`.
 - Generated IRN and acknowledgement surfaced on the invoice and in the shared
   PDF.
 - Driver-based (`log` for development, `api` for a live provider), so the flow
@@ -203,6 +217,9 @@ re-imported without reformatting.
   channel alone.
 - Sends automatically for past-due invoices on a nightly schedule
   (`reminders:send`), throttled to once every three days.
+- Respects each customer's preferred contact channel: email-only customers are
+  not texted, WhatsApp maps onto the text send, and phone-call customers are
+  left for staff rather than messaged automatically.
 - A manual **Remind** button on every unpaid invoice for when a customer calls.
 - Each attempt is recorded and visible on the customer timeline.
 
@@ -210,6 +227,7 @@ re-imported without reformatting.
 
 - Payment-due reminders, follow-up tasks with assignee and completion, and
   occasion greetings (birthday, anniversary) or custom dated reminders.
+- Quotations closing soon appear as their own reminder card.
 - Staff receive a daily digest of what is due.
 
 ---
@@ -217,6 +235,10 @@ re-imported without reformatting.
 ## 8. CRM
 
 - Customer records with assigned staff, notes, tags, search and CSV export.
+- Customers carry commercial detail where it must be enforceable: GSTIN type,
+  place of supply, credit limit/days, price tier, preferred contact channel,
+  referral source and tags. The customer page shows the live credit position
+  and tag badges; the customer list filters by exact tag.
 - **Activity timeline** per customer combining notes, invoices, payments and
   message history.
 - Follow-up scheduling with reminders, and occasion tracking.
@@ -229,13 +251,27 @@ re-imported without reformatting.
 Industries are data, not code — `config/industries.php` plus a migration is
 all a new trade needs.
 
-| Industry | Notable capabilities |
-|---|---|
-| **Jewelry** | Metal rates, weight-based pricing, hallmarking, HUID, stone details, gold exchange credit. |
-| **Hardware & Building Materials** | Per piece/kg, brand and model, warranty. |
-| **Tiles, Marble & Stone** | Area pricing (sq ft / sq m), wastage, batch and box quantities. |
-| **Plumbing & Electrical** | Per piece/metre, material and thickness, warranty. |
-| **General Trade** | Any product-based business, per piece/unit/fixed. |
+| Industry                                | Notable capabilities                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Jewelry**                             | Metal rates, weight-based pricing, hallmarking, HUID, stone details, gold exchange credit.     |
+| **Hardware & Building Materials**       | Per piece/litre/kg/metre, brand and model, warranty, shade and volume fields for paint retail. |
+| **Tiles, Marble & Stone**               | Area pricing (sq ft / sq m), wastage, batch and box quantities.                                |
+| **Plumbing & Electrical**               | Per piece/metre, material and thickness, warranty.                                             |
+| **General Trade**                       | Any product-based business, per piece/unit/fixed.                                              |
+| **Furniture & Interiors**               | Per piece/area, fabric/weave/pattern, delivery and installation charges.                       |
+| **Textiles, Sarees & Apparel**          | Per piece/metre, fabric/weave/pattern, alteration and stitching charges.                       |
+| **Electronics & Appliances**            | Brand/model/serial, warranty months, installation and extended-warranty charges.               |
+| **Paint, Coatings & Hardware Retail**   | Per litre/kg, shade codes, volume and coverage fields.                                         |
+| **Contractors & Civil Work**            | Service and site references, area pricing, labour/material charges.                            |
+| **Auto Parts & Accessories**            | Fitment-style specification fields, serial tracking, installation charges.                     |
+| **Watches & Eyewear**                   | Brand/model/serial, warranty and service charges.                                              |
+| **Mobile & Gadget Shops**               | Serial-tracked units, warranty months, installment-friendly invoicing.                         |
+| **Modular Kitchens & Wardrobes**        | Area/metre pricing, material/finish fields, site installation charges.                         |
+| **Photo, Optical & Creative Studios**   | Service packages, travel/studio/editing charges.                                               |
+| **Repair & Servicing Shops**            | Service type, serial-tracked devices, labour/parts/diagnostic charges.                         |
+| **Tuition, Coaching & Training**        | Course/service lines, registration and exam-fee charges.                                       |
+| **IT Services & Agencies**              | Service lines, hosting/licence/retainer charges, no stock required.                            |
+| **Interior Designers & Event Planners** | Site references, area pricing, labour/material/rental charges.                                 |
 
 Selecting an industry drives the form fields, rate types, charge catalogue,
 calculation mode, invoice template flags and the CSV columns.
@@ -277,8 +313,86 @@ match.
 
 ## 12. Verification
 
-`219 tests / 1293 assertions`, with Pint, TypeScript, ESLint and a production
+`295 tests / 1939 assertions`, with Pint, TypeScript, ESLint and a production
 build all passing. Coverage spans catalog and CSV round-tripping, inventory
-ledger behaviour, quotation lifecycle, PDF rendering for all four delivery
-paths, payment reminders, free-mode guarantees, role permissions and
-super-admin isolation.
+ledger behaviour, quotation lifecycle and expiry, PDF rendering for all four
+delivery paths, payment reminders and preferred channels, customer credit
+terms and tag filtering, sales-report exclusions, ageing/top-items/conversion
+reports, free-mode guarantees, role permissions and super-admin isolation.
+
+---
+
+---
+
+## Owner-first answer: problems, why this, automation
+
+Problems an owner actually faces
+
+- Quotes are built manually in WhatsApp/Excel, so prices, taxes, weights, wastage, discounts, and terms vary by salesperson.
+- Accepted quotes have to be retyped as invoices, creating errors and delays.
+- Nobody knows which quotes are expiring, which invoices are overdue, or which customers need follow-up.
+- Stock is guessed; “available” items turn out to be missing.
+- Payments are chased manually; partial payments and balances are hard to track.
+- GST/e-invoice data is scattered: missing GSTIN/HSN, wrong B2B/B2C treatment, painful GSTR preparation.
+- Generic CRMs don’t understand jewelry weights/purity/HUID, tiles area/wastage, paint litres/shades, electronics serial/warranty, contractor site work, etc.
+- Staff mistakes are invisible: no clear roles, activity history, or approval boundaries.
+  Why use this instead of another CRM
+  Most CRMs track contacts and reminders. This is built around the money workflow:
+
+1. Catalog-first selling.
+2. Quotation → invoice/challan conversion without re-entry.
+3. Industry-specific fields and pricing:
+
+- jewelry: metal/purity/weight/HUID/stones/gold exchange;
+- tiles: area/wastage/batch/boxes;
+- paint: litres/shade/coverage;
+- electronics: serial/warranty;
+- contractors/services: site/service references.
+
+4. Indian billing reality:
+
+- GST modes, e-invoice prerequisites/IRN handling, GSTR exports.
+- UPI/collect links, payment recording, installments, balances.
+
+5. Customer self-service:
+
+- share links, portal, PDFs, WhatsApp/SMS/email.
+
+6. Operational control:
+
+- roles/permissions, staff invites, activity logs, tenant isolation, super-admin oversight.
+
+7. Cost posture:
+
+- free mode includes the workflow instead of gating core billing features.
+  Automation it already gives
+- Nightly:
+- overdue invoice marking;
+- quotation expiry;
+- staff reminder digest plus customer payment/occasion reminders;
+- recurring invoice generation.
+- Quotation lifecycle:
+- validity window, expiry overlay, accepted/rejected/converted tracking, conversion reporting.
+- Credit behavior:
+- limits, over-limit blocking for payable documents, credit-day due dates.
+- Catalog behavior:
+- industry-driven fields/rate types/charges/CSV columns;
+- inventory ledger instead of silent stock edits;
+- inactive products excluded from quotation builder.
+- Reporting:
+- sales excluding non-sale documents, ageing, top items, quotation conversion, tax/GSTR outputs.
+  Draft catalog + activate: proposed behavior
+  Current evidence:
+- Creation defaults new catalog products to active; the Add dialog has no status toggle.
+- Edit has an Active checkbox; list shows inactive badge/filter.
+- Quotation builder only offers active products.
+  Proposed minimal semantics:
+- Catalog status becomes explicit at creation: Active or Draft/Inactive.
+- Draft means:
+- visible in catalog;
+- badged as Draft;
+- excluded from quotation builder, invoice picker, dashboard active counts, and sales-facing surfaces;
+- import/export preserves the status.
+- “Activate” means one explicit action moves Draft → Active, with an activity log entry.
+- Keep quotation draft separate: quotation draft remains session-only prefill, not a persisted document state.
+  One confirmation before implementation: should “Draft” mean unpublished/internal product, or should there be three states — Draft, Active, Discontinued?

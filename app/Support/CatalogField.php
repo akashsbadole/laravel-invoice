@@ -106,7 +106,7 @@ final class CatalogField
 
             // Media & extensibility.
             ['name' => 'image_path', 'label' => 'Product image', 'type' => 'image', 'group' => self::GROUP_IDENTITY],
-            ['name' => 'attributes', 'label' => 'Extra attributes', 'type' => 'attributes', 'group' => self::GROUP_IDENTITY, 'hint' => 'Any other key/value details you want to keep.'],
+            ['name' => 'attributes', 'label' => 'Extra attributes', 'type' => 'attributes', 'group' => self::GROUP_IDENTITY, 'hint' => 'Any other key/value details you want to keep. Use warranty_terms and care_instructions for printable product notes; huid_number and certificate_number are copied into the dedicated invoice line fields.'],
         ];
     }
 

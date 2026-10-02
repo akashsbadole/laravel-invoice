@@ -21,9 +21,10 @@ class CustomerController extends Controller
 {
     public function index(Request $request): Response
     {
-        $filters = $request->only(['search', 'customer_type', 'assigned_staff_id']);
+        $filters = $request->only(['search', 'customer_type', 'assigned_staff_id', 'tag']);
         $type = $filters['customer_type'] ?? null;
         $staffId = $filters['assigned_staff_id'] ?? null;
+        $tag = trim((string) ($filters['tag'] ?? ''));
 
         $customers = Customer::query()
             ->with('assignedStaff:id,name')
@@ -36,6 +37,15 @@ class CustomerController extends Controller
             })
             ->when($type && $type !== 'all', fn ($query) => $query->where('customer_type', $type))
             ->when($staffId && $staffId !== 'all', fn ($query) => $query->where('assigned_staff_id', $staffId))
+            ->when($tag !== '', function ($query) use ($tag) {
+                // Tags are stored as a JSON array. Match the exact encoded tag
+                // so "bridal" does not also match "bridal-wear". LIKE wildcards
+                // in the tag itself are escaped for both MySQL and SQLite.
+                $needle = (string) json_encode($tag);
+                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $needle);
+
+                $query->whereRaw('customers.tags LIKE ? ESCAPE ?', ["%{$escaped}%", '\\']);
+            })
             ->withSum('invoices as total_invoiced', 'grand_total')
             ->withSum('invoices as total_outstanding', 'balance_amount')
             ->latest()

@@ -130,6 +130,63 @@ class InvoicePdfRenderingTest extends TestCase
     }
 
     /**
+     * Reserved free-form keys have a contract: certification identifiers move
+     * into the invoice line's dedicated HUID/Cert fields, while printable
+     * product notes stay in the attribute list the PDF already renders.
+     */
+    public function test_warranty_care_and_certification_attributes_reach_the_pdf(): void
+    {
+        $user = $this->adminFor();
+        $customer = $this->customerFor($user);
+
+        $this->actingAs($user)->post(route('invoices.store'), [
+            'customer_id' => $customer->id,
+            'document_type' => 'jewelry_invoice',
+            'invoice_date' => now()->toDateString(),
+            'pricing_mode' => 'manual',
+            'tax_mode' => 'single',
+            'tax_rate' => 3,
+            'discount' => 0,
+            'invoice_charges' => [],
+            'items' => [[
+                'item_name' => 'Gold Ring',
+                'metal_type' => 'Gold',
+                'purity' => '22K',
+                'quantity' => 1,
+                'net_weight' => 5.2,
+                'rate_type' => 'fixed',
+                'rate' => 45000,
+                'tax_rate' => 0,
+                'discount' => 0,
+                'charges' => [],
+                'attributes' => [
+                    'warranty_terms' => 'One-year manufacturing warranty.',
+                    'care_instructions' => 'Store separately; avoid perfume.',
+                    'huid_number' => 'HU123456',
+                    'certificate_number' => 'GIA-999',
+                ],
+            ]],
+        ])->assertRedirect();
+
+        $invoice = Invoice::with(['customer', 'items.charges', 'template'])->firstOrFail();
+        $item = $invoice->items->sole();
+
+        $this->assertSame('HU123456', $item->huid_number);
+        $this->assertSame('GIA-999', $item->certificate_number);
+        $this->assertSame([
+            'warranty_terms' => 'One-year manufacturing warranty.',
+            'care_instructions' => 'Store separately; avoid perfume.',
+        ], $item->attributes);
+
+        $html = view('pdf.invoice', app(InvoicePdfService::class)->viewData($invoice))->render();
+
+        $this->assertStringContainsString('HUID: HU123456', $html);
+        $this->assertStringContainsString('Cert: GIA-999', $html);
+        $this->assertStringContainsString('warranty_terms: One-year manufacturing warranty.', $html);
+        $this->assertStringContainsString('care_instructions: Store separately; avoid perfume.', $html);
+    }
+
+    /**
      * The template reads these unconditionally, so the shared assembler is the
      * only thing standing between a new call site and a 500.
      */

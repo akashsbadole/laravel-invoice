@@ -112,4 +112,5 @@ export type CustomerFilters = {
     search?: string;
     customer_type?: CustomerType | '';
     assigned_staff_id?: number | string | '';
+    tag?: string;
 };

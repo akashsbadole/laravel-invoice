@@ -7,6 +7,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\LineType;
 use App\Enums\QuotationStatus;
 use App\Models\Invoice;
+use App\Models\InvoiceEvent;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Builder;
@@ -280,8 +281,11 @@ class ReportService
             ->where('balance_amount', '>', 0)
             ->get(['id', 'invoice_number', 'invoice_date', 'due_date', 'balance_amount', 'customer_id'])
             ->map(function (Invoice $invoice) use ($today, $buckets) {
-                $reference = $invoice->due_date ?? $invoice->invoice_date;
-                $overdueDays = max(0, $today->diffInDays($reference, false));
+                $reference = ($invoice->due_date ?? $invoice->invoice_date)->copy()->startOfDay();
+                // Measure from the reference date toward today: a past reference
+                // is positive days overdue, while a future reference is negative
+                // and therefore clamped to current.
+                $overdueDays = max(0, (int) $reference->diffInDays($today, false));
 
                 $bucket = 'current';
 
@@ -416,11 +420,13 @@ class ReportService
             fn (Invoice $q) => app(QuotationService::class)->currentStatus($q) === QuotationStatus::Expired
         )->count();
 
-        // Won back: a rejected quote that was later converted anyway.
-        $wonBack = $quotations
-            ->filter(fn (Invoice $q) => $q->quotation_status === QuotationStatus::Rejected->value
-                && $q->converted_to_id !== null)
-            ->count();
+        // Won back: a converted quote whose lifecycle history passed through
+        // Rejected. The current status is necessarily Converted by then, so the
+        // lifecycle event log is the durable evidence.
+        $wonBackIds = $this->convertedAfterRejectionIds(
+            $quotations->whereNotNull('converted_to_id')->modelKeys()
+        );
+        $wonBack = count($wonBackIds);
 
         $value = fn (callable $filter) => round((float) $quotations->filter($filter)
             ->sum('grand_total'), 2);
@@ -437,13 +443,41 @@ class ReportService
                 $this->conversionRow('Rejected', $rejected, $total, $quotations, QuotationStatus::Rejected),
                 $this->conversionRow('Expired', $expired, $total, $quotations),
                 $this->conversionRow('Converted to invoice', $converted, $total, $quotations, null, true),
-                $this->conversionRow('Won back after rejection', $wonBack, $total, $quotations),
+                $this->conversionRow('Won back after rejection', $wonBack, $total, $quotations, null, true, $wonBackIds),
             ],
         ];
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int,Invoice>  $quotations
+     * Converted quotations whose lifecycle previously passed through Rejected.
+     *
+     * @param  array<int,int>  $convertedIds
+     * @return array<int,int>
+     */
+    protected function convertedAfterRejectionIds(array $convertedIds): array
+    {
+        if ($convertedIds === []) {
+            return [];
+        }
+
+        return InvoiceEvent::query()
+            ->whereIn('invoice_id', $convertedIds)
+            ->get(['invoice_id', 'meta'])
+            ->filter(function (InvoiceEvent $event) {
+                $meta = $event->meta ?? [];
+
+                return ($meta['action'] ?? null) === 'quotation_status'
+                    && ($meta['from'] ?? null) === QuotationStatus::Rejected->value
+                    && ($meta['to'] ?? null) === QuotationStatus::Converted->value;
+            })
+            ->map(fn (InvoiceEvent $event) => (int) $event->invoice_id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int,Invoice>  $quotations
      * @return array<string,mixed>
      */
     protected function conversionRow(
@@ -453,9 +487,14 @@ class ReportService
         Collection $quotations,
         ?QuotationStatus $status = null,
         bool $byConversion = false,
+        ?array $onlyIds = null,
     ): array {
-        $subset = $quotations->filter(function (Invoice $quotation) use ($status, $byConversion) {
+        $subset = $quotations->filter(function (Invoice $quotation) use ($status, $byConversion, $onlyIds) {
             if ($byConversion) {
+                if ($onlyIds !== null) {
+                    return in_array($quotation->id, $onlyIds, true);
+                }
+
                 return $quotation->converted_to_id !== null;
             }
 
