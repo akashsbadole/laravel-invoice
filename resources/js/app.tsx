@@ -41,6 +41,12 @@ function applyLayout(name: string, breadcrumbs: Breadcrumb[], page: ReactNode): 
     switch (true) {
         case name === 'welcome':
             return page;
+        case name === 'features':
+            return page;
+        case name === 'docs':
+            return page;
+        case name === 'contact':
+            return page;
         case name === 'invoices/public':
             return page;
         case name.startsWith('portal/'):

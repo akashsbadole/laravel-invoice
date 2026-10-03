@@ -30,6 +30,7 @@ use App\Services\DiscountApprovalService;
 use App\Services\EInvoiceService;
 use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
+use App\Services\QuotationFollowUpService;
 use App\Services\QuotationService;
 use App\Services\SubscriptionService;
 use App\Support\Attributes;
@@ -103,13 +104,19 @@ class InvoiceController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $newStatus = QuotationStatus::from($validated['status']);
+
         try {
             $this->quotations->transition(
                 $invoice,
-                QuotationStatus::from($validated['status']),
+                $newStatus,
                 $request->user(),
                 $validated['note'] ?? null,
             );
+
+            if ($newStatus === QuotationStatus::Sent) {
+                app(QuotationFollowUpService::class)->sendQuotation($invoice, $request->user()->id);
+            }
         } catch (RuntimeException $e) {
             return back()->withErrors(['status' => $e->getMessage()]);
         }
@@ -613,6 +620,26 @@ class InvoiceController extends Controller
         ActivityLog::record('invoice.converted', $newInvoice, "Converted quotation {$invoice->invoice_number} to {$newInvoice->invoice_number}");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation converted to invoice.')]);
+
+        return to_route('invoices.show', $newInvoice);
+    }
+
+    public function duplicate(Request $request, Invoice $invoice): RedirectResponse
+    {
+        Gate::authorize('create', Invoice::class);
+        abort_unless($invoice->document_type->isQuotation(), 404);
+
+        $newInvoice = app(InvoiceCloner::class)->cloneAsNew(
+            $invoice,
+            $request->user()->id,
+            DocumentType::Quotation->value,
+            null,
+            true,
+        );
+
+        ActivityLog::record('invoice.created', $newInvoice, "Duplicated quotation {$invoice->invoice_number} as {$newInvoice->invoice_number}");
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation duplicated.')]);
 
         return to_route('invoices.show', $newInvoice);
     }

@@ -21,7 +21,7 @@ export default function DocsPage() {
                 <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10 shadow-sm">
                     <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
                         <Link href="/" className="flex items-center gap-2.5">
-                            <span className="flex size-9 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold">
+                            <span className="flex size-9 items-center justify-center rounded-lg bg-blue-600 text-white font-bold">
                                 <BookOpen className="size-5" />
                             </span>
                             <span className="font-bold text-lg tracking-tight">
@@ -36,7 +36,7 @@ export default function DocsPage() {
                             <Button asChild variant="outline" size="sm">
                                 <Link href="/contact">Developer Consultation</Link>
                             </Button>
-                            <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                            <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                                 <Link href="/dashboard">Go to Dashboard</Link>
                             </Button>
                         </div>
@@ -46,7 +46,7 @@ export default function DocsPage() {
                 <main className="mx-auto max-w-6xl px-6 py-10 space-y-12">
                     {/* Hero Intro */}
                     <section className="text-center max-w-3xl mx-auto space-y-4">
-                        <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 text-xs px-3 py-1 font-semibold">
+                        <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 text-xs px-3 py-1 font-semibold">
                             Step-by-Step User Guide
                         </Badge>
                         <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight">
@@ -58,23 +58,23 @@ export default function DocsPage() {
                     </section>
 
                     {/* Workflow Diagram */}
-                    <Card className="border-indigo-200 dark:border-indigo-900 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20 shadow-sm">
+                    <Card className="border-blue-200 dark:border-blue-900 bg-gradient-to-r from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:to-blue-950/20 shadow-sm">
                         <CardHeader>
                             <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                <Layers className="size-5 text-indigo-600" />
+                                <Layers className="size-5 text-blue-600" />
                                 The Complete Deal Conversion Cycle
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="grid gap-4 sm:grid-cols-4 text-center">
                                 <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                                    <span className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center mx-auto mb-2 text-sm">1</span>
+                                    <span className="size-8 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center mx-auto mb-2 text-sm">1</span>
                                     <h4 className="font-bold text-sm">Build Quotation</h4>
                                     <p className="text-xs text-slate-500 mt-1">Pick products from catalog with weight, purity, or area pricing.</p>
                                 </div>
 
                                 <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                                    <span className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold flex items-center justify-center mx-auto mb-2 text-sm">2</span>
+                                    <span className="size-8 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center mx-auto mb-2 text-sm">2</span>
                                     <h4 className="font-bold text-sm">Share Secure Link</h4>
                                     <p className="text-xs text-slate-500 mt-1">Send via WhatsApp/SMS. Track views, PDF downloads, &amp; decisions.</p>
                                 </div>
@@ -85,10 +85,10 @@ export default function DocsPage() {
                                     <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">Customer confirms or pays UPI deposit on public link.</p>
                                 </div>
 
-                                <div className="p-4 rounded-xl bg-indigo-600 text-white shadow-xs">
+                                <div className="p-4 rounded-xl bg-blue-600 text-white shadow-xs">
                                     <span className="size-8 rounded-full bg-white/20 text-white font-bold flex items-center justify-center mx-auto mb-2 text-sm">4</span>
                                     <h4 className="font-bold text-sm">1-Click Conversion</h4>
-                                    <p className="text-xs text-indigo-100 mt-1">Convert to Sales Invoice with auto-applied deposit &amp; due date.</p>
+                                    <p className="text-xs text-blue-100 mt-1">Convert to Sales Invoice with auto-applied deposit &amp; due date.</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -100,7 +100,7 @@ export default function DocsPage() {
                         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base font-bold">
-                                    <FileText className="size-5 text-indigo-600" />
+                                    <FileText className="size-5 text-blue-600" />
                                     1. Creating &amp; Sharing Quotations
                                 </CardTitle>
                             </CardHeader>
@@ -108,7 +108,7 @@ export default function DocsPage() {
                                 <p>
                                     To create a quotation, navigate to <strong>Quotations → New Quotation</strong> or select products directly in the <strong>Product Catalog</strong>.
                                 </p>
-                                <ul className="space-y-2 text-xs border-l-2 border-indigo-500 pl-3">
+                                <ul className="space-y-2 text-xs border-l-2 border-blue-500 pl-3">
                                     <li><strong>WhatsApp Share:</strong> Click <em>Share on WhatsApp</em> to send a secure link directly to your customer's mobile number.</li>
                                     <li><strong>Real-time Tracking:</strong> Your dashboard logs when the client <em>views</em> or <em>downloads the PDF</em>.</li>
                                     <li><strong>Customer Decision:</strong> Clients can click <strong>Accept Quotation</strong> or leave revision notes right on their phone screen.</li>
@@ -140,7 +140,7 @@ export default function DocsPage() {
                         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base font-bold">
-                                    <Receipt className="size-5 text-purple-600" />
+                                    <Receipt className="size-5 text-blue-600" />
                                     3. GST &amp; Tax Calculation Rules
                                 </CardTitle>
                             </CardHeader>
@@ -148,7 +148,7 @@ export default function DocsPage() {
                                 <p>
                                     Taxes are calculated per item and grouped into slabs automatically according to Indian GST standards.
                                 </p>
-                                <ul className="space-y-2 text-xs border-l-2 border-purple-500 pl-3">
+                                <ul className="space-y-2 text-xs border-l-2 border-blue-500 pl-3">
                                     <li><strong>Intrastate (Same State):</strong> Splits slab tax equally into CGST + SGST rows.</li>
                                     <li><strong>Interstate (Other State):</strong> Charges full slab tax under IGST.</li>
                                     <li><strong>GSTR Export:</strong> Export official GSTR-1 and GSTR-3B JSON files under <em>Reports</em>.</li>
@@ -178,15 +178,15 @@ export default function DocsPage() {
                     </div>
 
                     {/* Developer Support CTA */}
-                    <section className="rounded-2xl bg-indigo-900 text-white p-8 text-center space-y-4">
-                        <Badge className="bg-indigo-700 text-indigo-100 border-indigo-600">
+                    <section className="rounded-2xl bg-blue-900 text-white p-8 text-center space-y-4">
+                        <Badge className="bg-blue-700 text-blue-100 border-blue-600">
                             Developer Support &amp; Onboarding
                         </Badge>
                         <h2 className="text-2xl font-bold">Need Custom Design or Dedicated Setup Help?</h2>
-                        <p className="text-indigo-200 text-sm max-w-lg mx-auto">
+                        <p className="text-blue-200 text-sm max-w-lg mx-auto">
                             Book a 1-on-1 video call or send us your print design specifications. We are here to customize your workflow.
                         </p>
-                        <Button asChild size="lg" className="bg-white text-indigo-900 hover:bg-slate-100 font-bold">
+                        <Button asChild size="lg" className="bg-white text-blue-900 hover:bg-slate-100 font-bold">
                             <Link href="/contact">Book Developer Call / Contact Support</Link>
                         </Button>
                     </section>

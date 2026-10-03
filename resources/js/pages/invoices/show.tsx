@@ -82,6 +82,10 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
     const { auth } = usePage<{ auth: Auth }>().props;
     const isAdmin = auth.user.role === 'admin';
     const activeLink = invoice.share_links.find((link) => link.is_active);
+    const linkExpiresSoon =
+        activeLink && !activeLink.is_expired && activeLink.expires_at
+            ? new Date(activeLink.expires_at).getTime() - Date.now() <= 86_400_000
+            : false;
     const canWrite = auth.user.role === 'admin' || auth.user.role === 'invoice_creator';
     const isPayable =
         invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice';
@@ -171,6 +175,8 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
     }
 
     const [approving, setApproving] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
+    const [planOpen, setPlanOpen] = useState(false);
 
     function approveDiscount() {
         setApproving(true);
@@ -207,8 +213,8 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
         <>
             <Head title={invoice.invoice_number} />
 
-            <div className="mx-auto w-full max-w-4xl space-y-6 p-4 md:p-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="mx-auto w-full max-w-4xl space-y-4 p-3 md:p-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <Heading title={invoice.invoice_number} />
                         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -238,21 +244,21 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         )}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" asChild>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <Button variant="outline" size="icon" asChild title="Print">
                             <a href={pdfRoute(invoice.id).url} target="_blank" rel="noreferrer">
                                 <Printer className="size-4" />
                             </a>
                         </Button>
-                        <Button variant="outline" asChild>
-                            <a href={receiptRoute(invoice.id).url} target="_blank" rel="noreferrer" title="Thermal receipt (58/80mm)">
+                        <Button variant="outline" size="icon" asChild title="Thermal receipt">
+                            <a href={receiptRoute(invoice.id).url} target="_blank" rel="noreferrer">
                                 <Receipt className="size-4" />
                             </a>
                         </Button>
                         {canWrite && !isAdjustment && invoice.status !== 'cancelled' && (
-                            <Button variant="outline" asChild>
+                            <Button variant="outline" asChild size="sm">
                                 <Link href={`/invoices/${invoice.id}/edit`}>
-                                    <Pencil className="size-4" />
+                                    <Pencil className="size-3.5" />
                                     Edit
                                 </Link>
                             </Button>
@@ -260,8 +266,8 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         {canWrite && invoice.status !== 'cancelled' && (
                             <Form {...InvoiceController.cancel.form(invoice.id)}>
                                 {({ processing }) => (
-                                    <Button variant="outline" type="submit" disabled={processing}>
-                                        {isAdjustment ? 'Cancel note' : 'Cancel invoice'}
+                                    <Button variant="outline" size="sm" type="submit" disabled={processing}>
+                                        {isAdjustment ? 'Cancel note' : 'Cancel'}
                                     </Button>
                                 )}
                             </Form>
@@ -286,7 +292,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         {canWrite && invoice.document_type === 'quotation' && !invoice.converted_to_id && (
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button>Convert to invoice</Button>
+                                    <Button size="sm">Convert</Button>
                                 </DialogTrigger>
                                 <DialogContent>
                                     <DialogHeader>
@@ -341,7 +347,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         {isAdmin && (
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="destructive" size="icon">
+                                    <Button variant="destructive" size="icon" title="Delete">
                                         <Trash2 className="size-4" />
                                     </Button>
                                 </DialogTrigger>
@@ -439,35 +445,35 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                 )}
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Items</CardTitle>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-sm">Items</CardTitle>
                     </CardHeader>
-                    <CardContent className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] text-sm">
-                            <thead className="border-b text-left text-muted-foreground">
+                    <CardContent className="overflow-x-auto p-0">
+                        <table className="w-full min-w-[640px] text-xs">
+                            <thead className="border-b bg-muted/30 text-left text-muted-foreground">
                                 <tr>
-                                    <th className="py-2 pr-2 font-medium">Item</th>
+                                    <th className="py-1.5 px-3 font-medium">Item</th>
                                     {usesWeightFields && (
                                         <>
-                                            <th className="py-2 pr-2 font-medium">
+                                            <th className="py-1.5 px-2 font-medium">
                                                 Metal / Purity
                                             </th>
-                                            <th className="py-2 pr-2 text-right font-medium">
+                                            <th className="py-1.5 px-2 text-right font-medium">
                                                 Net wt
                                             </th>
                                         </>
                                     )}
                                     {!usesWeightFields && (
                                         <>
-                                            <th className="py-2 pr-2 font-medium">Brand / Model</th>
-                                            <th className="py-2 pr-2 text-right font-medium">
+                                            <th className="py-1.5 px-2 font-medium">Brand / Model</th>
+                                            <th className="py-1.5 px-2 text-right font-medium">
                                                 {hasAreaItems ? 'Area (sq ft)' : 'Size'}
                                             </th>
                                         </>
                                     )}
-                                    <th className="py-2 pr-2 text-right font-medium">Qty</th>
-                                    <th className="py-2 pr-2 text-right font-medium">Charges</th>
-                                    <th className="py-2 text-right font-medium">Total</th>
+                                    <th className="py-1.5 px-2 text-right font-medium">Qty</th>
+                                    <th className="py-1.5 px-2 text-right font-medium">Charges</th>
+                                    <th className="py-1.5 px-3 text-right font-medium">Total</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
@@ -480,7 +486,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
 
                                         return (
                                     <tr key={item.id}>
-                                        <td className="py-2 pr-2">
+                                        <td className="py-1.5 px-3">
                                             <div className="font-medium">{item.item_name}</div>
                                             {item.line_type === 'exchange_credit' && (
                                                 <div className="text-xs text-brand-dark dark:text-brand-light">
@@ -511,33 +517,33 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                         </td>
                                         {usesWeightFields ? (
                                             <>
-                                                <td className="py-2 pr-2">
+                                                <td className="py-1.5 px-2">
                                                     {item.metal_type}{' '}
                                                     {item.purity && `/ ${item.purity}`}
                                                 </td>
-                                                <td className="py-2 pr-2 text-right">
+                                                <td className="py-1.5 px-2 text-right">
                                                     {item.net_weight}g
                                                 </td>
                                             </>
                                         ) : (
                                             <>
-                                                <td className="py-2 pr-2">
+                                                <td className="py-1.5 px-2">
                                                     {[item.brand, item.model_number]
                                                         .filter(Boolean)
                                                         .join(' · ') || '—'}
                                                 </td>
-                                                <td className="py-2 pr-2 text-right">
+                                                <td className="py-1.5 px-2 text-right">
                                                     {area !== null
                                                         ? `${area.toFixed(2)} sq ft`
                                                         : (item.size_label ?? '—')}
                                                 </td>
                                             </>
                                         )}
-                                        <td className="py-2 pr-2 text-right">{item.quantity}</td>
-                                        <td className="py-2 pr-2 text-right">
+                                        <td className="py-1.5 px-2 text-right">{item.quantity}</td>
+                                        <td className="py-1.5 px-2 text-right">
                                             {currency.format(item.charges.reduce((sum, c) => sum + Number(c.amount), 0) * item.quantity)}
                                         </td>
-                                        <td className="py-2 text-right font-medium">
+                                        <td className="py-1.5 px-3 text-right font-medium">
                                             {currency.format(Number(item.total))}
                                         </td>
                                     </tr>
@@ -549,51 +555,59 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Totals</CardTitle>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-sm">Totals</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-1 text-sm">
-                        <TotalRow label="Subtotal" value={invoice.subtotal} />
-                        {(invoice.charges_summary ?? []).map((row) => (
-                            <TotalRow key={row.code} label={row.label} value={String(row.amount)} />
-                        ))}
-                        <TotalRow label="Discount" value={`-${invoice.discount}`} />
-                        {invoice.tax_breakdown && invoice.tax_breakdown.length > 0 ? (
-                            invoice.tax_breakdown.map((row, i) => (
-                                <TotalRow key={i} label={row.label} value={String(row.amount)} />
-                            ))
-                        ) : (
-                            <TotalRow label="Tax" value={invoice.tax} />
-                        )}
-                        {Number(invoice.tcs_amount) > 0 && (
-                            <TotalRow
-                                label={`TCS @ ${invoice.tcs_rate}%`}
-                                value={invoice.tcs_amount}
-                            />
-                        )}
-                        <TotalRow label="Round off" value={invoice.round_off} />
-                        <TotalRow label="Grand total" value={invoice.grand_total} emphasize />
-                        {Number(invoice.tds_amount) > 0 && (
-                            <TotalRow
-                                label={`TDS @ ${invoice.tds_rate}% (deducted)`}
-                                value={`-${invoice.tds_amount}`}
-                            />
-                        )}
-                        <TotalRow label="Paid" value={invoice.paid_amount} />
-                        <TotalRow label="Balance due" value={invoice.balance_amount} emphasize />
+                    <CardContent className="space-y-0.5 text-xs p-3">
+                        <div className="grid gap-x-8 sm:grid-cols-2">
+                            <div className="space-y-0.5">
+                                <TotalRow label="Subtotal" value={invoice.subtotal} />
+                                {(invoice.charges_summary ?? []).map((row) => (
+                                    <TotalRow key={row.code} label={row.label} value={String(row.amount)} />
+                                ))}
+                                <TotalRow label="Discount" value={`-${invoice.discount}`} />
+                            </div>
+                            <div className="space-y-0.5">
+                                {invoice.tax_breakdown && invoice.tax_breakdown.length > 0 ? (
+                                    invoice.tax_breakdown.map((row, i) => (
+                                        <TotalRow key={i} label={row.label} value={String(row.amount)} />
+                                    ))
+                                ) : (
+                                    <TotalRow label="Tax" value={invoice.tax} />
+                                )}
+                                {Number(invoice.tcs_amount) > 0 && (
+                                    <TotalRow
+                                        label={`TCS @ ${invoice.tcs_rate}%`}
+                                        value={invoice.tcs_amount}
+                                    />
+                                )}
+                                <TotalRow label="Round off" value={invoice.round_off} />
+                            </div>
+                        </div>
+                        <div className="border-t pt-2 mt-1 space-y-0.5">
+                            <TotalRow label="Grand total" value={invoice.grand_total} emphasize />
+                            {Number(invoice.tds_amount) > 0 && (
+                                <TotalRow
+                                    label={`TDS @ ${invoice.tds_rate}% (deducted)`}
+                                    value={`-${invoice.tds_amount}`}
+                                />
+                            )}
+                            <TotalRow label="Paid" value={invoice.paid_amount} />
+                            <TotalRow label="Balance due" value={invoice.balance_amount} emphasize />
+                        </div>
                     </CardContent>
                 </Card>
 
                 {adjustmentNotes.length > 0 && (
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Credit &amp; debit notes</CardTitle>
+                        <CardHeader className="py-3">
+                            <CardTitle className="text-sm">Credit &amp; debit notes</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2">
+                        <CardContent className="space-y-1.5 p-3 pt-0">
                             {adjustmentNotes.map((note) => (
                                 <div
                                     key={note.id}
-                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm"
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs"
                                 >
                                     <div className="flex items-center gap-2">
                                         <Link
@@ -619,29 +633,29 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                 )}
 
                 <Card>
-<CardHeader className="flex-row items-center justify-between">
-                            <CardTitle>Payments</CardTitle>
-                            {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0 && (
-                                <div className="flex gap-2">
-                                    <RemindCustomerButton invoiceId={invoice.id} />
-                                    {advances.length > 0 && (
-                                        <ApplyAdvanceDialog invoiceId={invoice.id} advances={advances} />
-                                    )}
-                                    <RecordPaymentDialog
-                                        invoiceId={invoice.id}
-                                        balance={invoice.balance_amount}
-                                    />
-                                </div>
-                            )}
-                        </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardHeader className="flex-row items-center justify-between py-3">
+                        <CardTitle className="text-sm">Payments</CardTitle>
+                        {canWrite && (invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice') && Number(invoice.balance_amount) > 0 && (
+                            <div className="flex gap-1.5">
+                                <RemindCustomerButton invoiceId={invoice.id} />
+                                {advances.length > 0 && (
+                                    <ApplyAdvanceDialog invoiceId={invoice.id} advances={advances} />
+                                )}
+                                <RecordPaymentDialog
+                                    invoiceId={invoice.id}
+                                    balance={invoice.balance_amount}
+                                />
+                            </div>
+                        )}
+                    </CardHeader>
+                    <CardContent className="space-y-1.5 p-3 pt-0">
                         {invoice.payments.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No payments recorded.</p>
                         ) : (
                             invoice.payments.map((payment) => (
                                 <div
                                     key={payment.id}
-                                    className="flex items-center justify-between rounded-md border p-2 text-sm"
+                                    className="flex items-center justify-between rounded-md border px-2.5 py-1.5 text-xs"
                                 >
                                     <div>
                                         <span className="font-medium">{currency.format(Number(payment.amount))}</span>
@@ -660,10 +674,17 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
 
                 {canWrite && (
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Share with customer</CardTitle>
+                        <CardHeader
+                            className="flex cursor-pointer select-none flex-row items-center justify-between py-3"
+                            onClick={() => setShareOpen(!shareOpen)}
+                        >
+                            <CardTitle className="text-sm">Share with customer</CardTitle>
+                            <span className="text-xs text-muted-foreground">
+                                {shareOpen ? 'Hide' : 'Show'}
+                            </span>
                         </CardHeader>
-                        <CardContent className="space-y-3">
+                        {shareOpen && (
+                        <CardContent className="space-y-3 p-3 pt-0">
                             {!activeLink ? (
                                 <Form
                                     {...InvoiceShareLinkController.store.form(invoice.id)}
@@ -677,6 +698,32 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 </Form>
                             ) : (
                                 <>
+                                    {linkExpiresSoon && (
+                                        <div className="flex items-center justify-between rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                                            <span className="flex items-center gap-2">
+                                                <Bell className="size-4" />
+                                                This share link expires within 24 hours.
+                                            </span>
+                                            <Form
+                                                {...InvoiceShareLinkController.renew.form({
+                                                    invoice: invoice.id,
+                                                    shareLink: activeLink.id,
+                                                })}
+                                            >
+                                                {({ processing }) => (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        type="submit"
+                                                        disabled={processing}
+                                                        className="h-7 border-amber-600 bg-white text-amber-900 hover:bg-amber-50 dark:border-amber-500 dark:bg-transparent dark:text-amber-200 dark:hover:bg-amber-900/30"
+                                                    >
+                                                        {processing ? 'Renewing…' : 'Renew'}
+                                                    </Button>
+                                                )}
+                                            </Form>
+                                        </div>
+                                    )}
                                     <div className="flex flex-col gap-2 sm:flex-row">
                                         <Input
                                             readOnly
@@ -776,15 +823,16 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 </>
                             )}
                         </CardContent>
+                        )}
                     </Card>
                 )}
 
                 {canWrite && isPayable && invoice.status !== 'cancelled' && (
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Recurring</CardTitle>
+                        <CardHeader className="py-3">
+                            <CardTitle className="text-sm">Recurring</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-3 pt-0">
                             {recurringProfile ? (
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                     <p className="text-muted-foreground">
@@ -845,15 +893,24 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                     invoice.status !== 'cancelled' &&
                     Number(invoice.balance_amount) > 0 && (
                         <Card>
-                            <CardHeader className="flex-row items-center justify-between">
-                                <CardTitle>Payment plan</CardTitle>
-                                <InstallmentPlanDialog
-                                    invoiceId={invoice.id}
-                                    balance={invoice.balance_amount}
-                                    existing={invoice.installments}
-                                />
+                            <CardHeader
+                                className="flex cursor-pointer select-none flex-row items-center justify-between py-3"
+                                onClick={() => setPlanOpen(!planOpen)}
+                            >
+                                <CardTitle className="text-sm">Payment plan</CardTitle>
+                                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <InstallmentPlanDialog
+                                        invoiceId={invoice.id}
+                                        balance={invoice.balance_amount}
+                                        existing={invoice.installments}
+                                    />
+                                    <span className="text-xs text-muted-foreground">
+                                        {planOpen ? 'Hide' : 'Show'}
+                                    </span>
+                                </div>
                             </CardHeader>
-                            <CardContent className="space-y-2">
+                            {planOpen && (
+                            <CardContent className="space-y-2 p-3 pt-0">
                                 {invoice.installments.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
                                         No plan set — the full balance of{' '}
@@ -987,25 +1044,26 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                                     </div>
                                                 ),
                                             )}
-                                        </div>
-                                    </>
-                                )}
+                                                        </div>
+                                                    </>
+                                                )}
                             </CardContent>
+                            )}
                         </Card>
                     )}
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Notes</CardTitle>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-sm">Notes</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 p-3 pt-0">
                         {invoice.notes_log.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
                                 No notes on this invoice.
                             </p>
                         ) : (
                             invoice.notes_log.map((note) => (
-                                <div key={note.id} className="rounded-md border p-3">
+                                <div key={note.id} className="rounded-md border p-2.5">
                                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                                         <span className="capitalize">{note.type}</span>
                                         <span>
@@ -1023,10 +1081,10 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                 {invoice.attributes &&
                     Object.keys(invoice.attributes).length > 0 && (
                         <Card>
-                            <CardHeader>
-                                <CardTitle>Extra attributes</CardTitle>
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-sm">Extra attributes</CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="p-3 pt-0">
                                 <AttributesList
                                     attributes={invoice.attributes}
                                 />
@@ -1321,7 +1379,7 @@ function TotalRow({ label, value, emphasize }: { label: string; value: string; e
         <div
             className={
                 emphasize
-                    ? 'flex justify-between border-t pt-2 text-base font-semibold'
+                    ? 'flex justify-between border-t pt-1.5 text-sm font-semibold'
                     : 'flex justify-between text-muted-foreground'
             }
         >

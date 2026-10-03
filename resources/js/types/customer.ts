@@ -45,6 +45,19 @@ export type InvoiceSummary = {
     balance_amount: string;
 };
 
+export type PortalQuotation = {
+    id: number;
+    invoice_number: string;
+    invoice_date: string;
+    valid_until: string | null;
+    status: string;
+    status_label: string;
+    is_open: boolean;
+    grand_total: number;
+    can_decide: boolean;
+    share_token: string;
+};
+
 export type GstinType = 'regular' | 'composition' | 'unregistered' | 'consumer';
 
 export type ContactChannel =

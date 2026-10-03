@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\QuotationActivity;
 use App\Enums\QuotationStatus;
@@ -9,8 +10,11 @@ use App\Models\BusinessSetting;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceShareLink;
 use App\Models\InvoiceTemplate;
+use App\Services\CustomerAdvanceController;
+use App\Services\InvoiceCloner;
 use App\Services\QuotationNotifier;
 use App\Services\QuotationService;
+use App\Support\Industry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -139,6 +143,25 @@ class PublicInvoiceController extends Controller
 
         try {
             $this->quotations->decide($invoice, $decision, $response);
+
+            if ($decision === QuotationStatus::Accepted && $settings->quotation_auto_convert) {
+                $industry = $invoice->tenant->industry ?? Industry::default();
+                $documentType = Industry::usesWeightFields($industry)
+                    ? DocumentType::JewelryInvoice
+                    : DocumentType::GeneralInvoice;
+
+                $newInvoice = app(InvoiceCloner::class)->cloneAsNew(
+                    $invoice,
+                    null,
+                    $documentType->value,
+                    now()->addDays(7)->toDateString(),
+                );
+
+                app(CustomerAdvanceController::class)->applyAvailableAdvancesToInvoice($newInvoice, null);
+
+                $this->quotations->transition($invoice, QuotationStatus::Converted, null);
+                $invoice->update(['converted_to_id' => $newInvoice->id]);
+            }
         } catch (RuntimeException $e) {
             return back()->withErrors(['decision' => $e->getMessage()]);
         }

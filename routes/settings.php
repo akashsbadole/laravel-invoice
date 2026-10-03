@@ -8,6 +8,7 @@ use App\Http\Controllers\Settings\CustomerGroupController;
 use App\Http\Controllers\Settings\InvoiceTemplateController;
 use App\Http\Controllers\Settings\MetalRateController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\QuotationTemplateController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\StaffInviteController;
 use App\Http\Controllers\Settings\UserController;
@@ -57,6 +58,11 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::put('settings/invoice-templates/{invoiceTemplate}', [InvoiceTemplateController::class, 'update'])->name('invoice-templates.update');
     Route::post('settings/invoice-templates/{invoiceTemplate}/default', [InvoiceTemplateController::class, 'setDefault'])->name('invoice-templates.default');
     Route::delete('settings/invoice-templates/{invoiceTemplate}', [InvoiceTemplateController::class, 'destroy'])->name('invoice-templates.destroy');
+
+    Route::get('settings/quotation-templates', [QuotationTemplateController::class, 'index'])->name('quotation-templates.index');
+    Route::post('settings/quotation-templates', [QuotationTemplateController::class, 'store'])->name('quotation-templates.store');
+    Route::put('settings/quotation-templates/{quotationTemplate}', [QuotationTemplateController::class, 'update'])->name('quotation-templates.update');
+    Route::delete('settings/quotation-templates/{quotationTemplate}', [QuotationTemplateController::class, 'destroy'])->name('quotation-templates.destroy');
 });
 
 Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {

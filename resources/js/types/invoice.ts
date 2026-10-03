@@ -238,6 +238,7 @@ export type ShareLink = {
     token: string;
     expires_at: string | null;
     is_active: boolean;
+    is_expired: boolean;
     sent_via: string | null;
     sent_at: string | null;
     viewed_at: string | null;

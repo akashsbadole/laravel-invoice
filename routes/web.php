@@ -90,6 +90,7 @@ Route::get('portal/verify/{token}', [PortalAuthController::class, 'verify'])->na
 Route::middleware([EnsurePortalCustomer::class])->group(function () {
     Route::post('portal/logout', [PortalAuthController::class, 'destroy'])->name('portal.logout');
     Route::get('portal', [PortalInvoiceController::class, 'index'])->name('portal.dashboard');
+    Route::get('portal/quotations', [PortalInvoiceController::class, 'quotations'])->name('portal.quotations');
     Route::get('portal/invoices/{invoice}', [PortalInvoiceController::class, 'show'])->name('portal.invoices.show');
     Route::get('portal/invoices/{invoice}/pdf', [PortalInvoiceController::class, 'pdf'])->name('portal.invoices.pdf');
 });
@@ -150,11 +151,13 @@ Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, E
     // The pipeline board: what is open, what it is worth, and what to chase.
     Route::get('quotations', [QuotationPipelineController::class, 'index'])->name('quotations.index');
     Route::post('quotations/{quotation}/nudge', [QuotationFollowUpController::class, 'store'])->name('quotations.nudge');
+    Route::post('quotations/bulk-nudge', [QuotationFollowUpController::class, 'bulk'])->name('quotations.bulk-nudge');
 
     Route::resource('invoices', InvoiceController::class);
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
     Route::post('invoices/{invoice}/notes', [InvoiceController::class, 'storeNote'])->name('invoices.notes.store');
     Route::post('invoices/{invoice}/convert', [InvoiceController::class, 'convert'])->name('invoices.convert');
+    Route::post('invoices/{invoice}/duplicate', [InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
     Route::post('invoices/{invoice}/approve-discount', [InvoiceController::class, 'approveDiscount'])->name('invoices.approve-discount');
     Route::post('invoices/{invoice}/quotation-status', [InvoiceController::class, 'quotationStatus'])->name('invoices.quotation-status');
     Route::post('invoices/{invoice}/einvoice', [InvoiceController::class, 'generateEInvoice'])->name('invoices.einvoice');
@@ -178,6 +181,7 @@ Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, E
     Route::post('invoices/{invoice}/share-links/{shareLink}/deactivate', [InvoiceShareLinkController::class, 'deactivate'])->name('invoices.share-links.deactivate');
     Route::post('invoices/{invoice}/share-links/{shareLink}/mark-sent', [InvoiceShareLinkController::class, 'markSent'])->name('invoices.share-links.mark-sent');
     Route::post('invoices/{invoice}/share-links/{shareLink}/sms', [InvoiceShareLinkController::class, 'sendSms'])->name('invoices.share-links.sms');
+    Route::post('invoices/{invoice}/share-links/{shareLink}/renew', [InvoiceShareLinkController::class, 'renew'])->name('invoices.share-links.renew');
 
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/download', [ReportController::class, 'download'])->name('reports.download');

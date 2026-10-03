@@ -99,4 +99,23 @@ class InvoiceShareLinkController extends Controller
 
         return back();
     }
+
+    public function renew(Request $request, Invoice $invoice, InvoiceShareLink $shareLink): RedirectResponse
+    {
+        Gate::authorize('share', $invoice);
+        abort_unless($shareLink->invoice_id === $invoice->id, 404);
+
+        $validated = $request->validate([
+            'expires_in_days' => ['required', 'integer', 'min:1', 'max:365'],
+        ]);
+
+        $shareLink->update([
+            'expires_at' => now()->addDays($validated['expires_in_days']),
+            'is_active' => true,
+        ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Share link renewed.')]);
+
+        return back();
+    }
 }

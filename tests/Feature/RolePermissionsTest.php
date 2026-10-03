@@ -266,15 +266,15 @@ class RolePermissionsTest extends TestCase
     public function test_registration_lands_on_the_free_plan_with_no_trial(): void
     {
         $this->post(route('register'), [
-            'name' => 'Priya',
-            'business_name' => 'Priya Textiles',
+            'name' => 'Akash',
+            'business_name' => 'Akash Textiles',
             'industry' => 'general',
-            'email' => 'priya@example.test',
+            'email' => 'Akash@example.test',
             'password' => 'secret1234',
             'password_confirmation' => 'secret1234',
         ])->assertRedirect();
 
-        $tenant = Tenant::query()->where('name', 'Priya Textiles')->firstOrFail();
+        $tenant = Tenant::query()->where('name', 'Akash Textiles')->firstOrFail();
 
         $this->assertNull($tenant->trial_ends_at);
         $this->assertSame(
@@ -321,10 +321,10 @@ class RolePermissionsTest extends TestCase
     public function test_a_brand_new_tenant_can_reach_the_dashboard(): void
     {
         $this->post(route('register'), [
-            'name' => 'Priya',
-            'business_name' => 'Priya Textiles',
+            'name' => 'Akash',
+            'business_name' => 'Akash Textiles',
             'industry' => 'general',
-            'email' => 'priya@example.test',
+            'email' => 'Akash@example.test',
             'password' => 'secret1234',
             'password_confirmation' => 'secret1234',
         ])->assertRedirect();

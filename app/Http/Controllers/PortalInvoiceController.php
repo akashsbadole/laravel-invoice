@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DocumentType;
 use App\Models\BusinessSetting;
 use App\Models\Invoice;
 use App\Services\InvoicePdfService;
+use App\Services\QuotationService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -36,6 +38,33 @@ class PortalInvoiceController extends Controller
                 'paid' => (float) $customer->totalPaid(),
                 'outstanding' => (float) $customer->totalOutstanding(),
             ],
+        ]);
+    }
+
+    public function quotations(Request $request): Response
+    {
+        $customer = $request->attributes->get('portalCustomer');
+
+        $quotations = Invoice::query()
+            ->where('customer_id', $customer->id)
+            ->where('document_type', DocumentType::Quotation->value)
+            ->latest('invoice_date')
+            ->get()
+            ->map(fn (Invoice $quotation) => [
+                'id' => $quotation->id,
+                'invoice_number' => $quotation->invoice_number,
+                'invoice_date' => $quotation->invoice_date,
+                'valid_until' => $quotation->quotation_valid_until,
+                'status' => app(QuotationService::class)->currentStatus($quotation)->value,
+                'status_label' => app(QuotationService::class)->currentStatus($quotation)->label(),
+                'is_open' => app(QuotationService::class)->currentStatus($quotation)->isOpen(),
+                'grand_total' => (float) $quotation->grand_total,
+                'can_decide' => $quotation->converted_to_id === null,
+            ]);
+
+        return Inertia::render('portal/quotations', [
+            'customer' => $customer->only(['full_name', 'email', 'mobile_number']),
+            'quotations' => $quotations,
         ]);
     }
 

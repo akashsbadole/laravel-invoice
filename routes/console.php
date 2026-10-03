@@ -13,5 +13,6 @@ Schedule::command('catalogs:flag-stale-drafts')->dailyAt('23:00');
 Schedule::command('invoices:mark-overdue')->dailyAt('00:10');
 Schedule::command('quotations:expire')->dailyAt('00:20');
 Schedule::command('quotations:follow-up')->dailyAt('10:00');
+Schedule::command('quotations:digest')->dailyAt('08:00');
 Schedule::command('reminders:send')->dailyAt('09:00');
 Schedule::command('recurring:run')->dailyAt('06:00');

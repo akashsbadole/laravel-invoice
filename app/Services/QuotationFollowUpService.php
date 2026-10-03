@@ -36,6 +36,102 @@ class QuotationFollowUpService
     ) {}
 
     /**
+     * Send a quotation to the customer when it is first marked as sent.
+     *
+     * Creates a share link if none exists, then delivers via the customer's
+     * preferred contact channel. Returns the channels that actually went out.
+     *
+     * @return array<string, string>
+     */
+    public function sendQuotation(Invoice $quotation, ?int $byUserId = null): array
+    {
+        $quotation->loadMissing('customer', 'shareLinks');
+        $settings = BusinessSetting::forTenant($quotation->tenant_id);
+
+        if (! $settings->quotation_followup_enabled) {
+            return [];
+        }
+
+        if (! $this->isChaseable($quotation)) {
+            return [];
+        }
+
+        $link = $this->activeLink($quotation);
+
+        if ($link === null) {
+            $link = $this->createShareLink($quotation);
+        }
+
+        $url = route('invoices.public.show', $link->token);
+        $sent = [];
+        $preference = $quotation->customer?->preferred_contact_channel;
+
+        $wantsText = $preference === null
+            || in_array($preference, [ContactChannel::Sms, ContactChannel::WhatsApp], true);
+        $wantsEmail = $preference === null || $preference === ContactChannel::Email;
+        $automate = $preference?->isAutomatable() ?? true;
+
+        if ($automate && $wantsText && $quotation->customer?->mobile_number) {
+            $sent['sms'] = $this->sms->send(
+                $quotation->customer->mobile_number,
+                $this->sendMessage($quotation, $settings, $url),
+                [
+                    'customer_id' => $quotation->customer_id,
+                    'invoice_id' => $quotation->id,
+                    'created_by' => $byUserId,
+                ],
+            )->status;
+        }
+
+        if ($automate && $wantsEmail && $quotation->customer?->email) {
+            $sent['email'] = $this->sendEmail($quotation, $url, $byUserId);
+        }
+
+        if ($sent !== [] || ! $automate) {
+            $quotation->forceFill(['last_reminder_sent_at' => now()])->saveQuietly();
+        }
+
+        return $sent;
+    }
+
+    /**
+     * Create an active share link for the quotation.
+     */
+    protected function createShareLink(Invoice $quotation): InvoiceShareLink
+    {
+        $link = new InvoiceShareLink([
+            'invoice_id' => $quotation->id,
+            'is_active' => true,
+            'created_by' => null,
+            'expires_at' => $quotation->quotation_valid_until,
+        ]);
+
+        $link->token = InvoiceShareLink::generateToken();
+        $link->saveQuietly();
+
+        return $link;
+    }
+
+    /**
+     * Initial send message for a newly sent quotation.
+     */
+    protected function sendMessage(Invoice $quotation, BusinessSetting $settings, string $url): string
+    {
+        $valid = $quotation->quotation_valid_until
+            ? ' Valid until '.$quotation->quotation_valid_until->format('d M').'.'
+            : '';
+
+        return sprintf(
+            'Dear %s, please find your quotation %s from %s.%s View it here: %s',
+            $quotation->customer->full_name,
+            $quotation->invoice_number,
+            $settings->business_name,
+            $valid,
+            $url,
+        );
+    }
+
+    /**
      * Nudge one quotation. Returns the channels that actually went out.
      *
      * @return array<string, string>

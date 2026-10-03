@@ -22,22 +22,30 @@ class InvoiceCloner
         Invoice $source,
         int $createdById,
         string $documentType = DocumentType::JewelryInvoice->value,
-        ?string $dueDate = null
+        ?string $dueDate = null,
+        bool $resetToDraft = false
     ): Invoice {
         // Run inside the source invoice's tenant so numbering, settings
         // and the tenant auto-fill behave identically from web and console.
-        return Tenant::runInContext($source->tenant_id, fn () => DB::transaction(function () use ($source, $createdById, $documentType, $dueDate) {
+        return Tenant::runInContext($source->tenant_id, fn () => DB::transaction(function () use ($source, $createdById, $documentType, $dueDate, $resetToDraft) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
 
             $source->loadMissing(['items.charges', 'charges']);
 
+            $isQuotation = $documentType === DocumentType::Quotation->value;
+            $status = $resetToDraft && $isQuotation ? InvoiceStatus::Draft : InvoiceStatus::Unpaid;
+            $invoiceNumber = $isQuotation
+                ? $business->nextQuotationNumber()
+                : $business->nextInvoiceNumber();
+
             $copy = Invoice::create([
                 'customer_id' => $source->customer_id,
                 'document_type' => $documentType,
-                'status' => InvoiceStatus::Unpaid,
-                'invoice_number' => $business->nextInvoiceNumber(),
+                'status' => $status,
+                'invoice_number' => $invoiceNumber,
                 'invoice_date' => today()->toDateString(),
                 'due_date' => $dueDate ?? $source->due_date,
+                'quotation_valid_until' => $isQuotation ? $source->quotation_valid_until : null,
                 'reference_number' => $source->reference_number,
                 'salesperson_id' => $source->salesperson_id,
                 'invoice_template_id' => $source->invoice_template_id,
@@ -58,8 +66,6 @@ class InvoiceCloner
                 'balance_amount' => max((float) $source->grand_total - (float) $source->tds_amount, 0),
                 'notes' => $source->notes,
                 'terms' => $source->terms,
-                // Bill at the rate the customer agreed to, not the
-                // day the bill is raised.
                 'rate_locked_at' => $source->rate_locked_at,
                 'discount_approved_by' => $source->discount_approved_by,
                 'discount_approved_at' => $source->discount_approved_at,
@@ -68,10 +74,6 @@ class InvoiceCloner
             ]);
 
             foreach ($source->items as $item) {
-                // Copy the whole line rather than a hand-picked subset: a
-                // converted quotation must arrive as the same document, and
-                // every column added since (line type, product and variant
-                // links, attributes) has to survive the trip.
                 $newItem = $copy->items()->create(
                     $item->only(array_diff($item->getFillable(), ['invoice_id'])),
                 );

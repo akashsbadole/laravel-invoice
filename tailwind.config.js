@@ -49,9 +49,9 @@ export default {
                     foreground: 'hsl(var(--card-foreground))',
                 },
                 brand: {
-                    light: '#A78BFA',
-                    DEFAULT: '#7C3AED',
-                    dark: '#5B21B6',
+                    light: '#93C5FD',
+                    DEFAULT: '#3B82F6',
+                    dark: '#1D4ED8',
                 },
                 navy: {
                     DEFAULT: '#1E293B',
