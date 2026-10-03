@@ -19,11 +19,11 @@ capability (`canDo(Permission::…)`) rather than testing a role name.
 | ------------------- | --------------------------------------------------------------------------------------------- |
 | **Super Admin**     | Platform operator with **no tenant**. Manages every tenant, plan and subscription.            |
 | **Admin**           | Full control of one business, including settings and staff.                                   |
-| **Manager**         | Runs the day to day — catalog, stock, invoices, reports. No settings or staff administration. |
+| **Manager**         | Runs the day to day — catalog, stock, invoices, reports. No settings or staff administration.  |
 | **Invoice Creator** | Quotes and invoices in, records payments. No deletes, no cost visibility.                     |
 | **Viewer**          | Read-only across the board.                                                                   |
 
-Capabilities include `view_dashboard`, `manage_customers`, `manage_catalog`,
+Capabilities: `view_dashboard`, `manage_customers`, `manage_catalog`,
 `manage_inventory`, `manage_quotations`, `create_invoices`, `edit_invoices`,
 `delete_invoices`, `record_payments`, `send_messages`, `view_reports`,
 `view_costs`, `manage_settings`, `manage_users`, plus the platform-only
@@ -205,6 +205,58 @@ as toast notifications, not silent failures.
 - Convert an accepted quotation straight into an invoice, carrying the lines
   and the catalog links across.
 
+### Rate lock — the quote bills at the rate it promised
+
+A quote is a promise: the customer accepts a number, and the bill has to land
+on that number even when the daily rate moves before billing.
+
+- `invoices.rate_locked_at` records the day the metal rate was struck. It
+  defaults to the document's own date and staff can back-date it to the day
+  they actually priced the job.
+- It **survives conversion**. A quotation priced at a Monday rate is billed at
+  the Monday rate, not re-dated to the billing day, so a rate move can never
+  turn into a surprise on the bill.
+- It prints on the quotation, the shared link, the WhatsApp message and the
+  tax invoice ("Metal rate as on 12 Jan").
+- `RateLockService` flags a price older than 7 days as **stale** and the
+  invoice page warns the owner to re-confirm today's rate before converting.
+  It warns rather than blocks: it cannot know whether the market actually moved.
+
+### Revisions — "which quote did we agree to?"
+
+Editing a quotation the customer has already seen changes what they agreed to,
+so every such edit is a numbered revision with a reason.
+
+- `revision_number` starts at 1 and advances only once a quotation leaves
+  `draft`. Draft edits are private and cost no revision.
+- The owner records a one-line reason ("Customer asked for 20g instead of
+  15g") which is shown to the customer, published in the WhatsApp text and
+  recorded in the activity timeline as *"Quotation revised to Rev N"*.
+- Revisions show as `Rev N` on the invoice page, on the shared quotation and
+  in the shared WhatsApp message, so the customer can always tell which version
+  they are holding.
+
+### Accept / Ask for changes / Decline
+
+Rejecting a quote kills the negotiation and loses the thread. The shared page
+offers three explicit paths instead:
+
+- **Accept** — records the decision and notifies staff.
+- **Ask for changes** — keeps the quotation **open** (no status change), stores
+  the customer's own words as `quotation_response`, logs a
+  `changes_requested` activity, notifies staff, *and* opens a prefilled WhatsApp
+  message to the shop. Negotiation continues in the channel the shop actually
+  uses.
+- **Decline** — closes the quotation.
+
+### Acceptance never creates a sale
+
+A customer tapping **Accept** on a shared link records the decision **only**.
+It never creates an invoice. No owner is present at that moment, nobody has
+re-confirmed the metal rate and nobody has taken payment, so converting is a
+human action at the counter. (An earlier `quotation_auto_convert` setting did
+convert silently; the column has been dropped.)
+
 ---
 
 ## 4. Invoicing
@@ -243,6 +295,39 @@ as toast notifications, not silent failures.
 - **Metal rates** for jewelry trades, feeding weight-based pricing.
 - Cost price is visible only to roles holding `view_costs`.
 
+### Re-quote — the repeat order in one click
+
+A returning customer wanting the same piece again is the single most common
+event at the counter, and retyping the quote is the slowest part of it.
+
+- **Re-quote** on any document rebuilds it as a **fresh draft quotation** with
+  the same lines, tax mode and template.
+- **Every per-gram metal line is re-priced at today's `MetalRate`**, and all
+  totals are recomputed through the calculator. Copying the stored rate would
+  quote yesterday's gold — either a silent loss to the shop or an argument at
+  the counter.
+- A fixed-price or per-piece line (a repair, a service) keeps its price,
+  because there is no daily rate to move it to.
+- The new quote gets a fresh 14-day validity and `rate_locked_at = today`.
+- A **discount approval does not carry over**: it approved a specific number,
+  and the re-quoted total is a different number.
+- Available from the invoice header and per-row on the customer page, and
+  hidden for credit/debit notes, which correct another bill.
+
+### Discount approval — one rule, not a rule engine
+
+A shop with two staff loses margin quietly when either of them gives away 15%
+without asking.
+
+- One business setting: **"Discount approval limit (%)"**. Blank disables it.
+- The discount is measured as a share of the original bill
+  (`discount / (grand_total + discount)`).
+- Above the limit, a quotation **cannot be converted** until an admin approves
+  it (`ManageSettings` — invoice creators and managers deliberately cannot).
+- The approval is **snapshotted** with the exact amount it covered, so quietly
+  raising the discount later requires a fresh approval. It travels onto the
+  converted invoice.
+
 ### Payments
 
 - Record payments by cash, card, UPI, bank transfer or cheque, with references.
@@ -273,10 +358,76 @@ as toast notifications, not silent failures.
 
 ---
 
-## 6. Sharing and the customer portal
+## 6. Documents — quotation and invoice PDFs
+
+A quotation and a tax invoice are **different documents**, not one layout with
+a different title. `InvoicePdfService::viewName()` picks the template from the
+document type, and **all four delivery paths** — staff print, public share
+link, customer portal and the emailed attachment — ask it there, so the
+emailed PDF can never disagree with the page the staff previewed.
+
+### Quotation (`pdf/quotation.blade.php`)
+
+- Shop masthead, `QUOTE` title, quote number, date and **validity until**.
+- Revision number and metal-rate date when they apply.
+- Customer block, then a `Description / Qty / Rate / Amount` items table.
+- Totals block: subtotal, charges, discount, tax, round off, **TOTAL**.
+- **Terms and conditions** with a customer acceptance block (Name / Signature /
+  Date) — a quote is an offer, so it is signed for.
+- Carries no GSTIN, HSN, IRN or e-way bill, because a quote is not a tax
+  invoice.
+
+### Tax invoice (`pdf/invoice.blade.php`)
+
+Classic Indian layout, assembled from data already stored — nothing invented:
+
+- Shop masthead, `TAX INVOICE`, "Original for recipient".
+- **PAN** and **GSTIN** row. The PAN is *derived from the seller's GSTIN*
+  (characters 3–12), so no separate field has to be kept in step.
+- Two-column body: **Customer Detail** (M/S, address, phone, GSTIN, place of
+  supply) beside **Invoice Detail** (number, date, due date, reference,
+  e-way bill, rate date).
+- `Sr. No. / Name of Product or Service / HSN-SAC / Qty / Rate / Taxable Value
+  / Amount` items table, plus a total row and the tax line marked
+  **(E & O.E.)**.
+- **Total in words** and **total tax in words**, using Indian grouping
+  (`app/Support/NumberToWords.php`): lakh and crore rather than million and
+  billion, with paise written as a fraction. Float noise from a stored decimal
+  cannot become a spurious paise, and a sub-rupee amount reads "five paise
+  only" rather than "zero rupees and five paise".
+- **HSN-wise tax summary** grouped by HSN + rate with taxable value and a
+  CGST/SGST or IGST split. An exchange-credit line is excluded, because
+  handing back the customer's own metal is not a supply.
+- Bank details with UPI ID and the UPI QR, terms, "Certified that the
+  particulars given above are true and correct", the authorised signatory and
+  a computer-generated-invoice note.
+
+### PDF share passwords
+
+The share link can carry an optional password, and the **PDF is genuinely
+protected**, not just its landing page:
+
+- The owner sets a password (min 4 characters) and an optional expiry when
+  generating the link. A blank expiry means "never".
+- `/invoice/view/{token}` and `/invoice/view/{token}/pdf` both return 403 until
+  the password is entered and verified in-session.
+- The hash is stored with `Hash::make` and stays in the model's `$hidden`.
+  Only a derived `has_password` boolean reaches the browser, so the staff screen
+  can warn *"send the link and the password separately"* without ever exposing
+  the secret.
+
+### Not indexed
+
+`public/robots.txt` disallows everything, and the app shell carries
+`noindex, nofollow, noarchive, nosnippet` — `robots.txt` alone only deters
+crawlers that fetch it.
+
+---
+
+## 7. Sharing and the customer portal
 
 - Share links per invoice with channel tracking (WhatsApp, SMS, email, link),
-  optional password protection, sent/downloaded counters and expiry.
+  optional password protection, sent/viewed/downloaded counters and expiry.
 - **WhatsApp** share button on the invoice and the public quotation.
 - **PDF download** on every path — staff, public link, customer portal and
   the emailed attachment — all from one shared renderer.
@@ -285,9 +436,20 @@ as toast notifications, not silent failures.
 - **Email** an invoice with the PDF attached; **SMS** the invoice or a payment
   reminder through a pluggable gateway (log, Twilio or HTTP).
 
+### The shareable text
+
+A customer decides in the chat bubble, not on a landing page, so the shared
+message carries the actual numbers rather than only a link.
+`resources/js/lib/share-invoice.ts` builds a breakdown — item, metal/purity,
+grams, the rate used, making and wastage charges, tax, the **grand total**,
+validity, rate date and revision — with WhatsApp bold markup, plus a plain
+variant for email/SMS where `*bold*` would print literally. Item-level charges
+are printed once: `charges_summary` already contains them multiplied by
+quantity, so printing both would inflate every total.
+
 ---
 
-## 7. Automation
+## 8. Automation
 
 ### Payment reminders
 
@@ -308,9 +470,18 @@ as toast notifications, not silent failures.
 - Quotations closing soon appear as their own reminder card.
 - Staff receive a daily digest of what is due.
 
+### The chase list — replaces the owner's memory
+
+The failure point at a small shop is not knowing who is waiting. The dashboard
+carries a **"waiting on a customer"** list: quotations sent two or more days
+ago, still unanswered and not converted, oldest first, badged *not opened* or
+*opened · not answered*. One tap opens WhatsApp with a check-in message already
+written and the quote link attached. Quotes that are recent, drafts, accepted
+or already converted never appear.
+
 ---
 
-## 8. CRM
+## 9. CRM
 
 - Customer records with assigned staff, notes, tags, search and CSV export.
 - Customers carry commercial detail where it must be enforceable: GSTIN type,
@@ -352,7 +523,7 @@ discount used to be re-typed on every invoice. A customer group says it once.
 
 ---
 
-## 9. Multi-industry support
+## 10. Multi-industry support
 
 Industries are data, not code — `config/industries.php` plus a migration is
 all a new trade needs.
@@ -384,7 +555,78 @@ calculation mode, invoice template flags and the CSV columns.
 
 ---
 
-## 10. Free mode
+## 11. Data model
+
+32 Eloquent models. Every tenant-scoped model carries `BelongsToTenant`, so a
+row can never be read across tenants even if a query forgets to scope.
+
+### Platform and tenancy
+
+| Model | Purpose |
+| ----- | ------- |
+| `Tenant` | One business. Carries `industry` and `status`. |
+| `User` | Staff and platform accounts, with `role` and `tenant_id`. |
+| `Subscription` / `Plan` | Tenant plan, status and period. |
+| `StaffInvite` | Pending invitation into a tenant roster. |
+| `PlatformActivityLog` | Super-admin action trail. |
+| `ActivityLog` | Tenant-level action trail (spatie activitylog). |
+
+### Business configuration
+
+| Model | Purpose |
+| ----- | ------- |
+| `BusinessSetting` | Per-tenant singleton: identity, tax number, numbering sequences, rounding, channel toggles, discount-approval limit. |
+| `InvoiceTemplate` | Layout config: accent colour, alignment and the print toggles. |
+| `ChargeType` | Per-industry charge catalogue — name, code, calculation type, taxable flag. |
+| `CustomerGroup` | A named percentage pricing tier. |
+| `QuotationTemplate` | Saved quotation shapes. |
+
+### Catalog
+
+`CatalogItem`, `CatalogVariant`, `InventoryMovement`.
+
+### Documents
+
+| Model | Purpose |
+| ----- | ------- |
+| `Invoice` | Every document type — quotation, invoice, challan, credit/debit note. Carries the money columns, `rate_locked_at`, `revision_number`/`revision_note` and the discount-approval snapshot. |
+| `InvoiceItem` | A document line: specs, weights, rate, discount, tax. `line_type` distinguishes a sale from an exchange credit. |
+| `InvoiceItemCharge` | A charge on one line. |
+| `InvoiceCharge` | A charge on the whole document. |
+| `Installment` | One dated slice of an agreed payment plan. |
+| `Payment` | A receipt against an invoice. |
+| `CustomerAdvance` | Money held before there is an invoice. |
+| `RecurringProfile` | Repeating-document schedule. |
+| `MetalRate` | A dated rate for a metal + purity. |
+| `InvoiceShareLink` | A secure customer link: token, expiry, `password_hash`, sent/viewed/downloaded stamps. |
+| `InvoiceEvent` | Per-document activity trail — the source of the shared-page updates feed. |
+| `MessageLog` | Every outbound SMS/WhatsApp/email attempt, with driver and error. |
+
+### CRM
+
+`Customer`, `CustomerNote`, `CustomerFollowup`, `CustomerPortalToken`.
+
+### 21 services
+
+`InvoiceCalculationService` (the single source of pricing truth),
+`InvoiceCloner`, `InvoicePdfService`, `ReQuoteService`, `RateLockService`,
+`DiscountApprovalService`, `QuotationService`, `QuotationNotifier`,
+`QuotationFollowUpService`, `PaymentService`, `PaymentReminderService`,
+`ReminderService`, `InventoryService`, `ChargeTypeSeeder`, `CreditLimitService`,
+`EInvoiceService`, `GstExportService`, `ReportService`, `SmsService`,
+`RazorpayService`, `SubscriptionService`.
+
+### 22 enums
+
+`AdvanceStatus`, `CatalogStatus`, `ChargeAppliesTo`, `ChargeCalculationType`,
+`ContactChannel`, `DocumentType`, `FollowupStatus`, `GstinType`,
+`InstallmentStatus`, `InvoiceEventType`, `InvoiceStatus`, `LineType`,
+`PaymentMethod`, `Permission`, `PriceTier`, `PricingMode`, `QuotationActivity`,
+`QuotationStatus`, `RateType`, `RoundingMode`, `TaxMode`, `UserRole`.
+
+---
+
+## 12. Free mode
 
 `config/billing.php` holds a single `mode` switch, defaulting to `free`:
 
@@ -408,30 +650,46 @@ their own data.
 
 ---
 
-## 11. Design
+## 13. Design
 
 Flat **purple and navy** with no gradients. Accent `#7C3AED` with light/dark
 variants, deep ink `#0F172A` / `#1E293B`, defined once in
-`tailwind.config.js` and mirrored into the PDF template so print and screen
+`tailwind.config.js` and mirrored into the PDF templates so print and screen
 match.
+
+The invoice page is deliberately **compact**: reduced section spacing, icon-only
+header actions, `text-xs` item and totals tables, a two-column totals grid, and
+collapsible Share and Payment-plan cards so the common case (read the total)
+fits on one screen.
+
+### A Blade trap worth knowing
+
+`@if((float) $x > 0)` silently compiles to an `if` with the expression
+`(float)` and leaves the rest as literal text, because Blade's directive parser
+balances parentheses and a cast opens one it did not expect. Separators placed
+directly after an inline `@if` (for example `@if($ok) · value@endif`) also fail
+to compile and leak `@endif` into the document. Both PDF templates therefore
+resolve casts into `@php` variables and assemble joined strings with
+`implode()` rather than interleaving directives with separator characters.
 
 ---
 
-## 12. Verification
+## 14. Verification
 
-`406 tests / 2646 assertions`, with Pint, TypeScript, ESLint and a production
-build all passing. Coverage spans catalog and CSV/Excel round-tripping, catalog
-status lifecycle (draft, active, inactive, discontinued), product variants
-(code collisions, per-variant stock ledger, variant sold on the line),
-customer-group pricing (automatic tier discount, manual override winning,
-discount landing before GST, exchange credit exempt, inactive groups, tamper
-resistance, group deletion freeing customers), quotation-to-invoice conversion
-keeping the whole line, inventory ledger behaviour, credit/debit notes, advance
-receipts, rounding and TDS/TCS, quotation lifecycle and expiry, PDF rendering
-for all four delivery paths, litre-based line pricing, payment reminders and
-preferred channels, customer credit terms and tag filtering, sales-report
-exclusions, ageing/top-items/conversion reports, free-mode guarantees, role
-permissions and super-admin isolation.
+`506 tests / 3224 assertions`, with Pint, TypeScript, ESLint and a production
+build all passing.
+
+Coverage spans catalog and CSV/Excel round-tripping, catalog status lifecycle,
+product variants, customer-group pricing, quotation lifecycle and expiry,
+**rate-lock inheritance and staleness**, **revision numbering and the voiding of
+approvals**, **the rule that acceptance never creates an invoice**,
+**re-quote repricing at today's rate**, **PDF template selection and HSN
+summaries**, **amount-in-words**, **share-link password gating of the PDF**,
+discount-approval gating, the dashboard chase list, inventory ledger
+behaviour, credit/debit notes, advance receipts, rounding and TDS/TCS,
+litre-based pricing, payment reminders and preferred channels, customer credit
+terms, sales-report exclusions, reports, free-mode guarantees, role permissions
+and super-admin isolation.
 
 Every failure reaches the owner as a toast: flash messages, validation errors,
 expired session (419), non-Inertia server responses and thrown request errors
@@ -440,66 +698,60 @@ silently doing nothing.
 
 ---
 
----
-
 ## Owner-first answer: problems, why this, automation
 
-Problems an owner actually faces
+### Problems an owner actually faces
 
-- Quotes are built manually in WhatsApp/Excel, so prices, taxes, weights, wastage, discounts, and terms vary by salesperson.
+- Quotes are built manually in WhatsApp/Excel, so prices, taxes, weights,
+  wastage, discounts and terms vary by salesperson.
 - Accepted quotes have to be retyped as invoices, creating errors and delays.
-- Nobody knows which quotes are expiring, which invoices are overdue, or which customers need follow-up.
-- Stock is guessed; “available” items turn out to be missing.
+- Nobody knows which quotes are expiring, which invoices are overdue, or which
+  customers need follow-up.
+- The customer sees a number, the gold rate moves, and the bill no longer
+  matches the quote.
+- Stock is guessed; "available" items turn out to be missing.
 - Payments are chased manually; partial payments and balances are hard to track.
-- GST/e-invoice data is scattered: missing GSTIN/HSN, wrong B2B/B2C treatment, painful GSTR preparation.
-- Generic CRMs don’t understand jewelry weights/purity/HUID, tiles area/wastage, paint litres/shades, electronics serial/warranty, contractor site work, etc.
-- Staff mistakes are invisible: no clear roles, activity history, or approval boundaries.
-  Why use this instead of another CRM
-  Most CRMs track contacts and reminders. This is built around the money workflow:
+- GST/e-invoice data is scattered: missing GSTIN/HSN, wrong B2B/B2C treatment,
+  painful GSTR preparation.
+- Generic CRMs don't understand jewelry weights/purity/HUID, tiles
+  area/wastage, paint litres/shades, electronics serial/warranty, or
+  contractor site work.
+- Staff mistakes are invisible: no clear roles, history or approval boundaries.
+
+### Why use this instead of another CRM
+
+Most CRMs track contacts and reminders. This is built around the money
+workflow:
 
 1. Catalog-first selling.
 2. Quotation → invoice/challan conversion without re-entry.
-3. Industry-specific fields and pricing:
+3. Repeat orders re-quoted at today's rate in one click.
+4. A rate lock that makes the quoted number the billed number.
+5. Revisions, so "which quote did we agree to?" has an answer.
+6. Indian billing reality: GST modes, e-invoice IRN, GSTR exports,
+   total-in-words, UPI collect, installments, balances.
+7. Customer self-service: share links, portal, PDFs, WhatsApp/SMS/email.
+8. Operational control: roles, staff invites, activity logs, tenant isolation,
+   super-admin oversight, and a discount ceiling that needs an owner's sign-off.
+9. Cost posture: free mode includes the workflow instead of gating core
+   billing features.
 
-- jewelry: metal/purity/weight/HUID/stones/gold exchange;
-- tiles: area/wastage/batch/boxes;
-- paint: litres/shade/coverage;
-- electronics: serial/warranty;
-- contractors/services: site/service references.
+### Automation it already gives
 
-4. Indian billing reality:
-
-- GST modes, e-invoice prerequisites/IRN handling, GSTR exports.
-- UPI/collect links, payment recording, installments, balances.
-
-5. Customer self-service:
-
-- share links, portal, PDFs, WhatsApp/SMS/email.
-
-6. Operational control:
-
-- roles/permissions, staff invites, activity logs, tenant isolation, super-admin oversight.
-
-7. Cost posture:
-
-- free mode includes the workflow instead of gating core billing features.
-  Automation it already gives
-- Nightly:
-- overdue invoice marking;
-- quotation expiry;
-- staff reminder digest plus customer payment/occasion reminders;
-- recurring invoice generation.
-- Quotation lifecycle:
-- validity window, expiry overlay, accepted/rejected/converted tracking, conversion reporting.
-- Credit behavior:
-- limits, over-limit blocking for payable documents, credit-day due dates.
-- Customer group pricing:
-- a customer's tier discount fills in every unpriced line, server-side and in the
-  live preview alike; a discount typed by hand is never overwritten.
-- Catalog behavior:
-- industry-driven fields/rate types/charges/CSV/Excel columns;
-- inventory ledger instead of silent stock edits;
-- draft/inactive/discontinued products excluded from quotation builder and invoice picker;
-- four-state product status (Draft, Active, Inactive, Discontinued) with one-click Activate.
-- Reporting:
-- sales excluding non-sale documents, ageing, top items, quotation conversion, tax/GSTR outputs.
+- **Nightly:** overdue invoice marking; quotation expiry; staff reminder digest
+  plus customer payment/occasion reminders; recurring invoice generation.
+- **Quotation lifecycle:** validity window, expiry overlay, revisions, rate lock,
+  accepted/rejected/converted tracking, conversion reporting.
+- **Chasing:** a dashboard list of quotations waiting on a customer, with a
+  one-tap WhatsApp nudge; automatic follow-up for quotes never opened or about
+  to expire.
+- **Credit behaviour:** limits, over-limit blocking for payable documents,
+  credit-day due dates.
+- **Customer group pricing:** a tier discount fills in every unpriced line,
+  server-side and in the live preview alike; a discount typed by hand is never
+  overwritten.
+- **Catalog behaviour:** industry-driven fields/rate types/charges/CSV columns;
+  inventory ledger instead of silent stock edits; draft/inactive/discontinued
+  products excluded from the quotation builder and invoice picker.
+- **Reporting:** sales excluding non-sale documents, ageing, top items,
+  quotation conversion, tax/GSTR outputs.

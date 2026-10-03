@@ -93,7 +93,7 @@ class PortalInvoiceController extends Controller
         $customer = $request->attributes->get('portalCustomer');
         abort_unless($invoice->customer_id === $customer->id, 404);
 
-        $pdf = Pdf::loadView('pdf.invoice', $this->pdf->viewData($invoice, withShareLink: false))
+        $pdf = Pdf::loadView($this->pdf->viewName($invoice), $this->pdf->viewData($invoice, withShareLink: false))
             ->setPaper('a4');
 
         return $pdf->download("{$invoice->invoice_number}.pdf");

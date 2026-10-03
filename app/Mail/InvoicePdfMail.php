@@ -50,7 +50,7 @@ class InvoicePdfMail extends Mailable
     public function attachments(): array
     {
         // No share link: an emailed PDF must not double as a public token.
-        $pdf = Pdf::loadView('pdf.invoice', app(InvoicePdfService::class)
+        $pdf = Pdf::loadView(app(InvoicePdfService::class)->viewName($this->invoice), app(InvoicePdfService::class)
             ->viewData($this->invoice, withShareLink: false))
             ->setPaper('a4')
             ->output();

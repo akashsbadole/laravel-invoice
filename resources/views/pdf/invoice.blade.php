@@ -5,256 +5,318 @@
     <title>{{ $invoice->invoice_number }}</title>
     <style>
         @page { margin: 0; }
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #0F172A; margin: 0; }
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 9.5px; color: #111827; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
-        .letterhead { background: #0F172A; color: #F8FAFC; padding: 26px 32px 20px; }
-        .letterhead .business-name { font-size: 21px; font-weight: bold; letter-spacing: 0.06em; color: #F8FAFC; }
-        .letterhead .muted { color: #94A3B8; }
-        .brand-band { height: 3px; background: #7C3AED; }
-        .body-wrap { padding: 20px 32px 28px; }
-        .header-table td { vertical-align: top; }
-        .muted { color: #64748B; }
+
+        /* Masthead: business block left, TAX INVOICE right. */
+        .masthead td { vertical-align: top; padding: 7px 8px; border: 1px solid #111827; }
+        .shop-name { font-size: 17px; font-weight: bold; letter-spacing: 0.03em; }
+        .shop-tagline { font-size: 9px; color: #4B5563; margin-top: 2px; }
+        .shop-meta { font-size: 8.5px; color: #374151; line-height: 1.4; margin-top: 4px; }
+        .doc-title { font-size: 19px; font-weight: bold; letter-spacing: 0.08em; text-align: right; }
+        .doc-flag { font-size: 8px; text-align: right; font-weight: bold; margin-top: 2px; }
+
+        .pan-row td { border: 1px solid #111827; border-top: 0; padding: 4px 8px; font-size: 9px; }
+
+        .party-head td { border: 1px solid #111827; background: #F3F4F6; font-size: 9px; font-weight: bold; padding: 3px 8px; }
+        .party-body td { border: 1px solid #111827; vertical-align: top; padding: 6px 8px; font-size: 9px; }
+        .label { font-weight: bold; }
+        .kv { width: 78px; display: inline-block; }
+
+        /* Items table. The description column is the only flexible one so a
+           long product name wraps instead of pushing the numbers off-page. */
+        .items-table th {
+            background: #E5E7EB; border: 1px solid #111827; font-size: 8.5px; font-weight: bold;
+            text-transform: uppercase; letter-spacing: 0.04em; padding: 4px 5px;
+        }
+        .items-table td { border: 1px solid #111827; padding: 4px 5px; font-size: 9px; vertical-align: top; }
         .right { text-align: right; }
         .center { text-align: center; }
-        h2 { font-size: 12px; margin: 18px 0 6px; letter-spacing: 0.12em; text-transform: uppercase; color: #0F172A; }
-        .invoice-title { font-size: 20px; font-weight: bold; letter-spacing: 0.18em; color: #0F172A; margin: 0 0 4px; }
-        .invoice-no { font-size: 13px; font-weight: bold; color: #5B21B6; }
-        .badge {
-            display: inline-block; padding: 2px 8px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
-            background: #F5F3FF; color: #5B21B6; border: 1px solid #7C3AED;
-        }
-        .items-table th {
-            background: #0F172A; color: #F8FAFC;
-            padding: 7px 5px; text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
-        }
-        .items-table td { padding: 6px 5px; border-bottom: 1px solid #E2E8F0; font-size: 10.5px; }
-        .items-table tr:nth-child(even) td { background: #F8FAFC; }
-        .totals-table td { padding: 3px 0; }
-        .totals-table .label { color: #64748B; }
-        .grand-total { font-size: 14px; font-weight: bold; border-top: 2px solid #7C3AED; padding-top: 6px !important; }
-        .grand-total td { color: #0F172A; }
-        .footer { margin-top: 24px; font-size: 9.5px; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; }
-        .signature-block { margin-top: 40px; }
-        .signature-block img { max-height: 50px; }
-        .sign-line { border-top: 1px solid #0F172A; margin-top: 34px; padding-top: 4px; }
+        .muted { color: #6B7280; }
+        .total-row td { border: 1px solid #111827; font-weight: bold; padding: 4px 5px; font-size: 9.5px; }
+        .tax-note { border: 1px solid #111827; border-top: 0; padding: 4px 5px; font-size: 8.5px; text-align: right; }
+
+        .words-row td { border: 1px solid #111827; padding: 4px 8px; font-size: 9px; }
+        .words-row .label { width: 130px; }
+
+        .hsn-table th, .hsn-table td { border: 1px solid #111827; padding: 3px 5px; font-size: 8.5px; }
+        .hsn-table th { background: #E5E7EB; font-weight: bold; }
+
+        .foot-td { border: 1px solid #111827; vertical-align: top; padding: 6px 8px; font-size: 8.5px; }
+        .foot-title { font-weight: bold; text-align: center; font-size: 9px; }
+        .sign-line { border-top: 1px solid #111827; margin-top: 40px; padding-top: 3px; font-size: 8px; text-align: center; }
+        .thanks { margin-top: 8px; font-size: 9px; }
     </style>
 </head>
 <body>
-    <div class="letterhead">
-        <table class="header-table">
-            <tr>
-                <td style="width: 62%;">
-                    @if($business->logo_path)
-                        <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 44px; margin-bottom: 8px;">
-                    @endif
-                    <div class="business-name">{{ $business->business_name }}</div>
-                    <div class="muted" style="margin-top: 4px;">
-                        {{ $business->address }}<br>
-                        @if($business->phone) Phone: {{ $business->phone }} @endif
-                        @if($business->email) &nbsp;·&nbsp; {{ $business->email }} @endif
-                        <br>
-                        @if($business->tax_number) GSTIN: {{ $business->tax_number }} @endif
-                    </div>
-                </td>
-                <td style="width: 38%; text-align: right;">
-                    <div class="invoice-title">{{ $invoice->document_type?->label() ? mb_strtoupper($invoice->document_type->label()) : 'INVOICE' }}</div>
-                    <div class="invoice-no">{{ $invoice->invoice_number }}</div>
-                    <div class="muted" style="margin-top: 6px;">Date: {{ $invoice->invoice_date->format('d M Y') }}</div>
-                    @if($invoice->due_date)
-                        <div class="muted">Due: {{ $invoice->due_date->format('d M Y') }}</div>
-                    @endif
-                    <div style="margin-top: 6px;"><span class="badge">{{ str_replace('_', ' ', $invoice->status->value) }}</span></div>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <div class="brand-band"></div>
-    <div class="body-wrap">
+<table class="masthead">
+    <tr>
+        <td style="width: 62%;">
+            @if($business->logo_path)
+                <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 30px; margin-bottom: 3px;">
+            @endif
+            <div class="shop-name">{{ strtoupper($business->business_name) }}</div>
+            @if($business->footer_text)<div class="shop-tagline">{{ $business->footer_text }}</div>@endif
+            <div class="shop-meta">
+                @if($business->address){{ $business->address }}<br>@endif
+                @if($business->phone)Tel: {{ $business->phone }}@endif
+                @if($business->email) &nbsp;·&nbsp; {{ $business->email }}@endif
+                @if($business->website)<br>Web: {{ $business->website }}@endif
+            </div>
+        </td>
+        <td style="width: 38%;">
+            <div class="doc-title">TAX INVOICE</div>
+            <div class="doc-flag">ORIGINAL FOR RECIPIENT</div>
+            @if($invoice->irn)
+                <div class="doc-meta" style="font-size:8px; margin-top:4px;">
+                    <b>IRN:</b> {{ $invoice->irn }}
+                </div>
+            @endif
+        </td>
+    </tr>
+</table>
 
-    <table class="header-table" style="margin-top: 18px;">
+<table class="pan-row">
+    <tr>
+        <td style="width: 50%;">@if($pan)<span class="label">PAN:</span> {{ $pan }}@endif</td>
+        <td style="width: 50%;">@if($gstin)<span class="label">GSTIN:</span> {{ $gstin }}@endif</td>
+    </tr>
+</table>
+
+<table class="party-head">
+    <tr><td style="width: 50%;">Customer Detail</td><td style="width: 50%;">Invoice Detail</td></tr>
+</table>
+<table class="party-body">
+    <tr>
+        <td style="width: 50%;">
+            <div><span class="kv label">M/S</span> {{ $invoice->customer->full_name }}</div>
+            @if($invoice->customer->address)<div><span class="kv label">Address</span> {{ $invoice->customer->address }}</div>@endif
+            @if($invoice->customer->mobile_number)<div><span class="kv label">Phone</span> {{ $invoice->customer->mobile_number }}</div>@endif
+            @if($invoice->customer->tax_number)<div><span class="kv label">GSTIN</span> {{ $invoice->customer->tax_number }}</div>@endif
+            @if($placeOfSupply)<div><span class="kv label">Place of Supply</span> {{ $placeOfSupply }}</div>@endif
+        </td>
+        <td style="width: 50%;">
+            <div><span class="kv label">Invoice No.</span> <b>{{ $invoice->invoice_number }}</b></div>
+            <div><span class="kv label">Invoice Date</span> {{ $invoice->invoice_date->format('d-M-Y') }}</div>
+            @if($invoice->due_date)
+                <div><span class="kv label">Due Date</span> {{ $invoice->due_date->format('d-M-Y') }}</div>
+            @endif
+            @if($invoice->reference_number)
+                <div><span class="kv label">Reference</span> {{ $invoice->reference_number }}</div>
+            @endif
+            @if($invoice->eway_bill_no)
+                <div><span class="kv label">E-Way Bill</span> {{ $invoice->eway_bill_no }}</div>
+            @endif
+            @if($invoice->rate_locked_at)
+                <div><span class="kv label">Rate as on</span> {{ $invoice->rate_locked_at->format('d-M-Y') }}</div>
+            @endif
+        </td>
+    </tr>
+</table>
+
+<table class="items-table">
+    <thead>
         <tr>
-            <td style="width: 60%;">
-                <div class="muted">Billed to</div>
-                <strong>{{ $invoice->customer->full_name }}</strong><br>
-                {{ $invoice->customer->mobile_number }}
-                @if($invoice->customer->email) &nbsp;·&nbsp; {{ $invoice->customer->email }} @endif
-                <br>
-                {{ $invoice->customer->address }}
-                @if($invoice->customer->tax_number)
-                    <br>GSTIN: {{ $invoice->customer->tax_number }}
-                @endif
-            </td>
-            <td style="width: 40%;" class="right muted">
-                @if($invoice->reference_number)
-                    Ref: {{ $invoice->reference_number }}<br>
-                @endif
-                @if($invoice->salesperson)
-                    Salesperson: {{ $invoice->salesperson->name }}
-                @endif
-            </td>
+            <th style="width: 5%;" class="center">Sr. No.</th>
+            <th style="width: 33%;">Name of Product / Service</th>
+            <th style="width: 9%;" class="center">HSN / SAC</th>
+            <th style="width: 8%;" class="right">Qty</th>
+            <th style="width: 13%;" class="right">Rate</th>
+            <th style="width: 16%;" class="right">Taxable Value</th>
+            <th style="width: 16%;" class="right">Amount</th>
         </tr>
-    </table>
+    </thead>
+    <tbody>
+        @forelse($invoice->items as $index => $item)
+            @php
+                // Casts are resolved here rather than inside a directive:
+                // Blade's parenthesis matching breaks on a cast inside an
+                // if-directive, silently capturing only the cast as the
+                // whole expression.
+                $lineTaxable = max((float) $item->base_value - (float) $item->discount, 0);
+                $hasWeight = $showWeights && $item->metal_type;
+                $hasGrams = (float) $item->net_weight > 0;
+                $hasRate = (float) $item->rate > 0;
 
-    <table class="items-table" style="margin-top: 16px;">
+                // Assembled in PHP rather than interleaved with directives:
+                // a separator character directly after an inline @if is not
+                // recognised, and the trailing @endif leaks out as text.
+                $specParts = array_filter([
+                    $hasWeight ? trim($item->metal_type.($item->purity ? ' '.$item->purity : '')) : null,
+                    $hasGrams ? number_format((float) $item->net_weight, 3).'g' : null,
+                    $hasRate ? trim($item->rate_type->label().' '.number_format((float) $item->rate, 2)) : null,
+                ]);
+            @endphp
+            <tr>
+                <td class="center">{{ $index + 1 }}</td>
+                <td>
+                    <b>{{ $item->item_name }}</b>
+                    @if($item->line_type === 'exchange_credit')<br><span class="muted">Exchange credit (old gold)</span>@endif
+                    @if($specParts !== [])
+                        <br><span class="muted">{{ implode(' · ', $specParts) }}</span>
+                    @endif
+                    @if($showStones && $item->stone_carat > 0)
+                        <br><span class="muted">Stone: {{ number_format((float) $item->stone_carat, 3) }}ct {{ $item->stone_clarity }} {{ $item->stone_color }}</span>
+                    @endif
+                    @if($template->config('show_huid') && $item->huid_number)<br><span class="muted">HUID: {{ $item->huid_number }}</span>@endif
+                    @if($item->certificate_number)<br><span class="muted">Cert: {{ $item->certificate_number }}</span>@endif
+                    @if(! empty($item->attributes))
+                        <br><span class="muted">{{ collect($item->attributes)->map(fn ($v, $k) => $k.': '.$v)->implode(' · ') }}</span>
+                    @endif
+                </td>
+                <td class="center">{{ $item->hsn_code ?: '—' }}</td>
+                <td class="right">{{ rtrim(rtrim(number_format((float) $item->quantity, 3), '0'), '.') }}</td>
+                <td class="right">{{ number_format((float) $item->rate, 2) }}</td>
+                <td class="right">{{ number_format($lineTaxable, 2) }}</td>
+                <td class="right">{{ number_format((float) $item->total, 2) }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="7" class="center muted">No items on this invoice.</td></tr>
+        @endforelse
+    </tbody>
+</table>
+
+<table class="items-table" style="margin-top:-1px;">
+    <tr class="total-row">
+        <td colspan="3" class="right">Total</td>
+        <td class="right">{{ rtrim(rtrim(number_format((float) $invoice->items->sum('quantity'), 3), '0'), '.') }}</td>
+        <td></td>
+        <td class="right">{{ number_format((float) $invoice->subtotal, 2) }}</td>
+        <td class="right">{{ number_format((float) $invoice->grand_total, 2) }}</td>
+    </tr>
+</table>
+
+<div class="tax-note">
+    @php $hasRoundOff = (float) $invoice->round_off != 0; @endphp
+    @if(! empty($invoice->tax_breakdown))
+        @foreach($invoice->tax_breakdown as $taxRow)
+            {{ $taxRow['label'] }}: {{ number_format((float) $taxRow['amount'], 2) }} &nbsp;&nbsp;
+        @endforeach
+    @else
+        Tax: {{ number_format((float) $invoice->tax, 2) }}
+    @endif
+    @if($hasRoundOff)
+        &nbsp;&nbsp; Round off: {{ number_format((float) $invoice->round_off, 2) }}
+    @endif
+    &nbsp;&nbsp; (E &amp; O.E.)
+</div>
+
+<table class="words-row" style="margin-top:6px;">
+    <tr>
+        <td><span class="label">Total in words</span></td>
+        <td><b>{{ strtoupper($totalInWords ?: '—') }}</b></td>
+    </tr>
+</table>
+
+@if(! empty($hsnSummary))
+    <table class="hsn-table" style="margin-top:6px;">
         <thead>
             <tr>
-                <th>Item</th>
-                @if($showWeights)
-                    <th>Metal / Purity</th>
-                    <th class="right">Weight (g)</th>
-                @else
-                    <th>{{ $hasAreaItems ? 'Brand / Model' : 'Brand / Spec' }}</th>
-                    <th class="right">{{ $hasAreaItems ? 'Area (sq ft)' : 'Size' }}</th>
-                @endif
-                <th class="right">Qty</th>
-                <th class="right">Rate</th>
-                <th class="right">Charges</th>
-                <th class="right">Total</th>
+                <th style="width: 14%;">HSN / SAC</th>
+                <th style="width: 20%;" class="right">Taxable Value</th>
+                <th style="width: 10%;" class="right">Rate %</th>
+                <th style="width: 14%;" class="right">CGST</th>
+                <th style="width: 14%;" class="right">SGST</th>
+                <th style="width: 14%;" class="right">IGST</th>
+                <th style="width: 14%;" class="right">Total Tax</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($invoice->items as $item)
+            @foreach($hsnSummary as $row)
                 <tr>
-                    <td>
-                        <strong>{{ $item->item_name }}</strong>
-                        @if($item->line_type === 'exchange_credit')<br><span class="muted">Exchange credit (old gold)</span>@endif
-                        @if($showWeights && $template->config('show_huid') && $item->huid_number)<br><span class="muted">HUID: {{ $item->huid_number }}</span>@endif
-                        @if($template->config('show_hsn') && $item->hsn_code)<br><span class="muted">HSN: {{ $item->hsn_code }}</span>@endif
-                        @if($showStones && $template->config('show_stone_details'))
-                            @if($item->certificate_number)<br><span class="muted">Cert: {{ $item->certificate_number }}</span>@endif
-                            @if($item->stone_carat > 0)<br><span class="muted">Stone: {{ number_format((float) $item->stone_carat, 3) }} ct {{ $item->stone_clarity }} {{ $item->stone_color }}</span>@endif
-                        @endif
-                        @if(! empty($item->attributes))
-                            <br><span class="muted">{{ collect($item->attributes)->map(fn ($value, $key) => $key.': '.$value)->implode(' · ') }}</span>
-                        @endif
-                    </td>
-                    @if($showWeights)
-                        <td>{{ $item->metal_type }} @if($item->purity) / {{ $item->purity }} @endif</td>
-                        <td class="right">{{ number_format((float) $item->net_weight, 3) }}</td>
-                    @else
-                        <td>{{ collect([$item->brand, $item->model_number ?: $item->specification])->filter()->implode(' · ') ?: '—' }}</td>
-                        <td class="right">
-                            @if($item->length && $item->width)
-                                {{ number_format((float) $item->length * (float) $item->width / 929.0304, 2) }}
-                            @else
-                                {{ $item->size_label ?? '—' }}
-                            @endif
-                        </td>
-                    @endif
-                    <td class="right">{{ $item->quantity }}</td>
-                    <td class="right">Rs. {{ number_format((float) $item->rate, 2) }}</td>
-                    <td class="right">Rs. {{ number_format((float) $item->charges->sum('amount') * $item->quantity, 2) }}</td>
-                    <td class="right">Rs. {{ number_format((float) $item->total, 2) }}</td>
+                    <td>{{ $row['hsn'] }}</td>
+                    <td class="right">{{ number_format($row['taxable'], 2) }}</td>
+                    <td class="right">{{ rtrim(rtrim(number_format($row['rate'], 2), '0'), '.') }}</td>
+                    <td class="right">{{ $row['cgst'] > 0 ? number_format($row['cgst'], 2) : '—' }}</td>
+                    <td class="right">{{ $row['sgst'] > 0 ? number_format($row['sgst'], 2) : '—' }}</td>
+                    <td class="right">{{ $row['igst'] > 0 ? number_format($row['igst'], 2) : '—' }}</td>
+                    <td class="right">{{ number_format($row['tax'], 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
-
-    <table style="margin-top: 16px;">
+    <table class="words-row">
         <tr>
-            <td style="width: 55%;"></td>
-            <td style="width: 45%;">
-                <table class="totals-table">
-                    <tr><td class="label">Subtotal</td><td class="right">Rs. {{ number_format((float) $invoice->subtotal, 2) }}</td></tr>
-                    @foreach($invoice->charges_summary ?? [] as $row)
-                        <tr><td class="label">{{ $row['label'] }}</td><td class="right">Rs. {{ number_format((float) $row['amount'], 2) }}</td></tr>
-                    @endforeach
-                    <tr><td class="label">Discount</td><td class="right">- Rs. {{ number_format((float) $invoice->discount, 2) }}</td></tr>
-                    @if(!empty($invoice->tax_breakdown))
-                        @foreach($invoice->tax_breakdown as $taxRow)
-                            <tr><td class="label">{{ $taxRow['label'] }}</td><td class="right">Rs. {{ number_format((float) $taxRow['amount'], 2) }}</td></tr>
-                        @endforeach
-                    @else
-                        <tr><td class="label">Tax</td><td class="right">Rs. {{ number_format((float) $invoice->tax, 2) }}</td></tr>
-                    @endif
-                    @if((float) $invoice->tcs_amount > 0)
-                        <tr><td class="label">TCS @ {{ $invoice->tcs_rate }}%</td><td class="right">Rs. {{ number_format((float) $invoice->tcs_amount, 2) }}</td></tr>
-                    @endif
-                    <tr><td class="label">Round off</td><td class="right">Rs. {{ number_format((float) $invoice->round_off, 2) }}</td></tr>
-                    <tr class="grand-total"><td>Grand Total</td><td class="right">Rs. {{ number_format((float) $invoice->grand_total, 2) }}</td></tr>
-                    @if((float) $invoice->tds_amount > 0)
-                        <tr><td class="label">TDS @ {{ $invoice->tds_rate }}% (deducted)</td><td class="right">- Rs. {{ number_format((float) $invoice->tds_amount, 2) }}</td></tr>
-                    @endif
-                    <tr><td class="label">Paid</td><td class="right">Rs. {{ number_format((float) $invoice->paid_amount, 2) }}</td></tr>
-                    <tr><td class="label"><strong>Balance due</strong></td><td class="right"><strong>Rs. {{ number_format((float) $invoice->balance_amount, 2) }}</strong></td></tr>
-                </table>
-            </td>
+            <td><span class="label">Total tax in words</span></td>
+            <td><b>{{ strtoupper($taxInWords ?: '—') }}</b></td>
         </tr>
     </table>
+@endif
 
-    @if($invoice->irn)
-        <table style="margin-top: 14px; border: 1px solid #7C3AED; border-collapse: collapse;">
-            <tr>
-                <td style="padding: 6px 10px;">
-                    <strong>IRN</strong>: {{ $invoice->irn }}<br>
-                    <span class="muted">
-                        Ack no.: {{ $invoice->irn_ack_no ?? '—' }}
-                        @if($invoice->irn_ack_date)
-                            · Ack dt.: {{ $invoice->irn_ack_date->format('d-m-Y H:i') }}
+<table style="margin-top:6px;">
+    <tr>
+        <td style="width: 58%; vertical-align: top;">
+            <div class="foot-td">
+                @if($template->config('show_bank_details') && ! empty($business->bank_details))
+                    <div class="foot-title">Bank Details</div>
+                    <div style="margin-top:3px;">
+                        @if(! empty($business->bank_details['bank_name']))
+                            <span class="label">Name</span> {{ $business->bank_details['bank_name'] }}<br>
                         @endif
-                        @if($invoice->eway_bill_no)
-                            · E-way bill: {{ $invoice->eway_bill_no }}
+                        @if(! empty($business->bank_details['account_number']))
+                            <span class="label">A/C No.</span> {{ $business->bank_details['account_number'] }}<br>
                         @endif
-                    </span>
-                </td>
-            </tr>
-        </table>
-    @endif
-
-    @if($invoice->notes)
-        <h2>Notes</h2>
-        <div>{{ $invoice->notes }}</div>
-    @endif
-
-    @if($invoice->terms || $business->invoice_terms)
-        <h2>Terms &amp; Conditions</h2>
-        <div class="muted">{{ $invoice->terms ?: $business->invoice_terms }}</div>
-    @endif
-
-    <table class="signature-block">
-        <tr>
-            <td style="width: 60%;" class="muted">
-                @if($template->config('show_bank_details') && $business->bank_details)
-                    <strong>Bank details</strong><br>
-                    {{ $business->bank_details['bank_name'] ?? '' }}
-                    @if(!empty($business->bank_details['account_number']))
-                        <br>A/C: {{ $business->bank_details['account_number'] }}
-                    @endif
-                    @if(!empty($business->bank_details['ifsc_code']))
-                        &nbsp; IFSC: {{ $business->bank_details['ifsc_code'] }}
-                    @endif
-                    @if(!empty($business->bank_details['upi_id']))
-                        <br>UPI: {{ $business->bank_details['upi_id'] }}
-                    @endif
+                        @if(! empty($business->bank_details['ifsc_code']))
+                            <span class="label">IFSC</span> {{ $business->bank_details['ifsc_code'] }}<br>
+                        @endif
+                        @if(! empty($business->bank_details['upi_id']))
+                            <span class="label">UPI ID</span> {{ $business->bank_details['upi_id'] }}
+                        @endif
+                    </div>
                 @endif
-            </td>
-            <td style="width: 40%;" class="center">
+
+                @if($invoice->terms || $business->invoice_terms)
+                    <div style="margin-top:8px;">
+                        <div class="foot-title">Terms and Conditions</div>
+                        <div style="margin-top:3px; line-height:1.45;">
+                            @php
+                                $footTerms = array_filter(
+                                    preg_split('/\r\n|\r|\n/', (string) ($invoice->terms ?: $business->invoice_terms)),
+                                    fn ($line) => trim($line) !== '',
+                                );
+                            @endphp
+                            @forelse($footTerms as $line)
+                                <div>{{ $line }}</div>
+                            @empty
+                                <div>Goods once sold will not be taken back.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </td>
+        <td style="width: 42%; vertical-align: top; padding-left:6px;">
+            <div class="foot-td">
+                <div class="center" style="font-size:8.5px;">Certified that the particulars given above are true and correct.</div>
+                <div class="foot-title" style="margin-top:6px;">For {{ $business->business_name }}</div>
                 @if($template->config('show_signature') && $business->signature_image_path)
-                    <img src="{{ public_path('storage/' . $business->signature_image_path) }}"><br>
+                    <div style="text-align:center; margin-top:6px;">
+                        <img src="{{ public_path('storage/' . $business->signature_image_path) }}" style="max-height:44px;">
+                    </div>
                 @endif
                 @if($template->config('show_stamp') && $business->stamp_image_path)
-                    <img src="{{ public_path('storage/' . $business->stamp_image_path) }}"><br>
+                    <div style="text-align:center;">
+                        <img src="{{ public_path('storage/' . $business->stamp_image_path) }}" style="max-height:52px;">
+                    </div>
                 @endif
-                <div class="muted">Authorized signatory</div>
-            </td>
-        </tr>
-    </table>
+                <div class="sign-line">Authorised Signatory</div>
+            </div>
+        </td>
+    </tr>
+</table>
 
-    <div class="footer">
-        <table>
-            <tr>
-                <td>
-                    {{ $business->footer_text }}
-                    @if($template->config('footer_note'))<br>{{ $template->config('footer_note') }}@endif
-                    @if($publicUrl)<br>Verify this invoice online: {{ $publicUrl }}@endif
-                </td>
-                @if($qrSvg)
-                    <td class="right" style="width: 100px;"><img src="{{ $qrSvg }}" style="width: 80px; height: 80px;"></td>
-                @endif
-            </tr>
-        </table>
+<div class="thanks">Thank you for your business!</div>
+
+@if($publicUrl || $qrSvg)
+    <div style="margin-top:6px; font-size:8px; color:#6B7280;">
+        @if($publicUrl)Verify this invoice online: {{ $publicUrl }}@endif
+        @if($qrSvg)
+            <div style="margin-top:4px;">
+                <img src="{{ $qrSvg }}" style="width:66px; height:66px;">
+            </div>
+        @endif
     </div>
-    </div>
+@endif
+
 </body>
 </html>

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceEventType;
 use App\Models\Invoice;
+use App\Models\InvoiceEvent;
 use App\Models\InvoiceShareLink;
 use App\Services\InvoicePdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -35,9 +37,9 @@ class InvoicePdfController extends Controller
         $shareLink->markDownloaded();
 
         if ($firstDownload) {
-            \App\Models\InvoiceEvent::log(
+            InvoiceEvent::log(
                 $shareLink->invoice,
-                \App\Enums\InvoiceEventType::LinkDownloaded,
+                InvoiceEventType::LinkDownloaded,
                 ['action' => 'link_downloaded', 'token' => $token]
             );
         }
@@ -47,7 +49,7 @@ class InvoicePdfController extends Controller
 
     protected function render(Invoice $invoice, bool $download = false): Response
     {
-        $pdf = Pdf::loadView('pdf.invoice', $this->pdf->viewData($invoice))->setPaper('a4');
+        $pdf = Pdf::loadView($this->pdf->viewName($invoice), $this->pdf->viewData($invoice))->setPaper('a4');
 
         $filename = "{$invoice->invoice_number}.pdf";
 
