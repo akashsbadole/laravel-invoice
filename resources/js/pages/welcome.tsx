@@ -109,7 +109,14 @@ export default function Welcome() {
                             variant="ghost"
                             className="text-ivory/80 hover:text-ivory"
                         >
-                            <Link href="/contact">Contact</Link>
+                            <Link href="/docs">User Guide &amp; Docs</Link>
+                        </Button>
+                        <Button
+                            asChild
+                            variant="ghost"
+                            className="text-ivory/80 hover:text-ivory"
+                        >
+                            <Link href="/contact">Developer Support</Link>
                         </Button>
                         {auth.user ? (
                             <Button asChild variant="secondary">
@@ -256,25 +263,62 @@ export default function Welcome() {
 
                     <section className="mt-20 rounded-2xl border border-brand/30 bg-brand/10 p-8 text-center md:p-12">
                         <h2 className="font-display text-2xl md:text-3xl">
-                            Start with everything included.
+                            Free Forever Core + Developer Customization Services
                         </h2>
                         <p className="mx-auto mt-3 max-w-xl text-sm text-ivory/75">
-                            Unlimited staff and invoices, full catalog and
-                            stock, quotations, e-invoicing, automation and
-                            the customer portal. Nothing to upgrade, nothing
-                            expiring.
+                            Core software is 100% free forever for every shop owner. Need custom print designs, dedicated video call setup, or custom API integrations? Connect with our developer team anytime.
                         </p>
+
+                        <div className="mt-8 grid gap-4 text-left sm:grid-cols-2 max-w-3xl mx-auto">
+                            <div className="rounded-xl border border-brand/40 bg-brand/5 p-6">
+                                <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded bg-brand/20 text-brand-light">
+                                    Free Forever Core App
+                                </span>
+                                <h3 className="mt-3 font-display text-lg">Every Shop Feature Included</h3>
+                                <ul className="mt-2 space-y-1.5 text-xs text-ivory/75">
+                                    <li>✓ Unlimited Quotations, Invoices &amp; Delivery Challans</li>
+                                    <li>✓ Customer Self-Service Portal &amp; Link Tracking</li>
+                                    <li>✓ 1-Click Quotation-to-Invoice Conversion</li>
+                                    <li>✓ Inventory Movements Ledger &amp; Low Stock Flags</li>
+                                    <li>✓ Automated Reminders &amp; GST / Tax Reports</li>
+                                </ul>
+                            </div>
+
+                            <div className="rounded-xl border border-purple-500/40 bg-purple-950/20 p-6">
+                                <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded bg-purple-500/20 text-purple-300">
+                                    Developer Paid Add-Ons
+                                </span>
+                                <h3 className="mt-3 font-display text-lg">Custom Setup &amp; Support</h3>
+                                <ul className="mt-2 space-y-1.5 text-xs text-ivory/75">
+                                    <li>⚡ Tailored Invoice &amp; Thermal Receipt Layouts</li>
+                                    <li>⚡ 1-on-1 Video Call Onboarding &amp; Staff Training</li>
+                                    <li>⚡ Custom Payment Gateway &amp; SMS Gateway Integration</li>
+                                    <li>⚡ Custom Trade Field Setup &amp; Migration Support</li>
+                                </ul>
+                            </div>
+                        </div>
+
                         {!auth.user && (
-                            <Button
-                                asChild
-                                size="lg"
-                                className="mt-6 bg-brand text-navy-deep hover:bg-brand-light"
-                            >
-                                <Link href="/register">
-                                    Create your free account
-                                    <ArrowRight className="size-4" />
-                                </Link>
-                            </Button>
+                            <div className="mt-8 flex flex-wrap justify-center gap-3">
+                                <Button
+                                    asChild
+                                    size="lg"
+                                    className="bg-brand text-navy-deep hover:bg-brand-light"
+                                >
+                                    <Link href="/register">
+                                        Create Free Account
+                                        <ArrowRight className="size-4" />
+                                    </Link>
+                                </Button>
+                                <Button
+                                    asChild
+                                    size="lg"
+                                    variant="outline"
+                                    className="border-ivory/25 bg-transparent text-ivory hover:bg-ivory/10 hover:text-ivory"
+                                >
+                                    <Link href="/contact">Book Developer Consultation</Link>
+                                </Button>
+                            </div>
                         )}
                     </section>
                 </main>

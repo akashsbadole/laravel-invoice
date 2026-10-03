@@ -31,7 +31,16 @@ class InvoicePdfController extends Controller
             403,
         );
 
+        $firstDownload = $shareLink->downloaded_at === null;
         $shareLink->markDownloaded();
+
+        if ($firstDownload) {
+            \App\Models\InvoiceEvent::log(
+                $shareLink->invoice,
+                \App\Enums\InvoiceEventType::LinkDownloaded,
+                ['action' => 'link_downloaded', 'token' => $token]
+            );
+        }
 
         return $this->render($shareLink->invoice, download: true);
     }

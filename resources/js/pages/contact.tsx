@@ -51,6 +51,13 @@ export default function Contact({ support }: Props) {
             href: `tel:${support.phone}`,
             text: 'If something is blocking you from billing a customer today.',
         },
+        {
+            icon: MessageCircle,
+            title: '1-on-1 Video Call & Developer Setup',
+            value: 'Schedule Onboarding',
+            href: support.whatsapp ? `https://wa.me/${support.whatsapp.replace(/\D/g, '')}?text=Hello,%20I%20would%20like%20to%20schedule%20a%201-on-1%20video%20call%20setup%20and%20developer%20customization%20consultation.` : `mailto:${support.email}?subject=Video%20Call%20Onboarding`,
+            text: 'Book a 1-on-1 video consultation for custom print designs, staff training, or API integrations.',
+        },
     ].filter(Boolean) as {
         icon: typeof Mail;
         title: string;

@@ -56,8 +56,14 @@ class PublicInvoiceController extends Controller
 
         // The customer just proved they opened it — the shop's cue to follow up
         // while interest is fresh.
-        if ($firstView && $isQuotation) {
-            $this->notifier->activity($invoice, QuotationActivity::Viewed);
+        if ($firstView) {
+            \App\Models\InvoiceEvent::log($invoice, \App\Enums\InvoiceEventType::LinkViewed, [
+                'action' => 'link_viewed',
+                'token' => $token,
+            ]);
+            if ($isQuotation) {
+                $this->notifier->activity($invoice, QuotationActivity::Viewed);
+            }
         }
 
         return Inertia::render('invoices/public', [

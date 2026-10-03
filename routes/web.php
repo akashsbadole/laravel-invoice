@@ -53,6 +53,8 @@ Route::inertia('/features', 'features', [
     )),
 ])->name('features');
 
+Route::inertia('/docs', 'docs')->name('docs');
+
 Route::get('/contact', fn () => inertia('contact', [
     'support' => config('billing.support'),
 ]))->name('contact');

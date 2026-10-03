@@ -31,7 +31,8 @@ const navItems: { titleKey: I18nKey; href: string; icon: typeof LayoutDashboard 
     { titleKey: 'nav.reminders', href: '/reminders', icon: Bell },
 ];
 
-const secondaryItems: { titleKey: I18nKey; href: string; icon: typeof Settings }[] = [
+const secondaryItems: { titleKey: string; href: string; icon: typeof Settings }[] = [
+    { titleKey: 'User Guide & Docs', href: '/docs', icon: ScrollText },
     { titleKey: 'nav.settings', href: '/settings/profile', icon: Settings },
     // Kept in free mode so usage and plan details stay reachable, but the
     // page itself offers nothing to buy.
@@ -136,7 +137,7 @@ export function AppSidebar() {
                             )}
                         >
                             <Icon className="size-4 text-ivory/50" />
-                            {t(item.titleKey)}
+                            {item.titleKey.startsWith('nav.') ? t(item.titleKey as I18nKey) : item.titleKey}
                         </Link>
                     );
                 })}
