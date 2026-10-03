@@ -29,6 +29,16 @@ type Stats = {
 
 type MonthPoint = { label: string; sales: number; collected: number };
 
+type AcceptedQuotation = {
+    id: number;
+    invoice_number: string;
+    invoice_date: string;
+    status: string;
+    grand_total: string;
+    quotation_response: string | null;
+    customer: { id: number; full_name: string; mobile_number: string };
+};
+
 type RecentInvoice = {
     id: number;
     invoice_number: string;
@@ -60,6 +70,7 @@ type OverdueInvoice = {
 export default function Dashboard({
     stats,
     months,
+    acceptedQuotationsToConvert = [],
     recentInvoices,
     recentCustomers,
     upcomingFollowups,
@@ -70,6 +81,7 @@ export default function Dashboard({
 }: {
     stats: Stats;
     months: MonthPoint[];
+    acceptedQuotationsToConvert?: AcceptedQuotation[];
     recentInvoices: RecentInvoice[];
     recentCustomers: RecentCustomer[];
     upcomingFollowups: Followup[];
@@ -118,6 +130,31 @@ export default function Dashboard({
                         </Button>
                     </div>
                 </div>
+
+                {acceptedQuotationsToConvert.length > 0 && (
+                    <Card className="border-emerald-300 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/40 shadow-sm">
+                        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="size-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                                    ✓
+                                </div>
+                                <div>
+                                    <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                        {acceptedQuotationsToConvert.length} Accepted Quotation{acceptedQuotationsToConvert.length === 1 ? '' : 's'} Ready for Invoice Conversion!
+                                    </p>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                                        Customers accepted these quotes. Click convert to turn them into sales invoices and collect payment.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shrink-0" asChild>
+                                <Link href="/quotations">
+                                    View &amp; Convert Quotes <ArrowRight className="size-4 ml-1" />
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {stats.overdue_count > 0 && (
                     <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40">

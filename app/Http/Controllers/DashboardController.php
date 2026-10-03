@@ -72,9 +72,21 @@ class DashboardController extends Controller
 
         $due = $reminders->gather($today);
 
+        $acceptedQuotesReadyToConvert = Invoice::query()
+            ->where('document_type', DocumentType::Quotation->value)
+            ->where(function ($q) {
+                $q->where('quotation_status', 'accepted')
+                  ->orWhere('status', 'accepted');
+            })
+            ->whereNull('converted_to_id')
+            ->with('customer:id,full_name,mobile_number')
+            ->latest('invoice_date')
+            ->get(['id', 'customer_id', 'invoice_number', 'invoice_date', 'status', 'grand_total', 'quotation_response', 'quotation_responded_at']);
+
         return Inertia::render('dashboard', [
             'stats' => $stats,
             'months' => $months,
+            'acceptedQuotationsToConvert' => $acceptedQuotesReadyToConvert,
             'recentInvoices' => $withoutNotes(Invoice::query())->with('customer:id,full_name')->latest()->limit(5)
                 ->get(['id', 'customer_id', 'invoice_number', 'invoice_date', 'status', 'grand_total', 'balance_amount']),
             'recentCustomers' => Customer::query()->latest()->limit(5)->get(['id', 'full_name', 'mobile_number', 'created_at']),

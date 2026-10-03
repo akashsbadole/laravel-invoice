@@ -42,6 +42,62 @@ class CustomerAdvanceController extends Controller
     }
 
     /**
+     * Programmatically apply all available advances for the invoice's customer
+     * up to the balance amount.
+     */
+    public function applyAvailableAdvancesToInvoice(Invoice $invoice, ?\App\Models\User $user = null): float
+    {
+        $advances = CustomerAdvance::query()
+            ->where('customer_id', $invoice->customer_id)
+            ->where('status', AdvanceStatus::Available->value)
+            ->whereRaw('amount > applied_amount')
+            ->orderBy('advance_date')
+            ->get();
+
+        $totalApplied = 0.0;
+
+        foreach ($advances as $advance) {
+            $invoice->refresh();
+            $balance = (float) $invoice->balance_amount;
+
+            if ($balance <= 0.005) {
+                break;
+            }
+
+            $available = $advance->availableAmount();
+            if ($available <= 0.005) {
+                continue;
+            }
+
+            $amountToApply = round(min($available, $balance), 2);
+
+            DB::transaction(function () use ($invoice, $advance, $amountToApply, $user) {
+                $payment = $this->payments->record($invoice, [
+                    'amount' => $amountToApply,
+                    'payment_date' => $advance->advance_date->toDateString(),
+                    'payment_method' => $advance->payment_method->value,
+                    'reference_number' => $advance->reference_number ?? 'ADV-'.$advance->id,
+                    'notes' => $advance->notes
+                        ? 'Applied advance: '.$advance->notes
+                        : 'Applied advance on quotation conversion',
+                ], $user);
+
+                $this->payments->settleMatchingInstallments($invoice, $payment);
+
+                $advance->applied_amount = round((float) $advance->applied_amount + $amountToApply, 2);
+                $advance->status = $advance->availableAmount() > 0.005
+                    ? AdvanceStatus::Available
+                    : AdvanceStatus::Applied;
+                $advance->save();
+            });
+
+            $totalApplied += $amountToApply;
+        }
+
+        return $totalApplied;
+    }
+
+    /**
      * Consume an advance against one of the customer's invoices. The money
      * becomes a real payment (so collected totals and the payment page stay
      * honest) while the advance keeps a ledger of what is still available.

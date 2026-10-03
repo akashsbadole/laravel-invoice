@@ -100,14 +100,16 @@ export default function PublicInvoicePage({
 }) {
     if (status === 'unavailable') {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
                 <Head title="Invoice unavailable" />
-                <Card className="max-w-sm text-center">
-                    <CardContent className="py-10">
-                        <p className="font-medium">This link is no longer available.</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            It may have expired or been disabled. Please contact the business
-                            that sent it to you for a new link.
+                <Card className="max-w-md text-center shadow-lg border-slate-200 dark:border-slate-800">
+                    <CardContent className="py-12 px-6">
+                        <div className="mx-auto size-12 rounded-full bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 mb-4">
+                            <span className="text-xl font-bold">!</span>
+                        </div>
+                        <p className="font-semibold text-slate-900 dark:text-slate-100 text-lg">Quotation link expired or unavailable</p>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            This quotation link may have expired or been deactivated by the seller. Please reach out to the shop owner to request an updated quotation.
                         </p>
                     </CardContent>
                 </Card>
@@ -121,192 +123,258 @@ export default function PublicInvoicePage({
 
     if (!invoice || !business) return null;
 
-    return (
-        <div className="min-h-screen bg-muted/30 py-6 print:bg-white print:py-0">
-            <Head title={invoice.invoice_number} />
+    const isQuotation = quotation !== null && quotation !== undefined;
 
-            <div className="mx-auto max-w-2xl space-y-4 px-4">
-                <div className="flex flex-wrap justify-end gap-2 print:hidden">
-                    <Button
-                        asChild
-                        variant="outline"
-                        className="bg-[#25D366] text-white hover:bg-[#1fb955]"
-                    >
-                        <a
-                            href={`https://wa.me/?text=${encodeURIComponent(
-                                `${business.business_name} — ${invoice.invoice_number}: ${window.location.href}`,
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Share on WhatsApp
-                        </a>
-                    </Button>
-                    <Button variant="outline" onClick={() => window.print()}>
-                        <Printer className="size-4" />
-                        Print
-                    </Button>
-                    <Button asChild>
-                        <a href={`/invoice/view/${token}/pdf`}>
-                            <Download className="size-4" />
-                            Download PDF
-                        </a>
-                    </Button>
-                    {business.upi_id && Number(invoice.balance_amount) > 0 && (
+    return (
+        <div className="min-h-screen bg-slate-50/80 dark:bg-slate-950 py-8 px-4 print:bg-white print:py-0">
+            <Head title={`${business.business_name} — ${invoice.invoice_number}`} />
+
+            <div className="mx-auto max-w-3xl space-y-6">
+                {/* Header Action Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white dark:bg-slate-900 p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 print:hidden">
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono text-xs px-2.5 py-1">
+                            {invoice.invoice_number}
+                        </Badge>
+                        {isQuotation && (
+                            <Badge className={
+                                quotation.status === 'accepted'
+                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-200 dark:border-emerald-800'
+                                    : quotation.status === 'rejected'
+                                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-200'
+                                        : 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-200'
+                            }>
+                                Quotation · {quotation.status}
+                            </Badge>
+                        )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
                             asChild
-                            className="bg-[#25D366] text-white hover:bg-[#1fb955]"
+                            size="sm"
+                            variant="outline"
+                            className="bg-[#25D366] text-white hover:bg-[#1fb955] border-none shadow-sm"
                         >
                             <a
-                                href={
-                                    buildUpiCollectUrl({
-                                        upiId: business.upi_id,
-                                        payeeName: business.business_name,
-                                        amount: invoice.balance_amount,
-                                        note: `Invoice ${invoice.invoice_number}`,
-                                    }) ?? '#'
-                                }
+                                href={`https://wa.me/?text=${encodeURIComponent(
+                                    `Hello ${business.business_name}, I am viewing quotation ${invoice.invoice_number} (${currency.format(Number(invoice.grand_total))}): ${window.location.href}`,
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
                             >
-                                Pay via UPI
+                                WhatsApp
                             </a>
                         </Button>
-                    )}
+                        <Button size="sm" variant="outline" onClick={() => window.print()}>
+                            <Printer className="size-4" />
+                            Print
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                            <a href={`/invoice/view/${token}/pdf`}>
+                                <Download className="size-4" />
+                                PDF
+                            </a>
+                        </Button>
+                        {business.upi_id && Number(invoice.balance_amount) > 0 && (
+                            <Button
+                                size="sm"
+                                asChild
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                            >
+                                <a
+                                    href={
+                                        buildUpiCollectUrl({
+                                            upiId: business.upi_id,
+                                            payeeName: business.business_name,
+                                            amount: invoice.balance_amount,
+                                            note: `Deposit ${invoice.invoice_number}`,
+                                        }) ?? '#'
+                                    }
+                                >
+                                    Pay Deposit via UPI
+                                </a>
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                <Card className="print:border-none print:shadow-none">
-                    <CardContent className="space-y-6 p-6">
-                        <div className="flex items-start justify-between">
+                {/* Hero Price & Acceptance Section for Quotations */}
+                {isQuotation && (
+                    <QuotationPanel token={token!} quotation={quotation} invoice={invoice} business={business} />
+                )}
+
+                {/* Main Invoice Card */}
+                <Card className="shadow-md border-slate-200/80 dark:border-slate-800 print:border-none print:shadow-none bg-white dark:bg-slate-900">
+                    <CardContent className="space-y-6 p-6 sm:p-8">
+                        {/* Business Branding & Quote Info */}
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
                             <div>
-                                <h1 className="text-lg font-semibold" style={{ color: template?.accent_color }}>
+                                {business.logo_path && (
+                                    <img
+                                        src={`/storage/${business.logo_path}`}
+                                        alt={business.business_name}
+                                        className="h-12 w-auto object-contain mb-2"
+                                    />
+                                )}
+                                <h1
+                                    className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
+                                    style={{ color: template?.accent_color || undefined }}
+                                >
                                     {business.business_name}
                                 </h1>
-                                <p className="text-sm whitespace-pre-line text-muted-foreground">
-                                    {business.address}
+                                {business.address && (
+                                    <p className="text-sm whitespace-pre-line text-slate-500 dark:text-slate-400 mt-1">
+                                        {business.address}
+                                    </p>
+                                )}
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                    {business.phone && <span>Ph: {business.phone}</span>}
+                                    {business.email && <span>Email: {business.email}</span>}
+                                    {business.tax_number && <span>GSTIN: {business.tax_number}</span>}
+                                </div>
+                            </div>
+                            <div className="text-left sm:text-right bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                                <p className="text-xs uppercase font-semibold text-slate-400 tracking-wider">
+                                    {isQuotation ? 'Quotation' : 'Invoice'}
                                 </p>
-                                {business.phone && (
-                                    <p className="text-sm text-muted-foreground">{business.phone}</p>
+                                <p className="font-mono text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                                    {invoice.invoice_number}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    Date: {new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </p>
+                                {invoice.due_date && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                        Valid / Due: {new Date(invoice.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
                                 )}
                             </div>
-                            <div className="text-right">
-                                <p className="font-semibold">{invoice.invoice_number}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    {new Date(invoice.invoice_date).toLocaleDateString()}
-                                </p>
-                                <Badge variant="secondary" className="mt-1 capitalize">
-                                    {invoice.status.replace('_', ' ')}
-                                </Badge>
+                        </div>
+
+                        {/* Customer Info */}
+                        <div className="rounded-lg bg-slate-50/70 dark:bg-slate-800/40 p-4 border border-slate-100 dark:border-slate-800">
+                            <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">Quotation For</p>
+                            <p className="font-semibold text-slate-900 dark:text-slate-100 text-base mt-0.5">{invoice.customer.full_name}</p>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                <span>Phone: {invoice.customer.mobile_number}</span>
+                                {invoice.customer.email && <span>Email: {invoice.customer.email}</span>}
+                                {invoice.customer.address && <span>Address: {invoice.customer.address}</span>}
                             </div>
                         </div>
 
-                        <div className="border-t pt-4">
-                            <p className="text-xs text-muted-foreground">Billed to</p>
-                            <p className="font-medium">{invoice.customer.full_name}</p>
-                            <p className="text-sm text-muted-foreground">{invoice.customer.mobile_number}</p>
-                        </div>
-
-                        {invoice.irn && (
-                            <div className="mt-4 rounded-md border border-brand/40 bg-brand/5 p-3 text-xs">
-                                <p className="font-medium">GST e-invoice (IRN)</p>
-                                <p className="break-all text-muted-foreground">
-                                    {invoice.irn}
-                                </p>
-                                <p className="text-muted-foreground">
-                                    Ack no.: {invoice.irn_ack_no ?? '—'}
-                                    {invoice.eway_bill_no &&
-                                        ` · E-way bill: ${invoice.eway_bill_no}`}
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="overflow-x-auto border-t pt-4">
-                            <table className="w-full min-w-[420px] text-sm">
-                                <thead className="text-left text-muted-foreground">
-                                    <tr>
-                                        <th className="pb-2 font-medium">Item</th>
-                                        <th className="pb-2 text-right font-medium">Wt</th>
-                                        <th className="pb-2 text-right font-medium">Qty</th>
-                                        <th className="pb-2 text-right font-medium">Total</th>
+                        {/* Line Items Table */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[480px] text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
+                                        <th className="pb-3 text-left">Line Item</th>
+                                        <th className="pb-3 text-right">Spec / Wt</th>
+                                        <th className="pb-3 text-right">Qty</th>
+                                        <th className="pb-3 text-right">Amount</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                                     {invoice.items.map((item) => (
-                                        <tr key={item.id}>
-                                            <td className="py-2">
-                                                {item.item_name}
-                                                <span className="block text-xs text-muted-foreground">
-                                                    {item.metal_type} {item.purity}
-                                                    {template?.show_huid && item.huid_number && ` · HUID ${item.huid_number}`}
-                                                    {template?.show_hsn && item.hsn_code && ` · HSN ${item.hsn_code}`}
-                                                </span>
+                                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                                            <td className="py-3 pr-2">
+                                                <p className="font-medium text-slate-900 dark:text-slate-100">{item.item_name}</p>
+                                                <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    {item.metal_type && (
+                                                        <span className="inline-flex items-center rounded bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40">
+                                                            {item.metal_type} {item.purity}
+                                                        </span>
+                                                    )}
+                                                    {template?.show_huid && item.huid_number && (
+                                                        <span className="font-mono text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                                            HUID: {item.huid_number}
+                                                        </span>
+                                                    )}
+                                                    {template?.show_hsn && item.hsn_code && (
+                                                        <span className="font-mono text-[11px] text-slate-400">
+                                                            HSN {item.hsn_code}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="py-2 text-right">{item.net_weight}g</td>
-                                            <td className="py-2 text-right">{item.quantity}</td>
-                                            <td className="py-2 text-right">{currency.format(Number(item.total))}</td>
+                                            <td className="py-3 text-right text-slate-600 dark:text-slate-300 font-mono text-xs">
+                                                {Number(item.net_weight) > 0 ? `${item.net_weight}g` : '—'}
+                                            </td>
+                                            <td className="py-3 text-right text-slate-600 dark:text-slate-300 font-mono">
+                                                {item.quantity}
+                                            </td>
+                                            <td className="py-3 text-right font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                                                {currency.format(Number(item.total))}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
 
-                        <div className="space-y-1 border-t pt-4 text-sm">
+                        {/* Summary & Totals */}
+                        <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-2 text-sm max-w-sm ml-auto">
                             <Row label="Subtotal" value={invoice.subtotal} />
                             {(invoice.charges_summary ?? []).map((row) => (
                                 <Row key={row.label} label={row.label} value={String(row.amount)} />
                             ))}
-                            <Row label="Discount" value={`-${invoice.discount}`} />
+                            {Number(invoice.discount) > 0 && (
+                                <Row label="Discount" value={`-${invoice.discount}`} className="text-emerald-600 dark:text-emerald-400" />
+                            )}
                             {invoice.tax_breakdown && invoice.tax_breakdown.length > 0 ? (
                                 invoice.tax_breakdown.map((row, i) => (
                                     <Row key={i} label={row.label} value={String(row.amount)} />
                                 ))
                             ) : (
-                                <Row label="Tax" value={invoice.tax} />
+                                Number(invoice.tax) > 0 && <Row label="Tax" value={invoice.tax} />
                             )}
                             {Number(invoice.tcs_amount) > 0 && (
                                 <Row label={`TCS @ ${invoice.tcs_rate}%`} value={invoice.tcs_amount} />
                             )}
-                            <Row label="Round off" value={invoice.round_off} />
-                            <Row label="Grand total" value={invoice.grand_total} emphasize />
-                            {Number(invoice.tds_amount) > 0 && (
-                                <Row
-                                    label={`TDS @ ${invoice.tds_rate}% (deducted)`}
-                                    value={`-${invoice.tds_amount}`}
-                                />
-                            )}
-                            <Row label="Paid" value={invoice.paid_amount} />
-                            <Row label="Balance due" value={invoice.balance_amount} emphasize />
+                            {Number(invoice.round_off) !== 0 && <Row label="Round off" value={invoice.round_off} />}
+
+                            <div className="border-t border-slate-200 dark:border-slate-800 pt-3 mt-3 flex justify-between items-center">
+                                <span className="font-bold text-base text-slate-900 dark:text-slate-100">Grand Total</span>
+                                <span className="font-bold text-xl text-indigo-600 dark:text-indigo-400 font-mono">
+                                    {currency.format(Number(invoice.grand_total))}
+                                </span>
+                            </div>
                         </div>
 
+                        {/* Terms & Footer */}
                         {invoice.terms && (
-                            <div className="border-t pt-4 text-xs text-muted-foreground">
-                                {invoice.terms}
+                            <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Terms & Conditions</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line">{invoice.terms}</p>
                             </div>
                         )}
 
                         {(business.footer_text || template?.footer_note) && (
-                            <div className="border-t pt-4 text-center text-xs text-muted-foreground">
+                            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 text-center text-xs text-slate-400">
                                 {business.footer_text}
-                                {template?.footer_note && <div>{template.footer_note}</div>}
+                                {template?.footer_note && <div className="mt-1 font-medium">{template.footer_note}</div>}
                             </div>
                         )}
                     </CardContent>
                 </Card>
-
-                {quotation && <QuotationPanel token={token!} quotation={quotation} />}
             </div>
         </div>
     );
 }
 
 /**
- * What the customer can do with a shared quotation: accept it, decline it,
- * and see what changed since it was sent.
+ * High-converting customer decision widget with instant acceptance, note submission, and UPI deposit option.
  */
 function QuotationPanel({
     token,
     quotation,
+    invoice,
+    business,
 }: {
     token: string;
     quotation: QuotationState;
+    invoice: PublicInvoice;
+    business: Business;
 }) {
     const { data, setData, post, processing, errors, wasSuccessful } = useForm({
         decision: 'accepted',
@@ -319,112 +387,159 @@ function QuotationPanel({
     const rejected = quotation.status === 'rejected';
 
     return (
-        <Card className="print:hidden">
+        <Card className="print:hidden border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-indigo-50/60 via-white to-purple-50/40 dark:from-indigo-950/30 dark:via-slate-900 dark:to-purple-950/20 shadow-md">
             <CardContent className="space-y-4 p-6">
-                <div>
-                    <p className="font-medium">
-                        This document is a quotation
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        Status: <span className="capitalize">{quotation.status}</span>
-                        {quotation.response && ` · ${quotation.response}`}
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 dark:border-indigo-900/40 pb-4">
+                    <div>
+                        <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                            Quotation Decision &amp; Acceptance
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Review this quotation and accept directly to confirm your order with {business.business_name}.
+                        </p>
+                    </div>
+
+                    <div className="text-right">
+                        <span className="text-xs text-slate-400 font-medium">Quote Value</span>
+                        <p className="text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400">
+                            {currency.format(Number(invoice.grand_total))}
+                        </p>
+                    </div>
                 </div>
 
                 {quotation.can_decide && !wasSuccessful && (
-                    <>
+                    <div className="space-y-4">
                         {flash.message && (
-                            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+                            <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 p-3 border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-800 dark:text-emerald-300 font-medium flex items-center gap-2">
+                                <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                 {flash.message}
-                            </p>
+                            </div>
                         )}
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="grid gap-1.5">
-                                <Label htmlFor="decision">Your decision</Label>
+                                <Label htmlFor="decision" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                    Your Decision
+                                </Label>
                                 <Select
                                     value={data.decision}
-                                    onValueChange={(value) =>
-                                        setData('decision', value)
-                                    }
+                                    onValueChange={(value) => setData('decision', value)}
                                 >
-                                    <SelectTrigger id="decision">
+                                    <SelectTrigger id="decision" className="bg-white dark:bg-slate-900">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="accepted">
-                                            Accept this quotation
+                                            ✓ Accept Quotation
                                         </SelectItem>
                                         <SelectItem value="rejected">
-                                            Decline / discuss changes
+                                            Request Changes / Discuss
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="grid gap-1.5">
-                                <Label htmlFor="name">Your name (optional)</Label>
+                                <Label htmlFor="name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                    Your Name (optional)
+                                </Label>
                                 <Input
                                     id="name"
+                                    placeholder="e.g. Rahul Sharma"
                                     value={data.name}
                                     onChange={(e) => setData('name', e.target.value)}
+                                    className="bg-white dark:bg-slate-900"
                                 />
                             </div>
                         </div>
 
                         <div className="grid gap-1.5">
-                            <Label htmlFor="response">
-                                Message (optional)
+                            <Label htmlFor="response" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                Message or Order Note (optional)
                             </Label>
                             <Textarea
                                 id="response"
                                 rows={2}
                                 value={data.response}
-                                onChange={(e) =>
-                                    setData('response', e.target.value)
-                                }
-                                placeholder="Anything you would like us to change?"
+                                onChange={(e) => setData('response', e.target.value)}
+                                placeholder="Any preferred delivery date or specifications?"
+                                className="bg-white dark:bg-slate-900"
                             />
                             <InputError message={errors.response} />
                             <InputError message={errors.decision} />
                         </div>
 
-                        <Button
-                            disabled={processing}
-                            onClick={() =>
-                                post(`/invoice/view/${token}/decide`)
-                            }
-                        >
-                            {processing ? 'Sending…' : 'Send my response'}
-                        </Button>
-                    </>
+                        <div className="flex flex-wrap items-center gap-3 pt-2">
+                            <Button
+                                disabled={processing}
+                                size="lg"
+                                className={
+                                    data.decision === 'accepted'
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md px-6'
+                                        : 'bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md px-6'
+                                }
+                                onClick={() => post(`/invoice/view/${token}/decide`)}
+                            >
+                                {processing ? 'Submitting…' : data.decision === 'accepted' ? 'Confirm & Accept Quotation' : 'Submit Feedback'}
+                            </Button>
+
+                            {business.upi_id && data.decision === 'accepted' && (
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    size="lg"
+                                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 font-semibold"
+                                >
+                                    <a
+                                        href={
+                                            buildUpiCollectUrl({
+                                                upiId: business.upi_id,
+                                                payeeName: business.business_name,
+                                                amount: invoice.balance_amount,
+                                                note: `Deposit ${invoice.invoice_number}`,
+                                            }) ?? '#'
+                                        }
+                                    >
+                                        Pay Deposit via UPI
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
                 )}
 
                 {(accepted || rejected) && (
-                    <p className="rounded-md bg-muted px-3 py-2 text-sm">
-                        {accepted
-                            ? 'You accepted this quotation. We will be in touch to confirm.'
-                            : 'You declined this quotation. We will get back to you shortly.'}
-                    </p>
+                    <div className={
+                        accepted
+                            ? 'rounded-xl bg-emerald-500/10 border border-emerald-300 dark:border-emerald-900 p-4 text-emerald-900 dark:text-emerald-200'
+                            : 'rounded-xl bg-slate-100 dark:bg-slate-800 p-4 text-slate-800 dark:text-slate-200'
+                    }>
+                        <div className="flex items-center gap-2 font-bold text-sm">
+                            <span>{accepted ? '✓ Quotation Accepted' : 'Note Recorded'}</span>
+                        </div>
+                        <p className="text-xs mt-1 text-slate-600 dark:text-slate-300">
+                            {accepted
+                                ? 'Thank you! Your acceptance has been submitted to the seller. They will confirm your order and generate the final invoice.'
+                                : 'Your feedback was sent to the shop owner. They will review your notes and respond shortly.'}
+                        </p>
+                    </div>
                 )}
 
                 {quotation.updates.length > 0 && (
-                    <div className="border-t pt-3">
-                        <p className="mb-2 text-sm font-medium">Updates</p>
-                        <ol className="space-y-1.5">
+                    <div className="border-t border-indigo-100 dark:border-indigo-900/40 pt-3">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Quotation Activity History</p>
+                        <ol className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
                             {quotation.updates.map((update, i) => (
-                                <li
-                                    key={i}
-                                    className="text-sm text-muted-foreground"
-                                >
-                                    <span className="text-foreground">
-                                        {update.label}
-                                    </span>{' '}
-                                    — {new Date(update.at).toLocaleString()}
-                                    {update.detail && (
-                                        <span className="block text-xs">
-                                            {update.detail}
+                                <li key={i} className="flex items-start gap-2">
+                                    <span className="size-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></span>
+                                    <div>
+                                        <span className="font-semibold text-slate-800 dark:text-slate-200">{update.label}</span>
+                                        <span className="text-slate-400 ml-1.5">
+                                            · {new Date(update.at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
                                         </span>
-                                    )}
+                                        {update.detail && (
+                                            <p className="text-slate-500 dark:text-slate-400 italic mt-0.5">{update.detail}</p>
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                         </ol>
@@ -435,7 +550,7 @@ function QuotationPanel({
     );
 }
 
-function Row({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
+function Row({ label, value, emphasize, className }: { label: string; value: string; emphasize?: boolean; className?: string }) {
     return (
         <div
             className={

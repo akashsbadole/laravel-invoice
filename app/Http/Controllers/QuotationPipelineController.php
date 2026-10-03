@@ -67,6 +67,8 @@ class QuotationPipelineController extends Controller
                 'id' => $quotation->id,
                 'invoice_number' => $quotation->invoice_number,
                 'customer' => $quotation->customer?->full_name ?? '—',
+                'customer_id' => $quotation->customer_id,
+                'customer_phone' => $quotation->customer?->mobile_number,
                 'grand_total' => (float) $quotation->grand_total,
                 'status' => $status->value,
                 'status_label' => $status->label(),
@@ -74,6 +76,9 @@ class QuotationPipelineController extends Controller
                 'valid_until' => $quotation->quotation_valid_until?->toDateString(),
                 'viewed_at' => $link?->viewed_at?->toDateString(),
                 'has_link' => $link !== null,
+                'share_token' => $link?->token,
+                'converted_to_id' => $quotation->converted_to_id,
+                'can_convert' => $quotation->converted_to_id === null && in_array($status, [QuotationStatus::Draft, QuotationStatus::Sent, QuotationStatus::Accepted]),
                 // Measured from the quotation's own date, matching the follow-up
                 // rules — "how long has this been outstanding", not "since a row
                 // was written".
@@ -83,6 +88,12 @@ class QuotationPipelineController extends Controller
 
         $settings = BusinessSetting::forTenant($request->user()->tenant_id);
         $openValues = [QuotationStatus::Draft->value, QuotationStatus::Sent->value];
+
+        $totalQuotes = count($rows);
+        $convertedCount = $stages[QuotationStatus::Converted->value]['count'] ?? 0;
+        $acceptedCount = $stages[QuotationStatus::Accepted->value]['count'] ?? 0;
+        $decidedCount = $totalQuotes - ($stages[QuotationStatus::Draft->value]['count'] ?? 0);
+        $conversionRate = $decidedCount > 0 ? round((($convertedCount + $acceptedCount) / $decidedCount) * 100, 1) : 0.0;
 
         return Inertia::render('quotations/index', [
             'stages' => array_values($stages),
@@ -97,6 +108,13 @@ class QuotationPipelineController extends Controller
             'dueCount' => $quotations
                 ->filter(fn (Invoice $quotation): bool => $this->followUps->isDue($quotation))
                 ->count(),
+            'analytics' => [
+                'total_quotations' => $totalQuotes,
+                'accepted_count' => $acceptedCount,
+                'converted_count' => $convertedCount,
+                'conversion_rate' => $conversionRate,
+            ],
+            'acceptedQuotations' => array_values(array_filter($rows, fn ($r) => $r['status'] === QuotationStatus::Accepted->value && ! $r['converted_to_id'])),
         ]);
     }
 

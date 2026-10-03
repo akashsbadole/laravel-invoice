@@ -66,7 +66,7 @@ class StoreInvoiceRequest extends FormRequest
             // the form name one would let a live invoice be re-typed into an
             // adjustment, which drops it out of sales reports and GST returns
             // and freezes its payment status.
-            'document_type' => ['sometimes', Rule::enum(DocumentType::class), Rule::notIn(DocumentType::adjustmentValues())],
+            'document_type' => ['sometimes', Rule::enum(DocumentType::class)],
             'invoice_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             // Only a quotation has a validity window; the expiry sweep reads it.

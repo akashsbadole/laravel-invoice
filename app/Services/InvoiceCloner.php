@@ -18,11 +18,15 @@ class InvoiceCloner
      * Duplicate an invoice as a brand-new unpaid document: fresh number,
      * today's date, copied items/charges, zero payments.
      */
-    public function cloneAsNew(Invoice $source, int $createdById, string $documentType = DocumentType::JewelryInvoice->value): Invoice
-    {
+    public function cloneAsNew(
+        Invoice $source,
+        int $createdById,
+        string $documentType = DocumentType::JewelryInvoice->value,
+        ?string $dueDate = null
+    ): Invoice {
         // Run inside the source invoice's tenant so numbering, settings
         // and the tenant auto-fill behave identically from web and console.
-        return Tenant::runInContext($source->tenant_id, fn () => DB::transaction(function () use ($source, $createdById, $documentType) {
+        return Tenant::runInContext($source->tenant_id, fn () => DB::transaction(function () use ($source, $createdById, $documentType, $dueDate) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
 
             $source->loadMissing(['items.charges', 'charges']);
@@ -33,7 +37,7 @@ class InvoiceCloner
                 'status' => InvoiceStatus::Unpaid,
                 'invoice_number' => $business->nextInvoiceNumber(),
                 'invoice_date' => today()->toDateString(),
-                'due_date' => $source->due_date,
+                'due_date' => $dueDate ?? $source->due_date,
                 'reference_number' => $source->reference_number,
                 'salesperson_id' => $source->salesperson_id,
                 'invoice_template_id' => $source->invoice_template_id,

@@ -188,32 +188,32 @@ export default function InvoicesIndex({
                                 <tbody className="divide-y">
                                     {invoices.data.map((invoice) => (
                                         <tr key={invoice.id} className="hover:bg-muted/30">
-                                            <td className="px-4 py-3">
+                                            <td className="px-4 py-3 font-mono">
                                                 <Link
                                                     href={show(invoice.id)}
-                                                    className="font-medium hover:underline"
+                                                    className="font-semibold text-slate-900 dark:text-slate-100 hover:underline"
                                                 >
                                                     {invoice.invoice_number}
                                                 </Link>
                                                 {invoice.document_type !== 'jewelry_invoice' && (
-                                                    <Badge variant="outline" className="ml-2 text-[11px]">
+                                                    <Badge variant="outline" className="ml-2 text-[11px] font-sans">
                                                         {documentLabels[invoice.document_type] ?? invoice.document_type}
                                                     </Badge>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">{invoice.customer.full_name}</td>
                                             <td className="px-4 py-3">
-                                                {new Date(invoice.invoice_date).toLocaleDateString()}
+                                                {new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <Badge className={statusColors[invoice.status]} variant="secondary">
+                                                <Badge className={`capitalize font-medium ${statusColors[invoice.status]}`} variant="secondary">
                                                     {invoice.status.replace('_', ' ')}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className="px-4 py-3 text-right font-mono font-semibold">
                                                 {currency.format(Number(invoice.grand_total))}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
+                                            <td className="px-4 py-3 text-right font-mono">
                                                 {currency.format(Number(invoice.balance_amount))}
                                             </td>
                                         </tr>
