@@ -15,6 +15,9 @@ enum QuotationActivity: string
     case Viewed = 'viewed';
     case Accepted = 'accepted';
     case Declined = 'declined';
+    // The customer is not saying yes or no — they are asking for a different
+    // version. The quotation stays open, but the shop needs to know.
+    case ChangesRequested = 'changes_requested';
 
     public function label(): string
     {
@@ -22,6 +25,7 @@ enum QuotationActivity: string
             self::Viewed => 'Quotation opened',
             self::Accepted => 'Quotation accepted',
             self::Declined => 'Quotation declined',
+            self::ChangesRequested => 'Customer asked for changes',
         };
     }
 
@@ -35,6 +39,7 @@ enum QuotationActivity: string
             self::Viewed => "{$customer} opened quotation {$number}.",
             self::Accepted => "{$customer} accepted quotation {$number}.",
             self::Declined => "{$customer} declined quotation {$number}.",
+            self::ChangesRequested => "{$customer} asked for changes to quotation {$number}.",
         };
     }
 }

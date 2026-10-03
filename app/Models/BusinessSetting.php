@@ -29,7 +29,7 @@ class BusinessSetting extends Model
         'sms_birthday_wishes', 'sms_anniversary_wishes',
         'quotation_customer_decisions', 'quotation_show_updates', 'show_all_catalog_fields',
         'quotation_alerts_owner', 'quotation_alerts_email',
-        'quotation_followup_enabled', 'quotation_followup_days',
+        'quotation_followup_enabled', 'quotation_followup_days', 'discount_approval_threshold',
         'sms_driver', 'sms_country_code',
         'rounding_mode',
         'sms_twilio_sid', 'sms_twilio_token', 'sms_twilio_from',
@@ -61,6 +61,7 @@ class BusinessSetting extends Model
             'quotation_alerts_email' => 'boolean',
             'quotation_followup_enabled' => 'boolean',
             'quotation_followup_days' => 'integer',
+            'discount_approval_threshold' => 'decimal:2',
             'show_all_catalog_fields' => 'boolean',
             'rounding_mode' => 'string',
         ];

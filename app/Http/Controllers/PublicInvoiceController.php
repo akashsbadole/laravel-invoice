@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceEventType;
 use App\Enums\QuotationActivity;
 use App\Enums\QuotationStatus;
 use App\Models\BusinessSetting;
+use App\Models\InvoiceEvent;
 use App\Models\InvoiceShareLink;
 use App\Models\InvoiceTemplate;
 use App\Services\QuotationNotifier;
@@ -57,7 +59,7 @@ class PublicInvoiceController extends Controller
         // The customer just proved they opened it — the shop's cue to follow up
         // while interest is fresh.
         if ($firstView) {
-            \App\Models\InvoiceEvent::log($invoice, \App\Enums\InvoiceEventType::LinkViewed, [
+            InvoiceEvent::log($invoice, InvoiceEventType::LinkViewed, [
                 'action' => 'link_viewed',
                 'token' => $token,
             ]);
@@ -156,6 +158,56 @@ class PublicInvoiceController extends Controller
             $decision === QuotationStatus::Accepted
                 ? 'Thank you — your acceptance has been recorded.'
                 : 'Thank you — we have noted your response.',
+        );
+    }
+
+    /**
+     * A customer asking for changes is still negotiating, not rejecting.
+     * Record what they asked for and keep the quotation open, so the shop
+     * never loses the thread to a one-word "reject".
+     */
+    public function requestChanges(Request $request, string $token): RedirectResponse
+    {
+        $shareLink = InvoiceShareLink::query()->where('token', $token)->firstOrFail();
+        abort_unless($shareLink->isUsable(), 404);
+
+        if ($shareLink->password_hash && ! $request->session()->get("invoice_share_verified.{$token}")) {
+            abort(403);
+        }
+
+        $settings = BusinessSetting::forTenant($shareLink->invoice->tenant_id);
+        abort_unless($settings->quotation_customer_decisions, 404);
+
+        $invoice = $shareLink->invoice()->with('events')->firstOrFail();
+        abort_unless($invoice->document_type->isQuotation(), 404);
+
+        $validated = $request->validate([
+            'response' => ['required', 'string', 'max:1000'],
+            'name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $text = trim($validated['response']);
+        $name = trim((string) ($validated['name'] ?? ''));
+
+        if ($name !== '') {
+            $text = "{$text} — {$name}";
+        }
+
+        $invoice->update([
+            'quotation_response' => $text,
+            'quotation_responded_at' => now(),
+        ]);
+
+        InvoiceEvent::log($invoice, InvoiceEventType::Updated, [
+            'action' => 'changes_requested',
+            'response' => $text,
+        ]);
+
+        $this->notifier->activity($invoice, QuotationActivity::ChangesRequested, $text);
+
+        return back()->with(
+            'message',
+            'Thanks — we have recorded your request and will get back to you.',
         );
     }
 

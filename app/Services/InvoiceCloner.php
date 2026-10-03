@@ -58,6 +58,12 @@ class InvoiceCloner
                 'balance_amount' => max((float) $source->grand_total - (float) $source->tds_amount, 0),
                 'notes' => $source->notes,
                 'terms' => $source->terms,
+                // Bill at the rate the customer agreed to, not the
+                // day the bill is raised.
+                'rate_locked_at' => $source->rate_locked_at,
+                'discount_approved_by' => $source->discount_approved_by,
+                'discount_approved_at' => $source->discount_approved_at,
+                'discount_approved_discount' => $source->discount_approved_discount,
                 'created_by' => $createdById,
             ]);
 

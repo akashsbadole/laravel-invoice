@@ -128,6 +128,8 @@ export default function CreateInvoice({
         notes: '',
         terms: '',
         quotation_valid_until: '',
+        rate_locked_at: '',
+        revision_note: '',
         items: draftItems.length > 0
             ? draftItems.map((draft) => toFormItem(draft, defaults.default_tax_rate))
             : [newInvoiceItem(defaults.default_tax_rate, firstRateType)],

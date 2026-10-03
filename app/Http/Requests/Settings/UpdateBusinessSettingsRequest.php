@@ -51,6 +51,7 @@ class UpdateBusinessSettingsRequest extends FormRequest
             'quotation_alerts_email' => ['boolean'],
             'quotation_followup_enabled' => ['boolean'],
             'quotation_followup_days' => ['nullable', 'integer', 'min:0', 'max:90'],
+            'discount_approval_threshold' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'show_all_catalog_fields' => ['boolean'],
             'sms_driver' => ['required', 'in:log,twilio,http'],
             'sms_country_code' => ['required', 'string', 'max:5'],

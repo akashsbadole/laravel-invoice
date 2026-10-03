@@ -103,6 +103,7 @@ Route::get('invoice/view/{token}/pdf', [InvoicePdfController::class, 'public'])-
 // auth group, so a real customer was redirected to /login and the headline
 // quotation feature never worked for the person it was built for.
 Route::post('invoice/view/{token}/decide', [PublicInvoiceController::class, 'decide'])->middleware('throttle:20,1')->name('invoices.public.decide');
+Route::post('invoice/view/{token}/changes', [PublicInvoiceController::class, 'requestChanges'])->middleware('throttle:20,1')->name('invoices.public.changes');
 
 Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -154,6 +155,7 @@ Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, E
     Route::post('invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
     Route::post('invoices/{invoice}/notes', [InvoiceController::class, 'storeNote'])->name('invoices.notes.store');
     Route::post('invoices/{invoice}/convert', [InvoiceController::class, 'convert'])->name('invoices.convert');
+    Route::post('invoices/{invoice}/approve-discount', [InvoiceController::class, 'approveDiscount'])->name('invoices.approve-discount');
     Route::post('invoices/{invoice}/quotation-status', [InvoiceController::class, 'quotationStatus'])->name('invoices.quotation-status');
     Route::post('invoices/{invoice}/einvoice', [InvoiceController::class, 'generateEInvoice'])->name('invoices.einvoice');
     Route::post('invoices/{invoice}/recurring', [RecurringInvoiceController::class, 'store'])->name('invoices.recurring.store');

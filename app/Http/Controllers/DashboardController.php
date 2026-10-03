@@ -76,17 +76,47 @@ class DashboardController extends Controller
             ->where('document_type', DocumentType::Quotation->value)
             ->where(function ($q) {
                 $q->where('quotation_status', 'accepted')
-                  ->orWhere('status', 'accepted');
+                    ->orWhere('status', 'accepted');
             })
             ->whereNull('converted_to_id')
             ->with('customer:id,full_name,mobile_number')
             ->latest('invoice_date')
             ->get(['id', 'customer_id', 'invoice_number', 'invoice_date', 'status', 'grand_total', 'quotation_response', 'quotation_responded_at']);
 
+        // Quotes sent more than two days ago that are still unanswered and
+        // not converted — a gap in someone's memory today, a lost sale next
+        // week. One row per quote so the owner can nudge the right person
+        // instead of chasing everyone at random.
+        $waitingOnCustomer = Invoice::query()
+            ->where('document_type', DocumentType::Quotation->value)
+            ->whereNull('converted_to_id')
+            ->where(function ($q) {
+                $q->where('quotation_status', 'sent')->orWhere('status', 'sent');
+            })
+            ->whereDate('invoice_date', '<=', $today->copy()->subDays(2))
+            ->with([
+                'customer:id,full_name,mobile_number',
+                'shareLinks' => fn ($q) => $q->where('is_active', true)->latest(),
+            ])
+            ->orderBy('invoice_date')
+            ->limit(8)
+            ->get(['id', 'customer_id', 'invoice_number', 'invoice_date', 'status', 'grand_total', 'quotation_status'])
+            ->map(fn (Invoice $quotation) => [
+                'id' => $quotation->id,
+                'invoice_number' => $quotation->invoice_number,
+                'customer' => $quotation->customer?->full_name ?? '—',
+                'mobile_number' => $quotation->customer?->mobile_number ?? '',
+                'grand_total' => (float) $quotation->grand_total,
+                'age_days' => min((int) ($quotation->invoice_date?->diffInDays($today) ?? 0), 365),
+                'viewed_at' => $quotation->shareLinks->first()?->viewed_at,
+                'token' => $quotation->shareLinks->first()?->token,
+            ]);
+
         return Inertia::render('dashboard', [
             'stats' => $stats,
             'months' => $months,
             'acceptedQuotationsToConvert' => $acceptedQuotesReadyToConvert,
+            'waitingOnCustomer' => $waitingOnCustomer,
             'recentInvoices' => $withoutNotes(Invoice::query())->with('customer:id,full_name')->latest()->limit(5)
                 ->get(['id', 'customer_id', 'invoice_number', 'invoice_date', 'status', 'grand_total', 'balance_amount']),
             'recentCustomers' => Customer::query()->latest()->limit(5)->get(['id', 'full_name', 'mobile_number', 'created_at']),

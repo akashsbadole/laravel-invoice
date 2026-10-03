@@ -22,7 +22,7 @@ class Invoice extends Model
     protected $fillable = [
         'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
         'document_type', 'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
-        'converted_to_id', 'parent_invoice_id', 'quotation_status', 'quotation_response', 'quotation_responded_at', 'quotation_valid_until',
+        'converted_to_id', 'parent_invoice_id', 'quotation_status', 'quotation_response', 'quotation_responded_at', 'quotation_valid_until', 'rate_locked_at', 'revision_number', 'revision_note', 'discount_approved_by', 'discount_approved_at', 'discount_approved_discount',
         'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
         'tds_rate', 'tds_amount', 'tcs_rate', 'tcs_amount',
         'grand_total', 'paid_amount', 'balance_amount',
@@ -51,6 +51,10 @@ class Invoice extends Model
             'quotation_status' => QuotationStatus::class,
             'quotation_responded_at' => 'datetime',
             'quotation_valid_until' => 'date',
+            'rate_locked_at' => 'date',
+            'revision_number' => 'integer',
+            'discount_approved_at' => 'datetime',
+            'discount_approved_discount' => 'decimal:2',
             'cancelled_at' => 'datetime',
             'charges_summary' => 'array',
             'tax_mode' => TaxMode::class,
@@ -129,6 +133,14 @@ class Invoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function discountApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'discount_approved_by');
     }
 
     /**

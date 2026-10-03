@@ -71,6 +71,15 @@ class StoreInvoiceRequest extends FormRequest
             'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
             // Only a quotation has a validity window; the expiry sweep reads it.
             'quotation_valid_until' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+            // The day the metal rate behind these prices was struck.
+            // A quotation bills at the rate the customer accepted,
+            // so staff may back-date it to the day they priced the
+            // job rather than the day the form was submitted.
+            'rate_locked_at' => ['nullable', 'date'],
+            // Why this version of the quotation differs from the one
+            // the customer last saw, e.g. "Customer asked for 20g
+            // instead of 15g". Only meaningful once it has been sent.
+            'revision_note' => ['nullable', 'string', 'max:500'],
             'reference_number' => ['nullable', 'string', 'max:255'],
             'salesperson_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'invoice_template_id' => ['nullable', Rule::exists('invoice_templates', 'id')->where('tenant_id', $this->user()->tenant_id)],

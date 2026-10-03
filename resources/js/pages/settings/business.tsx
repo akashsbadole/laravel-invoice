@@ -51,6 +51,7 @@ type BusinessSettings = {
     quotation_alerts_email: boolean;
     quotation_followup_enabled: boolean;
     quotation_followup_days: number;
+    discount_approval_threshold: number | null;
     show_all_catalog_fields: boolean;
     receipt_width: string;
     receipt_accent_color: string;
@@ -889,6 +890,34 @@ export default function BusinessSettingsPage({
                                         </p>
                                         <InputError
                                             message={errors.quotation_followup_days}
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2 sm:w-56">
+                                        <Label htmlFor="discount_approval_threshold">
+                                            Discount approval limit (%)
+                                        </Label>
+                                        <Input
+                                            id="discount_approval_threshold"
+                                            name="discount_approval_threshold"
+                                            type="number"
+                                            step="0.1"
+                                            inputMode="decimal"
+                                            min={0}
+                                            max={100}
+                                            placeholder="e.g. 10"
+                                            defaultValue={
+                                                settings.discount_approval_threshold ?? ''
+                                            }
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Discounts above this share of the bill
+                                            need an admin's approval before
+                                            converting to an invoice. Leave blank
+                                            to disable.
+                                        </p>
+                                        <InputError
+                                            message={errors.discount_approval_threshold}
                                         />
                                     </div>
                                 </div>

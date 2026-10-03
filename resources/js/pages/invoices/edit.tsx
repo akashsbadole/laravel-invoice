@@ -104,6 +104,8 @@ export default function EditInvoice({
         notes: invoice.notes ?? '',
         terms: invoice.terms ?? '',
         quotation_valid_until: invoice.quotation_valid_until ?? '',
+        rate_locked_at: invoice.rate_locked_at ?? '',
+        revision_note: invoice.revision_note ?? '',
         items: invoice.items.map(toFormItem),
         invoice_charges: invoice.charges.map((c) => ({
             charge_type_id: c.charge_type_id ?? 0,
@@ -136,6 +138,7 @@ export default function EditInvoice({
                     invoiceNumberPreview={invoice.invoice_number}
                     defaultItemTaxRate={defaults.default_tax_rate}
                     roundingMode={defaults.rounding_mode}
+                    isSentQuotation={invoice.quotation_status !== null && invoice.quotation_status !== 'draft'}
                 />
             </div>
         </>

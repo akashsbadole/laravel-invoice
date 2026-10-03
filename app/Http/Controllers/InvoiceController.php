@@ -7,6 +7,7 @@ use App\Enums\CatalogStatus;
 use App\Enums\DocumentType;
 use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
+use App\Enums\Permission;
 use App\Enums\PricingMode;
 use App\Enums\QuotationStatus;
 use App\Http\Requests\Invoices\StoreAdjustmentNoteRequest;
@@ -25,6 +26,7 @@ use App\Models\MetalRate;
 use App\Models\RecurringProfile;
 use App\Models\User;
 use App\Services\CreditLimitService;
+use App\Services\DiscountApprovalService;
 use App\Services\EInvoiceService;
 use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
@@ -174,6 +176,15 @@ class InvoiceController extends Controller
                 'quotation_valid_until' => $documentType === DocumentType::Quotation->value
                     ? $request->validated('quotation_valid_until')
                     : null,
+                // Metal prices move daily, so record the day these
+                // rates were struck. The customer accepts that rate;
+                // the bill has to honour it later.
+                'rate_locked_at' => $request->validated('rate_locked_at')
+                    ?? $request->validated('invoice_date'),
+                // Every quotation starts life at revision 1; editing a
+                // draft never advances it.
+                'revision_number' => 1,
+                'revision_note' => null,
                 'reference_number' => $request->validated('reference_number'),
                 'salesperson_id' => $request->validated('salesperson_id'),
                 'invoice_template_id' => $request->validated('invoice_template_id')
@@ -228,13 +239,24 @@ class InvoiceController extends Controller
             'notesLog' => fn ($q) => $q->with('creator:id,name')->latest(),
             'installments' => fn ($q) => $q->with('payment:id,amount,payment_date'),
             'parentInvoice:id,invoice_number,document_type,status',
+            'discountApprover:id,name',
             'adjustmentNotes' => fn ($q) => $q->latest('invoice_date'),
         ]);
 
         $settings = BusinessSetting::current();
 
+        $discountApprover = $invoice->discountApprover;
+
         return Inertia::render('invoices/show', [
             'invoice' => $invoice,
+            'discountApproval' => [
+                'threshold' => app(DiscountApprovalService::class)->threshold(),
+                'percent' => app(DiscountApprovalService::class)->discountPercent($invoice),
+                'required' => app(DiscountApprovalService::class)->required($invoice),
+                'approved_by_name' => $discountApprover?->name,
+                'approved_at' => $invoice->discount_approved_at?->toDateTimeString(),
+                'approved_discount' => (float) ($invoice->discount_approved_discount ?? 0),
+            ],
             'business' => [
                 ...$settings->only(['default_currency', 'business_name']),
                 'upi_id' => $settings->bank_details['upi_id'] ?? null,
@@ -318,6 +340,22 @@ class InvoiceController extends Controller
                 'quotation_valid_until' => $documentType === DocumentType::Quotation->value
                     ? $request->validated('quotation_valid_until')
                     : null,
+                // A re-save must not silently re-date the price the
+                // customer already saw, so an existing lock survives
+                // unless staff deliberately change it.
+                'rate_locked_at' => $request->validated('rate_locked_at')
+                    ?? $invoice->rate_locked_at
+                    ?? $request->validated('invoice_date'),
+                // A quotation the customer has already seen is a
+                // commitment: once it leaves draft, any edit is a new
+                // revision, stamped with the reason staff were given.
+                // Draft edits are free and keep the same number.
+                'revision_number' => $this->isRevisionBump($invoice, $documentType)
+                    ? (int) ($invoice->revision_number ?? 1) + 1
+                    : (int) ($invoice->revision_number ?? 1),
+                'revision_note' => $this->isRevisionBump($invoice, $documentType)
+                    ? ($request->validated('revision_note') ?: 'Updated after sending to customer')
+                    : $invoice->revision_note,
                 'reference_number' => $request->validated('reference_number'),
                 'salesperson_id' => $request->validated('salesperson_id'),
                 'invoice_template_id' => $request->validated('invoice_template_id') ?? $invoice->invoice_template_id,
@@ -350,6 +388,17 @@ class InvoiceController extends Controller
             $invoice->load('payments');
             $invoice->recalculatePaymentStatus();
             $invoice->save();
+
+            // A quotation only earns a new revision once it has left the
+            // privacy of a draft — the customer has seen it, so any
+            // change is a real change to what they were shown.
+            if ($this->isRevisionBump($invoice, $documentType)) {
+                InvoiceEvent::log($invoice, InvoiceEventType::Updated, [
+                    'action' => 'revision',
+                    'revision' => $invoice->revision_number,
+                    'note' => $invoice->revision_note,
+                ], $request->user()->id);
+            }
 
             InvoiceEvent::log($invoice, InvoiceEventType::Updated, [], $request->user()->id);
             ActivityLog::record('invoice.updated', $invoice, "Updated invoice {$invoice->invoice_number}");
@@ -536,6 +585,15 @@ class InvoiceController extends Controller
         $defaultType = Industry::usesWeightFields($industry) ? DocumentType::JewelryInvoice->value : DocumentType::GeneralInvoice->value;
         $documentType = $validated['document_type'] ?? $defaultType;
 
+        $requiresApproval = app(DiscountApprovalService::class)->required($invoice);
+
+        abort_if(
+            $requiresApproval,
+            422,
+            'This quotation carries a discount of '.number_format(app(DiscountApprovalService::class)->discountPercent($invoice), 1).'%, above your '
+                .number_format((float) BusinessSetting::current()->discount_approval_threshold, 1).'% approval limit. An admin must approve the discount before converting.'
+        );
+
         $newInvoice = app(InvoiceCloner::class)->cloneAsNew(
             $invoice,
             $request->user()->id,
@@ -557,6 +615,23 @@ class InvoiceController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation converted to invoice.')]);
 
         return to_route('invoices.show', $newInvoice);
+    }
+
+    /**
+     * An admin stands behind a discount that is over the configured
+     * limit. Stamped onto the invoice, and carried onto the sales
+     * invoice when the quotation converts.
+     */
+    public function approveDiscount(Request $request, Invoice $invoice, DiscountApprovalService $approvals): RedirectResponse
+    {
+        Gate::authorize('update', $invoice);
+        abort_unless($request->user()->canDo(Permission::ManageSettings), 403);
+
+        $approvals->approve($invoice, $request->user());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Discount approved.')]);
+
+        return back();
     }
 
     public function generateEInvoice(Request $request, Invoice $invoice, EInvoiceService $einvoice): RedirectResponse
@@ -622,6 +697,22 @@ class InvoiceController extends Controller
         foreach ($computed['invoice_charges'] as $chargeData) {
             $invoice->charges()->create($chargeData);
         }
+    }
+
+    /**
+     * Whether an edit to this document is a real revision of the
+     * customer's version. Only quotations ever have a revision
+     * history, and only once the customer has been shown one: a
+     * draft is private, so editing it costs no revision.
+     */
+    protected function isRevisionBump(Invoice $invoice, string $documentType): bool
+    {
+        return $documentType === DocumentType::Quotation->value
+            && in_array(
+                $invoice->quotation_status?->value,
+                [QuotationStatus::Sent->value, QuotationStatus::Accepted->value, QuotationStatus::Rejected->value, QuotationStatus::Expired->value],
+                true,
+            );
     }
 
     /**

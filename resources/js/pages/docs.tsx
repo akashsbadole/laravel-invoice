@@ -1,18 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import {
-    ArrowRight,
     BookOpen,
-    CheckCircle2,
-    Clock,
     FileText,
-    HelpCircle,
     Layers,
-    MessageSquare,
-    Package,
     Receipt,
-    Share2,
-    Shield,
-    Sparkles,
     UserCheck,
     Video,
 } from 'lucide-react';

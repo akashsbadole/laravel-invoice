@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { Bell, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
+import { Bell, ClipboardCopy, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
 import { AttributesList } from '@/components/attributes-editor';
@@ -33,7 +33,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { pdf as pdfRoute, receipt as receiptRoute } from '@/routes/invoices';
 import AdjustmentNoteDialog from '@/components/invoices/adjustment-note-dialog';
-import { buildMailtoUrl, buildPublicInvoiceUrl, buildShareMessage, buildUpiCollectUrl, buildWhatsAppShareUrl } from '@/lib/share-invoice';
+import { buildDocumentMessage, buildMailtoUrl, buildPlainShareMessage, buildPublicInvoiceUrl, buildUpiCollectUrl, buildWhatsAppShareUrl } from '@/lib/share-invoice';
 import type { Auth } from '@/types/auth';
 import type { Installment, Invoice } from '@/types/invoice';
 import { cn } from '@/lib/utils';
@@ -57,7 +57,16 @@ export type AvailableAdvance = {
     notes: string | null;
 };
 
-export default function ShowInvoice({ invoice, recurringProfile, business, installmentPlan, capabilities, availableAdvances }: { invoice: Invoice; recurringProfile: RecurringProfile; business: { default_currency: string; business_name: string; upi_id: string | null }; installmentPlan: { planned_total: number; collected_total: number; count: number }; capabilities?: { metal_rates?: boolean }; availableAdvances?: AvailableAdvance[] }) {
+type DiscountApproval = {
+    threshold: number | null;
+    percent: number;
+    required: boolean;
+    approved_by_name: string | null;
+    approved_at: string | null;
+    approved_discount: number;
+};
+
+export default function ShowInvoice({ invoice, recurringProfile, business, installmentPlan, capabilities, availableAdvances, discountApproval }: { invoice: Invoice; recurringProfile: RecurringProfile; business: { default_currency: string; business_name: string; upi_id: string | null }; installmentPlan: { planned_total: number; collected_total: number; count: number }; capabilities?: { metal_rates?: boolean }; availableAdvances?: AvailableAdvance[]; discountApproval?: DiscountApproval }) {
     const usesWeightFields =
         capabilities?.metal_rates !== false && invoice.items.some((i) => i.metal_type || i.purity);
     const hasAreaItems = invoice.items.some((i) => i.length && i.width);
@@ -97,32 +106,86 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
         );
     }
 
+    // Customer-facing wording for the shared text. Deliberately separate from
+    // the UI labels above: "Jewelry invoice" is what staff call it, "Invoice"
+    // is what the customer should read.
+    const shareLabels: Record<string, string> = {
+        jewelry_invoice: 'Invoice',
+        general_invoice: 'Invoice',
+        quotation: 'Quotation',
+        delivery_challan: 'Delivery Challan',
+        credit_note: 'Credit Note',
+        debit_note: 'Debit Note',
+    };
+
+    /**
+     * One source for what gets shared, so the Copy button, the WhatsApp
+     * button and the email can never drift into saying different numbers.
+     */
+    function shareParams() {
+        return {
+            businessName: business.business_name || 'Your jeweller',
+            documentNumber: invoice.invoice_number,
+            documentLabel: shareLabels[invoice.document_type] ?? 'Invoice',
+            documentDate: invoice.invoice_date,
+            customerName: invoice.customer.full_name,
+            items: invoice.items.map((item) => ({
+                item_name: item.item_name,
+                line_type: item.line_type,
+                metal_type: item.metal_type,
+                purity: item.purity,
+                net_weight: item.net_weight,
+                rate: item.rate,
+                quantity: item.quantity,
+                base_value: item.base_value,
+                charges: item.charges.map((charge) => ({ label: charge.label, amount: Number(charge.amount) })),
+            })),
+            chargesSummary: invoice.charges_summary ?? null,
+            taxBreakdown: invoice.tax_breakdown ?? null,
+            tax: invoice.tax,
+            discount: invoice.discount,
+            tcsRate: invoice.tcs_rate,
+            tcsAmount: invoice.tcs_amount,
+            roundOff: invoice.round_off,
+            grandTotal: invoice.grand_total,
+            balanceAmount: invoice.balance_amount,
+            validUntil: invoice.quotation_valid_until,
+            rateLockedOn: invoice.rate_locked_at ?? null,
+            revisionNumber: invoice.document_type === 'quotation' ? invoice.revision_number : null,
+            publicUrl: buildPublicInvoiceUrl(activeLink!.token),
+        };
+    }
+
     function shareWhatsApp() {
         if (!activeLink) return;
-        const url = buildWhatsAppShareUrl(
-            invoice.customer.mobile_number,
-            buildShareMessage({
-                businessName: 'us',
-                invoiceNumber: invoice.invoice_number,
-                grandTotal: invoice.grand_total,
-                publicUrl: buildPublicInvoiceUrl(activeLink.token),
-            }),
-        );
+        const url = buildWhatsAppShareUrl(invoice.customer.mobile_number, buildDocumentMessage(shareParams()));
         window.open(url, '_blank');
         markSent('whatsapp');
+    }
+
+    /** The same words WhatsApp gets, for pasting into any chat by hand. */
+    function copyShareText() {
+        if (!activeLink) return;
+        navigator.clipboard.writeText(buildDocumentMessage(shareParams()));
+        markSent('copy');
+    }
+
+    const [approving, setApproving] = useState(false);
+
+    function approveDiscount() {
+        setApproving(true);
+        router.post(`/invoices/${invoice.id}/approve-discount`, {}, {
+            preserveScroll: true,
+            onFinish: () => setApproving(false),
+        });
     }
 
     function shareEmail() {
         if (!activeLink || !invoice.customer.email) return;
         const url = buildMailtoUrl(
             invoice.customer.email,
-            `Invoice ${invoice.invoice_number}`,
-            buildShareMessage({
-                businessName: 'us',
-                invoiceNumber: invoice.invoice_number,
-                grandTotal: invoice.grand_total,
-                publicUrl: buildPublicInvoiceUrl(activeLink.token),
-            }),
+            `${shareLabels[invoice.document_type] ?? 'Invoice'} ${invoice.invoice_number}`,
+            buildPlainShareMessage(shareParams()),
         );
         window.location.href = url;
         markSent('email');
@@ -133,6 +196,12 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
         navigator.clipboard.writeText(buildPublicInvoiceUrl(activeLink.token));
         markSent('copy');
     }
+
+    const rateLocked = invoice.rate_locked_at ?? invoice.invoice_date;
+    const rateAgeDays = rateLocked
+        ? Math.max(Math.floor((Date.now() - new Date(rateLocked).getTime()) / 86_400_000), 0)
+        : null;
+    const rateIsStale = usesWeightFields && rateAgeDays !== null && rateAgeDays >= 7;
 
     return (
         <>
@@ -155,7 +224,18 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     {documentLabels[invoice.document_type] ?? 'General invoice'}
                                 </Badge>
                             )}
+                            {invoice.document_type === 'quotation' && invoice.revision_number > 1 && (
+                                <Badge variant="secondary">
+                                    Rev {invoice.revision_number}
+                                </Badge>
+                            )}
                         </div>
+                        {invoice.document_type === 'quotation' && invoice.revision_number > 1 && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Rev {invoice.revision_number}
+                                {invoice.revision_note ? ` — ${invoice.revision_note}` : ''}
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -289,6 +369,55 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                         )}
                     </div>
                 </div>
+
+                {discountApproval &&
+                    discountApproval.threshold !== null &&
+                    discountApproval.percent > discountApproval.threshold && (
+                    <Card
+                        className={
+                            discountApproval.required
+                                ? 'border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
+                                : 'border-emerald-300 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20'
+                        }
+                    >
+                        <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                            <div>
+                                {discountApproval.required ? (
+                                    <>
+                                        <span className="font-medium text-amber-800 dark:text-amber-300">
+                                            Discount of {discountApproval.percent}% is above your {discountApproval.threshold}% approval limit.
+                                        </span>
+                                        <span className="text-muted-foreground"> An admin must approve it before this can be converted to an invoice.</span>
+                                    </>
+                                ) : (
+                                    <span className="text-emerald-800 dark:text-emerald-300">
+                                        Discount of {discountApproval.percent}% is above the {discountApproval.threshold}% limit — approved
+                                        {discountApproval.approved_by_name ? ` by ${discountApproval.approved_by_name}` : ''}
+                                        {discountApproval.approved_at ? ` on ${new Date(discountApproval.approved_at).toLocaleDateString()}` : ''}.
+                                    </span>
+                                )}
+                            </div>
+                            {discountApproval.required && isAdmin && canWrite && (
+                                <Button size="sm" disabled={approving} onClick={approveDiscount} className="bg-amber-600 hover:bg-amber-700 text-white">
+                                    {approving ? 'Approving…' : 'Approve discount'}
+                                </Button>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {invoice.document_type === 'quotation' && rateIsStale && (
+                    <Card className="border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
+                        <CardContent className="py-3 text-sm">
+                            <span className="font-medium text-amber-800 dark:text-amber-300">
+                                Metal rate is {rateAgeDays} days old
+                            </span>
+                            <span className="text-muted-foreground">
+                                {' '}— re-confirm today's rate before converting to an invoice.
+                            </span>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {invoice.parent_invoice && (
                     <Card className="border-brand/40 bg-brand/5">
@@ -562,7 +691,11 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     <div className="flex flex-wrap gap-2">
                                         <Button onClick={shareWhatsApp} className="bg-[#25D366] text-white hover:bg-[#1fb955]">
                                             <MessageCircle className="size-4" />
-                                            Share on WhatsApp
+                                            WhatsApp
+                                        </Button>
+                                        <Button variant="outline" onClick={copyShareText} title="Copy the full breakdown to paste into any chat">
+                                            <ClipboardCopy className="size-4" />
+                                            Copy text
                                         </Button>
                                         {invoice.customer.email && (
                                             <Button variant="outline" onClick={shareEmail}>

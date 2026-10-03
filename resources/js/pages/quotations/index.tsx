@@ -45,7 +45,7 @@ const statusColors: Record<string, string> = {
 };
 
 import { useState } from 'react';
-import { CheckCircle2, ArrowRight, ArrowRightLeft, MessageSquare, Copy, Check } from 'lucide-react';
+import { CheckCircle2, ArrowRightLeft } from 'lucide-react';
 import {
     Dialog,
     DialogClose,
@@ -366,7 +366,7 @@ function ConvertDialog({ quote }: { quote: ExtendedQuotationRow }) {
                     onSuccess={() => setOpen(false)}
                     className="space-y-4 pt-2"
                 >
-                    {({ processing, errors }) => (
+                    {({ processing }) => (
                         <>
                             <div className="grid gap-1.5">
                                 <Label htmlFor="doc_type" className="text-xs font-semibold">Target Document Type</Label>

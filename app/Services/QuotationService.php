@@ -237,6 +237,10 @@ class QuotationService
                 ? 'Customer accepted the quotation'
                 : 'Customer declined the quotation',
             'link_generated' => 'Share link created',
+            'changes_requested' => 'Customer asked for changes',
+            // Deliberately just the headline: the reason already renders
+            // as this event's detail from meta['note'].
+            'revision' => 'Quotation revised to Rev '.($properties['revision'] ?? '?'),
             default => match ($event->event_type->value) {
                 InvoiceEventType::Created->value => 'Quotation created',
                 InvoiceEventType::Sent->value => 'Quotation sent',

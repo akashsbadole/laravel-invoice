@@ -129,6 +129,8 @@ export type InvoiceFormData = {
     terms: string;
     attributes?: Record<string, string>;
     quotation_valid_until?: string;
+    rate_locked_at?: string;
+    revision_note?: string;
     items: InvoiceItemForm[];
     invoice_charges: InvoiceChargeInput[];
 };
@@ -273,6 +275,9 @@ export type Invoice = {
     quotation_response: string | null;
     quotation_responded_at: string | null;
     quotation_valid_until: string | null;
+    rate_locked_at: string | null;
+    revision_number: number;
+    revision_note: string | null;
     status: InvoiceStatus;
     pricing_mode: PricingMode;
     invoice_template_id: number | null;

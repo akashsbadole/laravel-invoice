@@ -98,6 +98,8 @@ export default function InvoiceForm({
     industryConfig,
     businessStateCode,
     roundingMode = 'nearest_rupee',
+    /** The quotation has been shown to the customer, so the next save is a new revision. */
+    isSentQuotation = false,
 }: {
     mode: 'create' | 'edit';
     invoiceId?: number;
@@ -114,6 +116,7 @@ export default function InvoiceForm({
     businessStateCode?: string | null;
     /** Business-level rounding rule so the preview matches the server. */
     roundingMode?: RoundingMode;
+    isSentQuotation?: boolean;
 }) {
     const { data, setData, post, put, processing, errors } = useForm<InvoiceFormData>(initialData);
 
@@ -317,6 +320,44 @@ export default function InvoiceForm({
                                 <InputError
                                     message={errors.quotation_valid_until}
                                 />
+                            </div>
+                        )}
+                        {/* A quotation's value depends on the metal rate
+                            struck the day it was priced, so it needs an
+                            honest "as on" stamp staff can override. */}
+                        {(data.document_type === 'quotation' || data.document_type === 'jewelry_invoice') && (
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="rate_locked_at">
+                                    Metal rate as on (optional)
+                                </Label>
+                                <Input
+                                    id="rate_locked_at"
+                                    type="date"
+                                    value={data.rate_locked_at ?? ''}
+                                    onChange={(e) => setData('rate_locked_at', e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Leave blank to use the invoice date. Conversion keeps this date so the bill matches what the customer accepted.
+                                </p>
+                                <InputError message={errors.rate_locked_at} />
+                            </div>
+                        )}
+                        {mode === 'edit' && isSentQuotation && data.document_type === 'quotation' && (
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="revision_note">
+                                    Revision note <span className="text-muted-foreground">(optional)</span>
+                                </Label>
+                                <Textarea
+                                    id="revision_note"
+                                    rows={2}
+                                    placeholder="e.g. customer asked for 20g instead of 15g"
+                                    value={data.revision_note ?? ''}
+                                    onChange={(e) => setData('revision_note', e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Saving this quotation starts a new version — this note is what the customer will see alongside it.
+                                </p>
+                                <InputError message={errors.revision_note} />
                             </div>
                         )}
                         <div className="grid gap-1.5">
