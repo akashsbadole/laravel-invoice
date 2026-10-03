@@ -524,15 +524,28 @@ class InvoiceController extends Controller
         abort_if($invoice->converted_to_id !== null, 422, 'Quotation already converted.');
 
         $validated = $request->validate([
-            'document_type' => ['required', Rule::enum(DocumentType::class), Rule::notIn([
+            'document_type' => ['nullable', Rule::enum(DocumentType::class), Rule::notIn([
                 DocumentType::Quotation->value,
                 ...DocumentType::adjustmentValues(),
             ])],
+            'due_date' => ['nullable', 'date'],
+            'apply_advances' => ['nullable', 'boolean'],
         ]);
 
-        $documentType = $validated['document_type'];
+        $industry = $invoice->tenant->industry ?? 'general_trade';
+        $defaultType = Industry::usesWeightFields($industry) ? DocumentType::JewelryInvoice->value : DocumentType::GeneralInvoice->value;
+        $documentType = $validated['document_type'] ?? $defaultType;
 
-        $newInvoice = app(InvoiceCloner::class)->cloneAsNew($invoice, $request->user()->id, $documentType);
+        $newInvoice = app(InvoiceCloner::class)->cloneAsNew(
+            $invoice,
+            $request->user()->id,
+            $documentType,
+            $validated['due_date'] ?? null
+        );
+
+        if (! empty($validated['apply_advances'])) {
+            app(CustomerAdvanceController::class)->applyAvailableAdvancesToInvoice($newInvoice, $request->user());
+        }
 
         $invoice->update(['status' => InvoiceStatus::Converted, 'converted_to_id' => $newInvoice->id]);
 
