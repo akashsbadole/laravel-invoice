@@ -238,7 +238,8 @@ export type ShareLink = {
     token: string;
     expires_at: string | null;
     is_active: boolean;
-    is_expired: boolean;
+    /** A customer must enter a password before the link will open. */
+    has_password: boolean;
     sent_via: string | null;
     sent_at: string | null;
     viewed_at: string | null;

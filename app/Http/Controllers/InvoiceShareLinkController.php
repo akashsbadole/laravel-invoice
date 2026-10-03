@@ -21,14 +21,20 @@ class InvoiceShareLinkController extends Controller
         Gate::authorize('share', $invoice);
 
         $validated = $request->validate([
+            // An empty number input posts "", which is not an integer and not
+            // null either — normalise it so leaving the field blank works.
             'expires_in_days' => ['nullable', 'integer', 'min:1', 'max:365'],
             'password' => ['nullable', 'string', 'min:4', 'max:100'],
         ]);
 
+        $expiresInDays = $request->filled('expires_in_days')
+            ? (int) $request->input('expires_in_days')
+            : null;
+
         $shareLink = new InvoiceShareLink([
             'invoice_id' => $invoice->id,
-            'expires_at' => isset($validated['expires_in_days'])
-                ? now()->addDays($validated['expires_in_days'])
+            'expires_at' => $expiresInDays !== null
+                ? now()->addDays($expiresInDays)
                 : null,
             'is_active' => true,
             'created_by' => $request->user()->id,

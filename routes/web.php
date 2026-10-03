@@ -158,6 +158,7 @@ Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, E
     Route::post('invoices/{invoice}/notes', [InvoiceController::class, 'storeNote'])->name('invoices.notes.store');
     Route::post('invoices/{invoice}/convert', [InvoiceController::class, 'convert'])->name('invoices.convert');
     Route::post('invoices/{invoice}/duplicate', [InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
+    Route::post('invoices/{invoice}/re-quote', [InvoiceController::class, 'reQuote'])->name('invoices.re-quote');
     Route::post('invoices/{invoice}/approve-discount', [InvoiceController::class, 'approveDiscount'])->name('invoices.approve-discount');
     Route::post('invoices/{invoice}/quotation-status', [InvoiceController::class, 'quotationStatus'])->name('invoices.quotation-status');
     Route::post('invoices/{invoice}/einvoice', [InvoiceController::class, 'generateEInvoice'])->name('invoices.einvoice');

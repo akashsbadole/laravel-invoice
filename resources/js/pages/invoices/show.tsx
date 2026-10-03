@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { Bell, ClipboardCopy, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, Trash2 } from 'lucide-react';
+import { Bell, ClipboardCopy, Copy, Download, Mail, MessageCircle, MessageSquare, Pencil, Printer, Receipt, RotateCcw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
 import { AttributesList } from '@/components/attributes-editor';
@@ -82,10 +82,14 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
     const { auth } = usePage<{ auth: Auth }>().props;
     const isAdmin = auth.user.role === 'admin';
     const activeLink = invoice.share_links.find((link) => link.is_active);
-    const linkExpiresSoon =
-        activeLink && !activeLink.is_expired && activeLink.expires_at
-            ? new Date(activeLink.expires_at).getTime() - Date.now() <= 86_400_000
-            : false;
+    // Warn only when the link is still live but about to lapse. An already
+    // expired link is dead, not "expiring soon", so the lower bound matters.
+    const linkExpiresSoon = activeLink?.expires_at
+        ? (() => {
+              const msLeft = new Date(activeLink.expires_at).getTime() - Date.now();
+              return msLeft > 0 && msLeft <= 86_400_000;
+          })()
+        : false;
     const canWrite = auth.user.role === 'admin' || auth.user.role === 'invoice_creator';
     const isPayable =
         invoice.document_type === 'jewelry_invoice' || invoice.document_type === 'general_invoice';
@@ -175,6 +179,21 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
     }
 
     const [approving, setApproving] = useState(false);
+    const [reQuoting, setReQuoting] = useState(false);
+
+    /**
+     * The customer's repeat order: same items, today's metal rate.
+     * Stays on this page until the new quotation has been created,
+     * because the owner usually wants to tweak it before sending.
+     */
+    function reQuote() {
+        setReQuoting(true);
+        router.post(
+            `/invoices/${invoice.id}/re-quote`,
+            {},
+            { onFinish: () => setReQuoting(false) },
+        );
+    }
     const [shareOpen, setShareOpen] = useState(false);
     const [planOpen, setPlanOpen] = useState(false);
 
@@ -261,6 +280,18 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     <Pencil className="size-3.5" />
                                     Edit
                                 </Link>
+                            </Button>
+                        )}
+                        {canWrite && !isAdjustment && invoice.items.length > 0 && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={reQuoting}
+                                title="Create a fresh quotation with the same items at today's metal rate"
+                                onClick={reQuote}
+                            >
+                                <RotateCcw className={reQuoting ? 'size-3.5 animate-spin' : 'size-3.5'} />
+                                Re-quote
                             </Button>
                         )}
                         {canWrite && invoice.status !== 'cancelled' && (
@@ -689,15 +720,67 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                 <Form
                                     {...InvoiceShareLinkController.store.form(invoice.id)}
                                     options={{ preserveScroll: true }}
+                                    className="space-y-2"
                                 >
-                                    {({ processing }) => (
-                                        <Button disabled={processing}>
-                                            {processing ? 'Generating…' : 'Generate share link'}
-                                        </Button>
+                                    {({ processing, errors }) => (
+                                        <>
+                                            <p className="text-xs text-muted-foreground">
+                                                The link is the only thing your customer receives. Add a
+                                                password below if you would rather give it to them
+                                                separately than paste the whole link into a chat.
+                                            </p>
+                                            <div className="grid gap-2 sm:grid-cols-2">
+                                                <div className="grid gap-1.5">
+                                                    <Label
+                                                        htmlFor="expires_in_days"
+                                                        className="text-xs text-muted-foreground"
+                                                    >
+                                                        Expires after (days, optional)
+                                                    </Label>
+                                                    <Input
+                                                        id="expires_in_days"
+                                                        name="expires_in_days"
+                                                        type="number"
+                                                        min={1}
+                                                        max={365}
+                                                        placeholder="Never"
+                                                    />
+                                                    <InputError message={errors.expires_in_days} />
+                                                </div>
+                                                <div className="grid gap-1.5">
+                                                    <Label
+                                                        htmlFor="share_password"
+                                                        className="text-xs text-muted-foreground"
+                                                    >
+                                                        Password (optional)
+                                                    </Label>
+                                                    <Input
+                                                        id="share_password"
+                                                        name="password"
+                                                        type="text"
+                                                        autoComplete="off"
+                                                        placeholder="e.g. 4821"
+                                                    />
+                                                    <InputError message={errors.password} />
+                                                </div>
+                                            </div>
+                                            <Button type="submit" disabled={processing}>
+                                                {processing ? 'Generating…' : 'Generate share link'}
+                                            </Button>
+                                        </>
                                     )}
                                 </Form>
                             ) : (
                                 <>
+                                    {activeLink.has_password && (
+                                        <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                                            <span className="flex-1">
+                                                This link is password protected. Send the link and
+                                                the password to your customer separately —
+                                                the link alone will not open the invoice or its PDF.
+                                            </span>
+                                        </div>
+                                    )}
                                     {linkExpiresSoon && (
                                         <div className="flex items-center justify-between rounded-md border border-amber-500/40 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
                                             <span className="flex items-center gap-2">

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +19,14 @@ class InvoiceShareLink extends Model
     /** @var list<string> */
     protected $hidden = ['password_hash'];
 
+    /**
+     * Serialise the "is it protected" flag so staff can warn the customer.
+     * Only the boolean — the hash is never sent to a browser.
+     *
+     * @var list<string>
+     */
+    protected $appends = ['has_password'];
+
     protected function casts(): array
     {
         return [
@@ -27,6 +36,19 @@ class InvoiceShareLink extends Model
             'viewed_at' => 'datetime',
             'downloaded_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether a customer must type a password before they can open this link.
+     *
+     * The staff screen needs to know this so it can warn them to pass the
+     * password on separately — otherwise they share the link and lock the
+     * customer out. Derived rather than stored, and safe to serialise: the
+     * hash itself stays hidden.
+     */
+    protected function hasPassword(): Attribute
+    {
+        return Attribute::get(fn (): bool => filled($this->password_hash));
     }
 
     /**

@@ -32,6 +32,7 @@ use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceCloner;
 use App\Services\QuotationFollowUpService;
 use App\Services\QuotationService;
+use App\Services\ReQuoteService;
 use App\Services\SubscriptionService;
 use App\Support\Attributes;
 use App\Support\Industry;
@@ -642,6 +643,34 @@ class InvoiceController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Quotation duplicated.')]);
 
         return to_route('invoices.show', $newInvoice);
+    }
+
+    /**
+     * "Same again" — rebuild this document as a fresh quotation, with every
+     * metal line re-priced at today's rate.
+     *
+     * The customer's repeat order is the most common thing that happens at
+     * this counter, and retyping the quote is the slowest part of it.
+     */
+    public function reQuote(Request $request, Invoice $invoice, ReQuoteService $reQuotes): RedirectResponse
+    {
+        Gate::authorize('create', Invoice::class);
+        abort_if($invoice->document_type->isAdjustment(), 422, 'Adjustment notes cannot be re-quoted.');
+
+        $invoice->loadMissing('items');
+
+        if (! $reQuotes->canReQuote($invoice)) {
+            return back()->withErrors(['document_type' => 'This document has no items to re-quote.']);
+        }
+
+        $quotation = $reQuotes->create($invoice, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Re-quoted from :number at today\'s metal rate.', ['number' => $invoice->invoice_number]),
+        ]);
+
+        return to_route('invoices.show', $quotation);
     }
 
     /**

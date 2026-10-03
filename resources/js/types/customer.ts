@@ -1,3 +1,5 @@
+import type { DocumentType } from './invoice';
+
 export type Staff = {
     id: number;
     name: string;
@@ -40,6 +42,7 @@ export type InvoiceSummary = {
     uuid: string;
     invoice_number: string;
     invoice_date: string;
+    document_type: DocumentType;
     status: string;
     grand_total: string;
     balance_amount: string;

@@ -132,6 +132,44 @@ class QuotationLifecycleTest extends TestCase
         $this->assertNotNull($quotation->quotation_responded_at);
     }
 
+    /**
+     * A customer tapping "Accept" is not a sale.
+     *
+     * This used to silently create a sales invoice whenever the
+     * quotation_auto_convert setting was on — no owner present, no rate
+     * re-confirmed, no payment taken. Acceptance must only record the
+     * decision; converting is a human action at the counter.
+     */
+    public function test_accepting_a_quotation_never_creates_an_invoice(): void
+    {
+        $quotation = $this->quotation();
+        $link = $this->shareLink($quotation);
+
+        BusinessSetting::forTenant($quotation->tenant_id)->update([
+            'quotation_customer_decisions' => true,
+        ]);
+
+        $invoicesBefore = Invoice::count();
+
+        $this->post(route('invoices.public.decide', $link->token), [
+            'decision' => QuotationStatus::Accepted->value,
+            'name' => 'Ravi Patel',
+        ])->assertRedirect();
+
+        $quotation->refresh();
+
+        $this->assertSame(QuotationStatus::Accepted, $quotation->quotation_status);
+        $this->assertNull($quotation->converted_to_id, 'Acceptance must not convert the quotation.');
+        $this->assertSame($invoicesBefore, Invoice::count(), 'Acceptance must not create any document.');
+
+        // Nothing became a sale, so nothing is owed.
+        $this->assertSame(0.0, (float) Invoice::where('document_type', DocumentType::GeneralInvoice->value)->count());
+        $this->assertSame(
+            0.0,
+            (float) Invoice::whereNotIn('document_type', DocumentType::adjustmentValues())->sum('paid_amount'),
+        );
+    }
+
     public function test_a_customer_can_decline_with_a_reason(): void
     {
         $quotation = $this->quotation();

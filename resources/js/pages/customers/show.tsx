@@ -1,5 +1,6 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import CustomerAdvanceController from '@/actions/App/Http/Controllers/CustomerAdvanceController';
 import CustomerFollowupController from '@/actions/App/Http/Controllers/CustomerFollowupController';
@@ -89,8 +90,18 @@ export default function ShowCustomer({
     staff: Staff[];
     timeline: TimelineEvent[];
 }) {
-    const { auth } = usePage<{ auth: Auth }>().props;
+const { auth } = usePage<{ auth: Auth }>().props;
     const isAdmin = auth.user.role === 'admin';
+    // Tracked by id so only the row being worked on shows a spinner.
+    const [reQuotingId, setReQuotingId] = useState<number | null>(null);
+
+    /** The repeat order: same items, priced at today's metal rate. */
+    function reQuote(invoiceId: number) {
+        setReQuotingId(invoiceId);
+        router.post(`/invoices/${invoiceId}/re-quote`, {}, {
+            onFinish: () => setReQuotingId(null),
+        });
+    }
 
     return (
         <>
@@ -298,20 +309,50 @@ export default function ShowCustomer({
                                 No invoices yet.
                             </p>
                         ) : (
-                            <div className="divide-y">
-                                {customer.invoices.map((invoice) => (
-                                    <Link
-                                        key={invoice.id}
-                                        href={`/invoices/${invoice.id}`}
-                                        className="flex items-center justify-between py-2 text-sm hover:underline"
-                                    >
-                                        <span>{invoice.invoice_number}</span>
-                                        <Badge variant="outline" className="capitalize">
-                                            {invoice.status}
-                                        </Badge>
-                                        <span>{currency.format(Number(invoice.grand_total))}</span>
-                                    </Link>
-                                ))}
+<div className="divide-y">
+                                {customer.invoices.map((invoice) => {
+                                    // An adjustment corrects another bill, so
+                                    // there is nothing to quote again.
+                                    const canReQuote =
+                                        invoice.document_type !== 'credit_note' &&
+                                        invoice.document_type !== 'debit_note';
+
+                                    return (
+                                        <div
+                                            key={invoice.id}
+                                            className="flex items-center justify-between gap-2 py-1.5"
+                                        >
+                                            <Link
+                                                href={`/invoices/${invoice.id}`}
+                                                className="flex flex-1 items-center justify-between gap-2 text-sm hover:underline"
+                                            >
+                                                <span>{invoice.invoice_number}</span>
+                                                <Badge variant="outline" className="capitalize">
+                                                    {invoice.status}
+                                                </Badge>
+                                                <span>{currency.format(Number(invoice.grand_total))}</span>
+                                            </Link>
+                                            {canReQuote && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    title="Same items, today's metal rate"
+                                                    disabled={reQuotingId === invoice.id}
+                                                    onClick={() => reQuote(invoice.id)}
+                                                >
+                                                    <RotateCcw
+                                                        className={
+                                                            reQuotingId === invoice.id
+                                                                ? 'size-3.5 animate-spin'
+                                                                : 'size-3.5'
+                                                        }
+                                                    />
+                                                    Re-quote
+                                                </Button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </CardContent>
