@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
+use App\Models\Tenant;
 use Illuminate\Console\Command;
 
 class MarkOverdueInvoices extends Command
@@ -14,12 +15,18 @@ class MarkOverdueInvoices extends Command
 
     public function handle(): int
     {
-        $count = Invoice::query()
-            ->where('status', InvoiceStatus::Unpaid->value)
-            ->whereNotNull('due_date')
-            ->whereDate('due_date', '<', today())
-            ->where('balance_amount', '>', 0)
-            ->update(['status' => InvoiceStatus::Overdue->value]);
+        $count = 0;
+
+        foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
+            $count += Tenant::runInContext($tenant->id, function (): int {
+                return Invoice::query()
+                    ->where('status', InvoiceStatus::Unpaid->value)
+                    ->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', today())
+                    ->where('balance_amount', '>', 0)
+                    ->update(['status' => InvoiceStatus::Overdue->value]);
+            });
+        }
 
         $this->info("{$count} invoice(s) marked overdue.");
 

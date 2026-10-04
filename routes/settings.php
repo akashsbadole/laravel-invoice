@@ -17,7 +17,9 @@ use App\Http\Middleware\EnsureSubscribed;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
+use App\Http\Middleware\EnsureTenantUser;
+
+Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -65,7 +67,7 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::delete('settings/quotation-templates/{quotationTemplate}', [QuotationTemplateController::class, 'destroy'])->name('quotation-templates.destroy');
 });
 
-Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
+Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, EnsureSubscribed::class])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])->name('security.edit');
@@ -73,6 +75,10 @@ Route::middleware(['auth', EnsureUserIsActive::class, EnsureSubscribed::class])-
     Route::put('settings/password', [SecurityController::class, 'update'])
         ->middleware('throttle:6,1')
         ->name('user-password.update');
+
+    Route::post('settings/two-factor-authentication', [SecurityController::class, 'enableTwoFactor'])->name('two-factor.enable');
+    Route::post('settings/two-factor-confirm', [SecurityController::class, 'confirmTwoFactor'])->name('two-factor.confirm');
+    Route::delete('settings/two-factor-authentication', [SecurityController::class, 'disableTwoFactor'])->name('two-factor.disable');
 
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
 });

@@ -23,6 +23,8 @@ class CustomerController extends Controller
 {
     public function index(Request $request): Response
     {
+        Gate::authorize('viewAny', Customer::class);
+
         $filters = $request->only(['search', 'customer_type', 'assigned_staff_id', 'tag']);
         $type = $filters['customer_type'] ?? null;
         $staffId = $filters['assigned_staff_id'] ?? null;
@@ -73,6 +75,8 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request): RedirectResponse
     {
+        Gate::authorize('create', Customer::class);
+
         $data = $request->validated();
 
         $customer = Customer::create([
@@ -91,6 +95,8 @@ class CustomerController extends Controller
 
     public function show(Customer $customer): Response
     {
+        Gate::authorize('view', $customer);
+
         $customer->load([
             'assignedStaff:id,name',
             'group:id,name,discount_percent,is_active',
@@ -132,6 +138,8 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Customer $customer): RedirectResponse
     {
+        Gate::authorize('update', $customer);
+
         $data = $request->validated();
 
         $customer->update([

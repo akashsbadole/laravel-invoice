@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Models\BusinessSetting;
 use App\Models\Customer;
 use App\Models\User;
@@ -19,6 +20,8 @@ class ReportController extends Controller
 {
     public function index(Request $request, ReportService $reports): Response
     {
+        abort_unless($request->user()->canDo(Permission::ViewReports), 403);
+
         $filters = $this->filters($request);
         $type = (string) $request->query('type', 'invoices');
 
@@ -41,6 +44,8 @@ class ReportController extends Controller
 
     public function download(Request $request, ReportService $reports): SymfonyResponse
     {
+        abort_unless($request->user()->canDo(Permission::ViewReports), 403);
+
         $request->validate(['format' => ['required', 'in:csv,xlsx,pdf']]);
 
         $filters = $this->filters($request);
@@ -99,6 +104,8 @@ class ReportController extends Controller
 
     public function gstr1(Request $request, GstExportService $gst): SymfonyResponse
     {
+        abort_unless($request->user()->canDo(Permission::ViewReports), 403);
+
         $filters = $this->gstFilters($request);
         $payload = $gst->gstr1($filters, BusinessSetting::current());
         $basename = "gstr1-{$payload['fp']}";
@@ -110,6 +117,8 @@ class ReportController extends Controller
 
     public function gstr3b(Request $request, GstExportService $gst): SymfonyResponse
     {
+        abort_unless($request->user()->canDo(Permission::ViewReports), 403);
+
         $filters = $this->gstFilters($request);
         $payload = $gst->gstr3b($filters, BusinessSetting::current());
         $basename = "gstr3b-{$payload['fp']}";

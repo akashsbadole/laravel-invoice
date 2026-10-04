@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\CatalogStatus;
 use App\Models\CatalogItem;
+use App\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -27,11 +28,17 @@ class FlagStaleDrafts extends Command
 
     public function handle(): int
     {
+        $count = 0;
+
         try {
-            $count = CatalogItem::query()
-                ->where('status', CatalogStatus::Draft->value)
-                ->where('created_at', '<', now()->subDays(self::STALE_DAYS))
-                ->count();
+            foreach (Tenant::query()->where('status', 'active')->get() as $tenant) {
+                $count += Tenant::runInContext($tenant->id, function (): int {
+                    return CatalogItem::query()
+                        ->where('status', CatalogStatus::Draft->value)
+                        ->where('created_at', '<', now()->subDays(self::STALE_DAYS))
+                        ->count();
+                });
+            }
         } catch (\Throwable $e) {
             Log::error('Stale draft sweep failed.', ['exception' => $e]);
 

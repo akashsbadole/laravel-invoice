@@ -26,6 +26,12 @@ class UpdateInvoiceRequest extends StoreInvoiceRequest
                 return;
             }
 
+            if (in_array($requested, DocumentType::adjustmentValues(), true)) {
+                $validator->errors()->add('document_type', 'Invoices cannot be re-typed into credit or debit notes.');
+
+                return;
+            }
+
             if ($invoice->converted_to_id !== null) {
                 $validator->errors()->add('document_type', 'This document has already been converted and its type cannot change.');
 

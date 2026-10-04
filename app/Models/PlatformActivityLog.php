@@ -36,7 +36,7 @@ class PlatformActivityLog extends Model
      */
     public function actor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withoutGlobalScopes();
     }
 
     /**

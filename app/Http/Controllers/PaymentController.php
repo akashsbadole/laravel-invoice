@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Http\Requests\Invoices\StorePaymentRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -19,6 +20,8 @@ class PaymentController extends Controller
 
     public function index(Request $request): Response
     {
+        abort_unless($request->user()->canDo(Permission::RecordPayments), 403);
+
         $filters = $request->only(['search', 'method', 'from', 'to']);
 
         $query = Payment::query()
@@ -48,6 +51,22 @@ class PaymentController extends Controller
         $this->payments->settleMatchingInstallments($invoice, $payment);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment recorded.')]);
+
+        return back();
+    }
+
+    public function reverse(Request $request, Payment $payment): RedirectResponse
+    {
+        $invoice = $payment->invoice;
+        Gate::authorize('recordPayment', $invoice);
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $this->payments->reverse($payment, $request->user(), $validated['reason'] ?? null);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment reversed.')]);
 
         return back();
     }

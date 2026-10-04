@@ -6,6 +6,7 @@ use App\Enums\InvoiceEventType;
 use App\Enums\QuotationActivity;
 use App\Enums\QuotationStatus;
 use App\Models\BusinessSetting;
+use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceShareLink;
 use App\Models\InvoiceTemplate;
@@ -27,7 +28,7 @@ class PublicInvoiceController extends Controller
 
     public function show(Request $request, string $token): Response
     {
-        $shareLink = InvoiceShareLink::query()->where('token', $token)->first();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->first();
 
         if (! $shareLink || ! $shareLink->isUsable()) {
             return Inertia::render('invoices/public', [
@@ -71,7 +72,7 @@ class PublicInvoiceController extends Controller
         return Inertia::render('invoices/public', [
             'status' => 'ok',
             'token' => $token,
-            'invoice' => $invoice,
+            'invoice' => $this->sanitizePublicInvoice($invoice),
             'template' => $template->layout_config + InvoiceTemplate::defaultLayoutConfig(),
             'business' => [
                 ...$settings->only([
@@ -96,7 +97,7 @@ class PublicInvoiceController extends Controller
 
     public function verifyPassword(Request $request, string $token): RedirectResponse
     {
-        $shareLink = InvoiceShareLink::query()->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->firstOrFail();
 
         $request->validate(['password' => ['required', 'string']]);
 
@@ -115,7 +116,7 @@ class PublicInvoiceController extends Controller
      */
     public function decide(Request $request, string $token): RedirectResponse
     {
-        $shareLink = InvoiceShareLink::query()->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->firstOrFail();
         abort_unless($shareLink->isUsable(), 404);
 
         if ($shareLink->password_hash && ! $request->session()->get("invoice_share_verified.{$token}")) {
@@ -172,7 +173,7 @@ class PublicInvoiceController extends Controller
      */
     public function requestChanges(Request $request, string $token): RedirectResponse
     {
-        $shareLink = InvoiceShareLink::query()->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->firstOrFail();
         abort_unless($shareLink->isUsable(), 404);
 
         if ($shareLink->password_hash && ! $request->session()->get("invoice_share_verified.{$token}")) {
@@ -218,6 +219,68 @@ class PublicInvoiceController extends Controller
     /**
      * @param  array<string,mixed>  $validated
      */
+    protected function sanitizePublicInvoice(Invoice $invoice): array
+    {
+        return [
+            'id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->invoice_date?->toDateString(),
+            'due_date' => $invoice->due_date?->toDateString(),
+            'rate_locked_at' => $invoice->rate_locked_at?->toDateString(),
+            'revision_number' => $invoice->revision_number,
+            'document_type' => $invoice->document_type?->value,
+            'status' => $invoice->status?->value,
+            'subtotal' => (float) $invoice->subtotal,
+            'charges_summary' => $invoice->charges_summary,
+            'discount' => (float) $invoice->discount,
+            'tax' => (float) $invoice->tax,
+            'tax_breakdown' => $invoice->tax_breakdown,
+            'tcs_rate' => (float) $invoice->tcs_rate,
+            'tcs_amount' => (float) $invoice->tcs_amount,
+            'round_off' => (float) $invoice->round_off,
+            'grand_total' => (float) $invoice->grand_total,
+            'paid_amount' => (float) $invoice->paid_amount,
+            'balance_amount' => (float) $invoice->balance_amount,
+            'terms' => $invoice->terms,
+            'converted_to_id' => $invoice->converted_to_id,
+            'quotation_response' => $invoice->quotation_response,
+            'customer' => $invoice->customer ? $invoice->customer->only([
+                'full_name', 'mobile_number', 'email', 'address', 'tax_number',
+            ]) : null,
+            'items' => $invoice->items->map(fn ($item) => [
+                'id' => $item->id,
+                'item_name' => $item->item_name,
+                'description' => $item->description,
+                'quantity' => (float) $item->quantity,
+                'unit_label' => $item->unit_label,
+                'rate_type' => $item->rate_type?->value,
+                'rate' => (float) $item->rate,
+                'net_weight' => $item->net_weight !== null ? (float) $item->net_weight : null,
+                'gross_weight' => $item->gross_weight !== null ? (float) $item->gross_weight : null,
+                'wastage_percent' => $item->wastage_percent !== null ? (float) $item->wastage_percent : null,
+                'making_charge' => $item->making_charge !== null ? (float) $item->making_charge : null,
+                'item_total' => (float) $item->item_total,
+                'charges' => $item->charges->map(fn ($c) => [
+                    'id' => $c->id,
+                    'charge_name' => $c->charge_name,
+                    'amount' => (float) $c->amount,
+                ])->values()->all(),
+            ])->values()->all(),
+            'payments' => $invoice->payments->map(fn ($p) => [
+                'id' => $p->id,
+                'payment_date' => $p->payment_date?->toDateString(),
+                'amount' => (float) $p->amount,
+                'payment_method' => $p->payment_method?->value,
+                'reference_number' => $p->reference_number,
+            ])->values()->all(),
+            'template' => $invoice->template ? [
+                'id' => $invoice->template->id,
+                'name' => $invoice->template->name,
+                'layout_config' => $invoice->template->layout_config,
+            ] : null,
+        ];
+    }
+
     protected function responseText(array $validated, QuotationStatus $decision): ?string
     {
         $text = trim((string) ($validated['response'] ?? ''));

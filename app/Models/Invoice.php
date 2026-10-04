@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\BelongsToTenant;
 use App\Enums\DocumentType;
+use App\Enums\InvoiceEventType;
 use App\Enums\InvoiceStatus;
 use App\Enums\PricingMode;
 use App\Enums\QuotationStatus;
@@ -281,5 +282,21 @@ class Invoice extends Model
     protected function dueDateHasPassed(): bool
     {
         return $this->due_date !== null && $this->due_date->isPast();
+    }
+
+    /**
+     * Whether an invoice is locked against editing or deleting.
+     * Locked when it has payments recorded, an e-invoice generated (IRN), or share links generated / sent.
+     */
+    public function isLocked(): bool
+    {
+        if ($this->document_type->isQuotation()) {
+            return $this->converted_to_id !== null;
+        }
+
+        return (float) $this->paid_amount > 0
+            || ! empty($this->irn)
+            || $this->shareLinks()->exists()
+            || $this->events()->where('event_type', InvoiceEventType::Sent->value)->exists();
     }
 }

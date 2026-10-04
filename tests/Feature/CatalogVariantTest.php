@@ -335,7 +335,7 @@ class CatalogVariantTest extends TestCase
             ]);
         });
 
-        $foreign = $pendant->variants()->sole();
+        $foreign = $this->inTenant($user, fn () => $pendant->variants()->sole());
 
         $this->actingAs($user)
             ->post(route('invoices.store'), [

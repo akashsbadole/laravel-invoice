@@ -54,6 +54,21 @@ class RazorpayService
         ];
     }
 
+    public function fetchOrder(string $orderId): ?array
+    {
+        try {
+            $order = $this->api()->order->fetch($orderId);
+
+            return [
+                'id' => $order['id'] ?? $orderId,
+                'amount' => isset($order['amount']) ? (int) $order['amount'] : null,
+                'notes' => isset($order['notes']) ? (array) $order['notes'] : [],
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     public function verifyPaymentSignature(string $orderId, string $paymentId, string $signature): bool
     {
         try {

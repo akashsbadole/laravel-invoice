@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Concerns\TenantScope;
 use App\Models\Customer;
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,7 +15,7 @@ class EnsurePortalCustomer
     {
         $customerId = $request->session()->get('portal_customer_id');
 
-        $customer = $customerId ? Customer::query()->find($customerId) : null;
+        $customer = $customerId ? Customer::query()->withoutGlobalScope(TenantScope::class)->find($customerId) : null;
 
         if (! $customer) {
             $request->session()->forget('portal_customer_id');
@@ -23,6 +25,6 @@ class EnsurePortalCustomer
 
         $request->attributes->set('portalCustomer', $customer);
 
-        return $next($request);
+        return Tenant::runInContext($customer->tenant_id, fn () => $next($request));
     }
 }

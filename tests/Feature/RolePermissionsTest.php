@@ -155,6 +155,27 @@ class RolePermissionsTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_an_invoice_creator_cannot_access_reports_or_gstr_exports(): void
+    {
+        $creator = $this->userWithRole(UserRole::InvoiceCreator);
+
+        $this->actingAs($creator)
+            ->get(route('reports.index'))
+            ->assertForbidden();
+
+        $this->actingAs($creator)
+            ->get(route('reports.download', ['type' => 'invoices', 'format' => 'csv']))
+            ->assertForbidden();
+
+        $this->actingAs($creator)
+            ->get(route('reports.gstr1'))
+            ->assertForbidden();
+
+        $this->actingAs($creator)
+            ->get(route('reports.gstr3b'))
+            ->assertForbidden();
+    }
+
     public function test_an_invoice_creator_cannot_delete_an_invoice(): void
     {
         $creator = $this->userWithRole(UserRole::InvoiceCreator);

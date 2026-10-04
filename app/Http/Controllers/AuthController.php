@@ -50,11 +50,81 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
+        if ($user->two_factor_secret && $user->two_factor_confirmed_at) {
+            Auth::guard('web')->logout();
+            $request->session()->put('two_factor.user_id', $user->id);
+            $request->session()->put('two_factor.remember', $request->boolean('remember'));
+
+            return to_route('two-factor.login');
+        }
+
         $request->session()->regenerate();
         $user->forceFill(['last_login_at' => now()])->save();
 
         // A platform super admin has no tenant, so send them to the admin
         // panel rather than a tenant dashboard they cannot load.
+        if ($user->isSuperAdmin()) {
+            return redirect()->intended(route('admin.dashboard'));
+        }
+
+        return redirect()->intended(route('dashboard'));
+    }
+
+    public function twoFactorChallenge(Request $request): Response|RedirectResponse
+    {
+        if (! $request->session()->has('two_factor.user_id')) {
+            return to_route('login');
+        }
+
+        return Inertia::render('auth/two-factor-challenge');
+    }
+
+    public function verifyTwoFactor(Request $request): RedirectResponse
+    {
+        $userId = $request->session()->get('two_factor.user_id');
+
+        if (! $userId) {
+            return to_route('login');
+        }
+
+        /** @var User $user */
+        $user = User::query()->findOrFail($userId);
+
+        $request->validate([
+            'code' => ['nullable', 'string'],
+            'recovery_code' => ['nullable', 'string'],
+        ]);
+
+        $valid = false;
+
+        if ($code = $request->input('code')) {
+            $secret = decrypt($user->two_factor_secret);
+            $google2fa = new \PragmaRX\Google2FA\Google2FA();
+            $valid = $google2fa->verifyKey($secret, $code);
+        } elseif ($recoveryCode = $request->input('recovery_code')) {
+            $codes = $user->two_factor_recovery_codes ? json_decode(decrypt($user->two_factor_recovery_codes), true) : [];
+            if (($key = array_search(trim($recoveryCode), $codes, true)) !== false) {
+                unset($codes[$key]);
+                $user->forceFill([
+                    'two_factor_recovery_codes' => encrypt(json_encode(array_values($codes))),
+                ])->save();
+                $valid = true;
+            }
+        }
+
+        if (! $valid) {
+            return back()->withErrors([
+                'code' => __('The provided two-factor authentication code was invalid.'),
+            ]);
+        }
+
+        $remember = $request->session()->get('two_factor.remember', false);
+        $request->session()->forget(['two_factor.user_id', 'two_factor.remember']);
+
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+        $user->forceFill(['last_login_at' => now()])->save();
+
         if ($user->isSuperAdmin()) {
             return redirect()->intended(route('admin.dashboard'));
         }

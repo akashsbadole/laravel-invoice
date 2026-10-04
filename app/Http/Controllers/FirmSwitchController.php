@@ -21,16 +21,7 @@ class FirmSwitchController extends Controller
         abort_unless($tenant->isActive(), 422, 'This firm is not active.');
         abort_unless($user->isMemberOf($tenant->id), 403);
 
-        $role = $user->membershipRole($tenant->id) ?? $user->role;
-
-        // users.tenant_id/role always describe the CURRENT firm, so every
-        // policy, scope and validation rule keeps working unchanged.
-        $user->forceFill([
-            'tenant_id' => $tenant->id,
-            'role' => $role,
-        ])->save();
-
-        $request->session()->regenerate();
+        $request->session()->put('current_tenant_id', $tenant->id);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __("Switched to {$tenant->name}.")]);
 

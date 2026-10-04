@@ -19,8 +19,10 @@ use Inertia\Response;
 
 class ReminderController extends Controller
 {
-    public function index(ReminderService $service): Response
+    public function index(Request $request, ReminderService $service): Response
     {
+        abort_unless($request->user()->canDo(Permission::SendMessages), 403);
+
         $data = $service->gather();
 
         return Inertia::render('reminders', [
@@ -45,6 +47,8 @@ class ReminderController extends Controller
 
     public function store(StoreReminderRequest $request): RedirectResponse
     {
+        abort_unless($request->user()->canDo(Permission::SendMessages), 403);
+
         Reminder::create([...$request->validated(), 'created_by' => $request->user()->id]);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Reminder added.')]);
