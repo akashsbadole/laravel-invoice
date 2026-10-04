@@ -100,4 +100,18 @@ class RazorpayService
             return false;
         }
     }
+
+    public function fetchPayment(string $paymentId): ?array
+    {
+        try {
+            $payment = $this->api()->payment->fetch($paymentId);
+
+            return [
+                'id' => $payment['id'] ?? $paymentId,
+                'amount' => isset($payment['amount']) ? (int) $payment['amount'] : null,
+            ];
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 }

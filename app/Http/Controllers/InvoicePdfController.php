@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\TenantScope;
 use App\Enums\InvoiceEventType;
 use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceShareLink;
+use App\Models\Tenant;
 use App\Services\InvoicePdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
@@ -24,7 +26,7 @@ class InvoicePdfController extends Controller
 
     public function public(string $token): Response
     {
-        $shareLink = InvoiceShareLink::query()->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(TenantScope::class)->where('token', $token)->firstOrFail();
         abort_unless($shareLink->isUsable(), 404);
 
         // Password-protected links must have been unlocked in this session.
@@ -33,18 +35,20 @@ class InvoicePdfController extends Controller
             403,
         );
 
-        $firstDownload = $shareLink->downloaded_at === null;
-        $shareLink->markDownloaded();
+        return Tenant::runInContext($shareLink->tenant_id, function () use ($shareLink) {
+            $firstDownload = $shareLink->downloaded_at === null;
+            $shareLink->markDownloaded();
 
-        if ($firstDownload) {
-            InvoiceEvent::log(
-                $shareLink->invoice,
-                InvoiceEventType::LinkDownloaded,
-                ['action' => 'link_downloaded', 'token' => $token]
-            );
-        }
+            if ($firstDownload) {
+                InvoiceEvent::log(
+                    $shareLink->invoice()->with('customer')->firstOrFail(),
+                    InvoiceEventType::LinkDownloaded,
+                    ['action' => 'link_downloaded', 'token' => $shareLink->token]
+                );
+            }
 
-        return $this->render($shareLink->invoice, download: true);
+            return $this->render($shareLink->invoice()->with('customer')->firstOrFail(), download: true);
+        });
     }
 
     protected function render(Invoice $invoice, bool $download = false): Response

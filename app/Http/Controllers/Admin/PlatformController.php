@@ -486,10 +486,14 @@ class PlatformController extends Controller
             if ($superAdmin) {
                 auth()->login($superAdmin);
                 $request->session()->regenerate();
+            } else {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('login')
+                    ->withErrors(['email' => 'Your impersonation session is no longer valid. Please sign in again.']);
             }
 
-            // Recorded after the auth switch back, so the actor resolves to the
-            // super admin even though auth() is now the tenant user again.
             PlatformActivityLog::create([
                 'user_id' => $session['super_admin_id'],
                 'action' => 'tenant.impersonation_ended',

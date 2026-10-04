@@ -21,9 +21,10 @@ class Invoice extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
+        'tenant_id', 'customer_id', 'invoice_number', 'invoice_date', 'due_date', 'reference_number',
         'document_type', 'status', 'pricing_mode', 'salesperson_id', 'invoice_template_id',
-        'converted_to_id', 'parent_invoice_id', 'quotation_status', 'quotation_response', 'quotation_responded_at', 'quotation_valid_until', 'rate_locked_at', 'revision_number', 'revision_note', 'discount_approved_by', 'discount_approved_at', 'discount_approved_discount',
+        'converted_to_id', 'parent_invoice_id', 'quotation_status', 'quotation_response', 'quotation_responded_at', 'quotation_valid_until', 'rate_locked_at',
+        'revision_number', 'revision_note',
         'subtotal', 'charges_summary', 'discount', 'tax', 'round_off',
         'tds_rate', 'tds_amount', 'tcs_rate', 'tcs_amount',
         'grand_total', 'paid_amount', 'balance_amount',

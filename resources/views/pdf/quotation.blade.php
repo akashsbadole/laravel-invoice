@@ -4,10 +4,13 @@
     <meta charset="utf-8">
     <title>Quotation {{ $invoice->invoice_number }}</title>
     <style>
-        @page { margin: 0; }
+        @page { margin: 12mm; }
+        *, *::before, *::after { box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 10.5px; color: #1F2937; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
-        .wrap { padding: 18px 22px 22px; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        .wrap { padding: 8px 10px 10px; }
 
         /* Masthead: shop identity on the left, the word QUOTE on the right. */
         .masthead td { vertical-align: top; }
@@ -55,7 +58,7 @@
         <tr>
             <td style="width: 64%;">
                 @if($business->logo_path)
-                    <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 34px; margin-bottom: 4px;">
+                    <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 34px; max-width: 100%; margin-bottom: 4px;">
                 @endif
                 <div class="shop-name">{{ $business->business_name }}</div>
                 <div class="shop-meta">

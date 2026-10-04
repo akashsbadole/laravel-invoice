@@ -64,9 +64,9 @@
       0 => 'Laravel\\Sanctum\\SanctumServiceProvider',
     ),
   ),
-  'laravel/wayfinder' =>
+  'laravel/wayfinder' => 
   array (
-    'providers' =>
+    'providers' => 
     array (
       0 => 'Laravel\\Wayfinder\\WayfinderServiceProvider',
     ),

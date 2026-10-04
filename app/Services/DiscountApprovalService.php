@@ -65,11 +65,11 @@ class DiscountApprovalService
      */
     public function approve(Invoice $invoice, User $by): void
     {
-        $invoice->update([
+        $invoice->forceFill([
             'discount_approved_by' => $by->id,
             'discount_approved_at' => now(),
             'discount_approved_discount' => $invoice->discount,
-        ]);
+        ])->save();
 
         InvoiceEvent::log($invoice, InvoiceEventType::Updated, [
             'action' => 'discount_approved',

@@ -19,7 +19,7 @@ capability (`canDo(Permission::…)`) rather than testing a role name.
 | ------------------- | --------------------------------------------------------------------------------------------- |
 | **Super Admin**     | Platform operator with **no tenant**. Manages every tenant, plan and subscription.            |
 | **Admin**           | Full control of one business, including settings and staff.                                   |
-| **Manager**         | Runs the day to day — catalog, stock, invoices, reports. No settings or staff administration.  |
+| **Manager**         | Runs the day to day — catalog, stock, invoices, reports. No settings or staff administration. |
 | **Invoice Creator** | Quotes and invoices in, records payments. No deletes, no cost visibility.                     |
 | **Viewer**          | Read-only across the board.                                                                   |
 
@@ -231,7 +231,7 @@ so every such edit is a numbered revision with a reason.
   `draft`. Draft edits are private and cost no revision.
 - The owner records a one-line reason ("Customer asked for 20g instead of
   15g") which is shown to the customer, published in the WhatsApp text and
-  recorded in the activity timeline as *"Quotation revised to Rev N"*.
+  recorded in the activity timeline as _"Quotation revised to Rev N"_.
 - Revisions show as `Rev N` on the invoice page, on the shared quotation and
   in the shared WhatsApp message, so the customer can always tell which version
   they are holding.
@@ -244,7 +244,7 @@ offers three explicit paths instead:
 - **Accept** — records the decision and notifies staff.
 - **Ask for changes** — keeps the quotation **open** (no status change), stores
   the customer's own words as `quotation_response`, logs a
-  `changes_requested` activity, notifies staff, *and* opens a prefilled WhatsApp
+  `changes_requested` activity, notifies staff, _and_ opens a prefilled WhatsApp
   message to the shop. Negotiation continues in the channel the shop actually
   uses.
 - **Decline** — closes the quotation.
@@ -382,13 +382,13 @@ emailed PDF can never disagree with the page the staff previewed.
 Classic Indian layout, assembled from data already stored — nothing invented:
 
 - Shop masthead, `TAX INVOICE`, "Original for recipient".
-- **PAN** and **GSTIN** row. The PAN is *derived from the seller's GSTIN*
+- **PAN** and **GSTIN** row. The PAN is _derived from the seller's GSTIN_
   (characters 3–12), so no separate field has to be kept in step.
 - Two-column body: **Customer Detail** (M/S, address, phone, GSTIN, place of
   supply) beside **Invoice Detail** (number, date, due date, reference,
   e-way bill, rate date).
 - `Sr. No. / Name of Product or Service / HSN-SAC / Qty / Rate / Taxable Value
-  / Amount` items table, plus a total row and the tax line marked
+/ Amount` items table, plus a total row and the tax line marked
   **(E & O.E.)**.
 - **Total in words** and **total tax in words**, using Indian grouping
   (`app/Support/NumberToWords.php`): lakh and crore rather than million and
@@ -413,7 +413,7 @@ protected**, not just its landing page:
   the password is entered and verified in-session.
 - The hash is stored with `Hash::make` and stays in the model's `$hidden`.
   Only a derived `has_password` boolean reaches the browser, so the staff screen
-  can warn *"send the link and the password separately"* without ever exposing
+  can warn _"send the link and the password separately"_ without ever exposing
   the secret.
 
 ### Not indexed
@@ -474,8 +474,8 @@ quantity, so printing both would inflate every total.
 
 The failure point at a small shop is not knowing who is waiting. The dashboard
 carries a **"waiting on a customer"** list: quotations sent two or more days
-ago, still unanswered and not converted, oldest first, badged *not opened* or
-*opened · not answered*. One tap opens WhatsApp with a check-in message already
+ago, still unanswered and not converted, oldest first, badged _not opened_ or
+_opened · not answered_. One tap opens WhatsApp with a check-in message already
 written and the quote link attached. Quotes that are recent, drafts, accepted
 or already converted never appear.
 
@@ -562,45 +562,123 @@ row can never be read across tenants even if a query forgets to scope.
 
 ### Platform and tenancy
 
-| Model | Purpose |
-| ----- | ------- |
-| `Tenant` | One business. Carries `industry` and `status`. |
-| `User` | Staff and platform accounts, with `role` and `tenant_id`. |
-| `Subscription` / `Plan` | Tenant plan, status and period. |
-| `StaffInvite` | Pending invitation into a tenant roster. |
-| `PlatformActivityLog` | Super-admin action trail. |
-| `ActivityLog` | Tenant-level action trail (spatie activitylog). |
+| Model                   | Purpose                                                   |
+| ----------------------- | --------------------------------------------------------- |
+| `Tenant`                | One business. Carries `industry` and `status`.            |
+| `User`                  | Staff and platform accounts, with `role` and `tenant_id`. |
+| `Subscription` / `Plan` | Tenant plan, status and period.                           |
+| `StaffInvite`           | Pending invitation into a tenant roster.                  |
+| `PlatformActivityLog`   | Super-admin action trail.                                 |
+| `ActivityLog`           | Tenant-level action trail (spatie activitylog).           |
 
 ### Business configuration
 
-| Model | Purpose |
-| ----- | ------- |
-| `BusinessSetting` | Per-tenant singleton: identity, tax number, numbering sequences, rounding, channel toggles, discount-approval limit. |
-| `InvoiceTemplate` | Layout config: accent colour, alignment and the print toggles. |
-| `ChargeType` | Per-industry charge catalogue — name, code, calculation type, taxable flag. |
-| `CustomerGroup` | A named percentage pricing tier. |
-| `QuotationTemplate` | Saved quotation shapes. |
+| Model               | Purpose                                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `BusinessSetting`   | Per-tenant singleton: identity, tax number, numbering sequences, rounding, channel toggles, discount-approval limit. |
+| `InvoiceTemplate`   | Layout config: accent colour, alignment and the print toggles.                                                       |
+| `ChargeType`        | Per-industry charge catalogue — name, code, calculation type, taxable flag.                                          |
+| `CustomerGroup`     | A named percentage pricing tier.                                                                                     |
+| `QuotationTemplate` | Saved quotation shapes.                                                                                              |
 
 ### Catalog
 
 `CatalogItem`, `CatalogVariant`, `InventoryMovement`.
 
-### Documents
+### Documents — field detail
 
-| Model | Purpose |
-| ----- | ------- |
-| `Invoice` | Every document type — quotation, invoice, challan, credit/debit note. Carries the money columns, `rate_locked_at`, `revision_number`/`revision_note` and the discount-approval snapshot. |
-| `InvoiceItem` | A document line: specs, weights, rate, discount, tax. `line_type` distinguishes a sale from an exchange credit. |
-| `InvoiceItemCharge` | A charge on one line. |
-| `InvoiceCharge` | A charge on the whole document. |
-| `Installment` | One dated slice of an agreed payment plan. |
-| `Payment` | A receipt against an invoice. |
-| `CustomerAdvance` | Money held before there is an invoice. |
-| `RecurringProfile` | Repeating-document schedule. |
-| `MetalRate` | A dated rate for a metal + purity. |
-| `InvoiceShareLink` | A secure customer link: token, expiry, `password_hash`, sent/viewed/downloaded stamps. |
-| `InvoiceEvent` | Per-document activity trail — the source of the shared-page updates feed. |
-| `MessageLog` | Every outbound SMS/WhatsApp/email attempt, with driver and error. |
+#### Invoice (core money columns + lifecycle)
+
+| Column                | Type | Nullable | Default | Description                                                                                     |
+| --------------------- | ---- | -------- | ------- | ------------------------------------------------------------------------------------------------- |
+| `id`                  | bigint | NO | auto-increment | Primary key                                                                                      |
+| `uuid`                | char(36) | NO | random uuid | Unique identifier for the document                                                                |
+| `customer_id`         | bigint | NO | — | FK → customers                                                                                   |
+| `invoice_number`      | varchar(255) | YES | — | Unique invoice/quote number                                                                     |
+| `invoice_date`        | date | YES | — | Document date                                                                                     |
+| `due_date`            | date | YES | — | Payment due date                                                                                  |
+| `reference_number`    | varchar(255) | YES | — | Customer PO or reference number                                                                  |
+| `status`              | varchar(255) | YES | `Unpaid` | Enum: Unpaid / PartiallyPaid / Paid / Overdue / Cancelled / Refunded                           |
+| `pricing_mode`        | varchar(255) | YES | `JewelryCalculated` | Enum: JewelryCalculated / FixedPrice / AreaBased / PerMetre / PerLitre etc.                   |
+| `tax_mode`            | varchar(255) | YES | `single` | Enum: single / cgst_sgst / igst                                                                 |
+| `tax_breakdown`       | json | YES | — | Per-HSN tax summary: `{hsn: {taxable, cgst, sgst, igst}}`                                       |
+| `last_reminder_sent_at` | datetime | YES | — | Timestamp of last reminder sent                                                                  |
+| `salesperson_id`      | bigint | YES | — | FK → users (who created/priced the document)                                                    |
+| `invoice_template_id` | bigint | YES | — | FK → invoice_templates                                                                           |
+| `converted_to_id`     | bigint | YES | — | FK → invoices (if this was a converted quotation)                                                |
+| `parent_invoice_id`   | bigint | YES | — | FK → invoices (if this is a credit/debit note)                                                   |
+| `quotation_status`    | varchar(255) | YES | — | Enum: Draft / Sent / Accepted / Rejected / Expired                                              |
+| `quotation_response`  | text | YES | — | Customer's own words when asking for changes                                                    |
+| `quotation_responded_at` | datetime | YES | — | When the customer responded                                                                      |
+| `quotation_valid_until` | date | YES | — | Validity window end date                                                                         |
+| `rate_locked_at`      | date | YES | — | The metal rate date this document was priced at                                                 |
+| `revision_number`     | integer | YES | 1 | Revision count; draft edits cost no revision                                                     |
+| `revision_note`       | text | YES | — | Free-text reason for the revision                                                                |
+| `discount_approved_by` | bigint | YES | — | FK → users who approved the discount                                                             |
+| `discount_approved_at` | datetime | YES | — | When the discount was approved                                                                   |
+| `discount_approved_discount` | decimal(12,2) | YES | 0 | The exact discount % that was approved                                                          |
+| `subtotal`            | decimal(12,2) | YES | 0 | Pre-tax sum of all line totals                                                                  |
+| `charges_summary`     | json | YES | — | Document-level charges (packing, delivery, etc.) queryable fast read                             |
+| `discount`            | decimal(12,2) | YES | 0 | Document-level discount amount                                                                    |
+| `tax`                 | decimal(12,2) | YES | 0 | Calculated tax amount                                                                           |
+| `round_off`           | decimal(8,2) | YES | 0 | Rounding difference                                                                             |
+| `tds_rate`            | decimal(5,2) | YES | 0 | Tax deducted at source rate                                                                     |
+| `tds_amount`          | decimal(12,2) | YES | 0 | TDS amount withheld                                                                             |
+| `tcs_rate`            | decimal(5,2) | YES | 0 | Tax collected at source rate                                                                    |
+| `tcs_amount`          | decimal(12,2) | YES | 0 | TCS amount collected                                                                            |
+| `grand_total`         | decimal(12,2) | YES | 0 | Grand total before any adjustments                                                              |
+| `paid_amount`         | decimal(12,2) | YES | 0 | Total paid via payments + advances                                                              |
+| `balance_amount`      | decimal(12,2) | YES | 0 | `grand_total + adjustments - tds - paid_amount`, floored at 0                                   |
+| `notes`               | text | YES | — | Free-text notes                                                                                 |
+| `terms`               | text | YES | — | Printed terms and conditions                                                                    |
+| `attributes`          | json | YES | — | Key/value pairs (industry-specific)                                                             |
+| `created_by`          | bigint | YES | — | FK → users (creator)                                                                            |
+| `einvoice_status`     | varchar(255) | YES | — | IRN status: Generated / Pending / Failed / Cancelled                                            |
+| `irn`                 | varchar(64) | YES | — | Invoice Reference Number from GST portal                                                         |
+| `irn_ack_no`          | varchar(64) | YES | — | IRN acknowledgement number                                                                      |
+| `irn_ack_date`        | datetime | YES | — | IRN acknowledgement date                                                                        |
+| `eway_bill_no`        | varchar(100) | YES | — | E-way bill number                                                                               |
+| `soft_deletes`        | — | YES | — | `deleted_at` column for soft deletes                                                            |
+| `timestamps`          | — | — | — | `created_at`, `updated_at`                                                                      |
+
+**Casts** (from `Invoice.php` casts array):
+`invoice_date`, `due_date`, `document_type`, `status`, `pricing_mode`, `quotation_status`, `quotation_responded_at`, `quotation_valid_until`, `rate_locked_at`, `revision_number`, `discount_approved_at`, `discount_approved_discount`, `cancelled_at`, `charges_summary`, `tax_mode`, `attributes`, `tax_breakdown`, `last_reminder_sent_at`, `irn_ack_date`, `subtotal`, `discount`, `tax`, `round_off`, `tds_rate`, `tds_amount`, `tcs_rate`, `tcs_amount`, `grand_total`, `paid_amount`, `balance_amount`
+
+#### InvoiceItem (per-line item)
+
+| Column                | Type | Nullable | Default | Description                                                                                                                   |
+| --------------------- | ---- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | bigint | NO | auto-increment | Primary key                                                                                                                   |
+| `invoice_id`          | bigint | NO | — | FK → invoices                                                                                                                 |
+| `sort_order`          | integer | YES | 0 | Display order within the document                                                                                             |
+| `item_name`           | varchar(255) | YES | — | Product/service name                                                                            |
+| `description`         | text | YES | — | Full line description                                                                                                         |
+| `item_code`           | varchar(255) | YES | — | SKU / product code                                                                                                            |
+| `hsn_code`            | varchar(255) | YES | — | HSN/SAC code for GST                                                                                                          |
+| `metal_type`          | varchar(255) | YES | — | gold / silver / platinum / diamond etc.                                                                                      |
+| `purity`              | varchar(255) | YES | — | 22K / 18K / 925 etc.                                                                                                          |
+| `huid_number`         | varchar(255) | YES | — | BIS Hallmark Unique ID for gold jewelry                                                                                      |
+| `stone_clarity`       | varchar(255) | YES | — | Clarity grade for stones                                                                                                      |
+| `stone_color`         | varchar(255) | YES | — | Color grade for stones                                                                                                        |
+| `stone_carat`         | decimal(8,3) | YES | 0 | Carat weight of stones                                                                                                        |
+| `certificate_number`  | varchar(255) | YES | — | GIA/IGI or other certificate number                                                                                           |
+| `quantity`            | integer | YES | 1 | Number of units                                                                                                               |
+| `gross_weight`        | decimal(10,3) | YES | 0 | Gross weight (including wastage / stones)                                                                                     |
+| `net_weight`          | decimal(10,3) | YES | 0 | Net weight of pure metal                                                                                                      |
+| `stone_weight`        | decimal(10,3) | YES | 0 | Total stone weight                                                                                                            |
+| `rate_type`           | varchar(255) | YES | `per_gram` | Enum: per_gram / per_piece / per_metre / per_litre etc.                                                                     |
+| `rate`                | decimal(12,2) | YES | 0 | Rate per unit (per gram / per piece etc.)                                                                                     |
+| `base_value`          | decimal(12,2) | YES | 0 | `rate × quantity` — the base value before discounts/tax                                                                     |
+| `discount`            | decimal(12,2) | YES | 0 | Line-level discount amount                                                                      |
+| `tax_rate`            | decimal(5,2) | YES | 0 | Tax rate % applicable to this line                                                                                            |
+| `tax`                 | decimal(12,2) | YES | 0 | Tax amount for this line                                                                        |
+| `total`               | decimal(12,2) | YES | 0 | `base_value - discount + tax`                                                                                                |
+| `line_type`           | varchar(255) | YES | `sale` | Enum: sale / exchange_credit / repair / service etc.                                                                          |
+| `attributes`          | json | YES | — | Key/value pairs (industry-specific)                                                                                           |
+| `timestamps`          | — | — | — | `created_at`, `updated_at`                                                                                                    |
+
+**Casts** (from `InvoiceItem.php` casts array):
+`line_type`, `rate_type`, `quantity`, `warranty_months`, `attributes`, `length`, `width`, `height`, `boxes`, `wastage_percent`, `gross_weight`, `net_weight`, `stone_weight`, `stone_carat`, `rate`, `base_value`, `discount`, `tax_rate`, `tax`, `total`
 
 ### CRM
 
@@ -698,7 +776,125 @@ silently doing nothing.
 
 ---
 
-## Owner-first answer: problems, why this, automation
+## 15. Customer flows
+
+### Quotation → Invoice workflow
+
+1. Owner builds quotation from catalog, sets validity, metal rate date, terms.
+2. Quotation shared via link / WhatsApp; customer opens shared page.
+3. Customer taps **Accept**, **Ask for changes**, or **Decline**.
+4. **Accept** records decision only — no invoice created. Owner later converts
+   at the counter: `InvoicesController::convert()` creates a draft invoice
+   carrying the quotation lines, re-pricing per-gram metal lines at today's
+   `MetalRate` (rate_locked_at preserved from the quotation).
+5. Owner reviews the draft invoice, adjusts rates/terms if needed, then finalizes.
+6. Invoice PDF generated from `pdf/invoice.blade.php` (Indian layout) or
+   `pdf/quotation.blade.php` (if still a quotation).
+7. Share link generated (optional password protection); PDF gated by password
+   on both `/view/{token}` and `/view/{token}/pdf`.
+8. Customer pays via UPI collect link, cash, card, or advance applied.
+9. Payments recorded; invoice status recalculated via
+   `Invoice::recalculatePaymentStatus()`.
+
+### Re-quote workflow (returning customer)
+
+1. Owner opens invoice show page or customer page.
+2. Clicks **Re-quote** button (invoice header or per-row on customer page).
+3. `ReQuoteService` builds a fresh draft quotation:
+   - Keeps the original line structure and catalog links.
+   - Re-prices every per-gram metal line at today's `MetalRate`.
+   - Fixed-price / per-piece lines keep their stored price.
+   - New quotation gets `rate_locked_at = today`, fresh 14-day validity.
+   - Discount approval does NOT carry over — requires fresh approval if needed.
+4. New quotation appears as draft; owner may edit before sharing.
+
+### Share-link password workflow
+
+1. Owner generates share link and optionally sets a password (min 4 chars).
+2. Password stored as `Hash::make()` in `$hidden`; `has_password` boolean
+   only reaches the browser.
+3. Customer opens `/invoice/view/{token}` or `/invoice/view/{token}/pdf`.
+4. If password set, page shows password field; 403 until correct password
+   submitted in-session.
+5. After verification, PDF renders or page loads normally.
+6. Staff can warn **"send the link and the password separately"** without ever
+   exposing the hashed secret.
+
+### PDF generation flow
+
+- `InvoicePdfService::viewName()` dispatches to `pdf/quotation.blade.php` or
+  `pdf/invoice.blade.php` based on `document_type`.
+- All four delivery paths (staff print, public share link, customer portal,
+  emailed attachment) use the same renderer — PDF never disagrees with the
+  previewed page.
+- Indian-style layout: masthead, tax invoice title, PAN/GSTIN, two-column
+  body, HSN-wise items table, total-in-words, CGST/SGST or IGST split, bank
+  details with UPI QR, terms, authorised signatory, computer-generated note.
+
+### Quotation revision workflow
+
+1. Owner edits a quotation the customer has already seen.
+2. Edit creates a new revision: `revision_number` increments, `revision_note`
+   recorded.
+3. Customer sees `Rev N` on the shared quotation page, in the WhatsApp text,
+   and on the converted invoice.
+4. Each revision is an independent document — the original is preserved.
+
+---
+
+### Quotation → Invoice workflow
+
+```mermaid
+flowchart TD
+    A[Owner builds quotation from catalog] --> B[Quotation shared via link/WhatsApp]
+    B --> C[Customer opens shared page]
+    C --> D{Customer taps}
+    D -->|Accept| E[Decision recorded only]
+    D -->|Ask for changes| F[Quotation stays open]
+    D -->|Decline| G[Quotation closed]
+    E --> H[Owner converts at counter]
+    H --> I[InvoicesController::convert()]
+    I --> J[draft invoice created]
+    J --> K[Per-gram metal re-priced at today's MetalRate]
+    K --> L[Owner reviews & finalizes]
+    L --> M[PDF generated: pdf/invoice.blade.php or pdf/quotation.blade.php]
+    M --> N[Share link generated (optional password)]
+    N --> O[Customer pays: UPI/cash/card/advance]
+    O --> P[Payments recorded]
+    P --> Q[Invoice::recalculatePaymentStatus()]
+    Q --> R[Status updated: Unpaid / PartiallyPaid / Paid / Overdue]
+```
+
+### Re-quote workflow
+
+```mermaid
+flowchart TD
+    A[Owner opens invoice show or customer page] --> B[Clicks Re-quote button]
+    B --> C[ReQuoteService builds fresh draft quotation]
+    C --> D[Keeps original line structure & catalog links]
+    D --> E[Per-gram metal re-priced at today's MetalRate]
+    E --> F[Fixed-price/per-piece lines keep stored price]
+    F --> G[New quotation: rate_locked_at = today, 14-day validity]
+    G --> H[Discount approval does NOT carry over]
+    H --> I[New quotation appears as draft]
+    I --> J[Owner may edit before sharing]
+```
+
+### Share-link password workflow
+
+```mermaid
+flowchart TD
+    A[Owner generates share link + optional password] --> B[Password stored as Hash::make() in $hidden]
+    B --> C[has_password boolean only reaches browser]
+    C --> D[Customer opens /view/{token} or /view/{token}/pdf]
+    D -->|Password set| E[Password field shown; 403 until submitted]
+    D -->|No password| E[Page loads normally]
+    E --> F[Password verified in-session]
+    F --> G[PDF renders or page loads]
+    G --> H[Staff can warn: "send link and password separately"]
+    H --> I[Secret never exposed to browser]
+```
+```
 
 ### Problems an owner actually faces
 

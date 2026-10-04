@@ -91,13 +91,14 @@ class ReQuoteService
                 // Today's rate is what this quote is priced at, so the rate
                 // date has to be today — not the date of the quote it copies.
                 'rate_locked_at' => today()->toDateString(),
-                // A discount approval belongs to the amount it approved. The
-                // new total is a different number, so any old approval is void.
+                'created_by' => $user->id,
+            ]);
+
+            $quotation->forceFill([
                 'discount_approved_by' => null,
                 'discount_approved_at' => null,
                 'discount_approved_discount' => null,
-                'created_by' => $user->id,
-            ]);
+            ])->save();
 
             $this->persist($quotation, $computed);
 

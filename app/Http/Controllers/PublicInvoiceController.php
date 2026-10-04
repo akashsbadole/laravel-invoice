@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\TenantScope;
 use App\Enums\InvoiceEventType;
 use App\Enums\QuotationActivity;
 use App\Enums\QuotationStatus;
@@ -10,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceEvent;
 use App\Models\InvoiceShareLink;
 use App\Models\InvoiceTemplate;
+use App\Models\Tenant;
 use App\Services\QuotationNotifier;
 use App\Services\QuotationService;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +30,7 @@ class PublicInvoiceController extends Controller
 
     public function show(Request $request, string $token): Response
     {
-        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->first();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(TenantScope::class)->where('token', $token)->first();
 
         if (! $shareLink || ! $shareLink->isUsable()) {
             return Inertia::render('invoices/public', [
@@ -49,55 +51,55 @@ class PublicInvoiceController extends Controller
 
         $shareLink->markViewed();
 
-        $invoice = $shareLink->invoice()->with([
-            'customer', 'salesperson', 'items.charges', 'payments', 'template',
-        ])->firstOrFail();
+        return Tenant::runInContext($shareLink->tenant_id, function () use ($shareLink, $firstView, $token) {
+            $invoice = $shareLink->invoice()->with([
+                'customer', 'salesperson', 'items.charges', 'payments', 'template',
+            ])->firstOrFail();
 
-        $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
-        $settings = BusinessSetting::forTenant($invoice->tenant_id);
-        $isQuotation = $invoice->document_type->isQuotation();
+            $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
+            $settings = BusinessSetting::forTenant($invoice->tenant_id);
+            $isQuotation = $invoice->document_type->isQuotation();
 
-        // The customer just proved they opened it — the shop's cue to follow up
-        // while interest is fresh.
-        if ($firstView) {
-            InvoiceEvent::log($invoice, InvoiceEventType::LinkViewed, [
-                'action' => 'link_viewed',
-                'token' => $token,
-            ]);
-            if ($isQuotation) {
-                $this->notifier->activity($invoice, QuotationActivity::Viewed);
+            if ($firstView) {
+                InvoiceEvent::log($invoice, InvoiceEventType::LinkViewed, [
+                    'action' => 'link_viewed',
+                    'token' => $token,
+                ]);
+                if ($isQuotation) {
+                    $this->notifier->activity($invoice, QuotationActivity::Viewed);
+                }
             }
-        }
 
-        return Inertia::render('invoices/public', [
-            'status' => 'ok',
-            'token' => $token,
-            'invoice' => $this->sanitizePublicInvoice($invoice),
-            'template' => $template->layout_config + InvoiceTemplate::defaultLayoutConfig(),
-            'business' => [
-                ...$settings->only([
-                    'business_name', 'logo_path', 'address', 'phone', 'email',
-                    'website', 'tax_number', 'footer_text',
-                ]),
-                'upi_id' => $settings->bank_details['upi_id'] ?? null,
-            ],
-            'quotation' => $isQuotation ? [
-                'status' => $this->quotations->currentStatus($invoice)->value,
-                'is_open' => $this->quotations->currentStatus($invoice)->isOpen(),
-                'can_decide' => $settings->quotation_customer_decisions
-                    && $invoice->document_type->isQuotation()
-                    && $invoice->converted_to_id === null,
-                'response' => $invoice->quotation_response,
-                'updates' => $settings->quotation_show_updates
-                    ? $this->quotations->updatesFor($invoice)
-                    : [],
-            ] : null,
-        ]);
+            return Inertia::render('invoices/public', [
+                'status' => 'ok',
+                'token' => $token,
+                'invoice' => $this->sanitizePublicInvoice($invoice),
+                'template' => $template->layout_config + InvoiceTemplate::defaultLayoutConfig(),
+                'business' => [
+                    ...$settings->only([
+                        'business_name', 'logo_path', 'address', 'phone', 'email',
+                        'website', 'tax_number', 'footer_text',
+                    ]),
+                    'upi_id' => $settings->bank_details['upi_id'] ?? null,
+                ],
+                'quotation' => $isQuotation ? [
+                    'status' => $this->quotations->currentStatus($invoice)->value,
+                    'is_open' => $this->quotations->currentStatus($invoice)->isOpen(),
+                    'can_decide' => $settings->quotation_customer_decisions
+                        && $invoice->document_type->isQuotation()
+                        && $invoice->converted_to_id === null,
+                    'response' => $invoice->quotation_response,
+                    'updates' => $settings->quotation_show_updates
+                        ? $this->quotations->updatesFor($invoice)
+                        : [],
+                ] : null,
+            ]);
+        });
     }
 
     public function verifyPassword(Request $request, string $token): RedirectResponse
     {
-        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(TenantScope::class)->where('token', $token)->firstOrFail();
 
         $request->validate(['password' => ['required', 'string']]);
 
@@ -116,54 +118,58 @@ class PublicInvoiceController extends Controller
      */
     public function decide(Request $request, string $token): RedirectResponse
     {
-        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(TenantScope::class)->where('token', $token)->firstOrFail();
         abort_unless($shareLink->isUsable(), 404);
 
         if ($shareLink->password_hash && ! $request->session()->get("invoice_share_verified.{$token}")) {
             abort(403);
         }
 
-        $settings = BusinessSetting::forTenant($shareLink->invoice->tenant_id);
-        abort_unless($settings->quotation_customer_decisions, 404);
+        $result = Tenant::runInContext($shareLink->tenant_id, function () use ($request, $shareLink) {
+            $settings = BusinessSetting::forTenant($shareLink->tenant_id);
+            abort_unless($settings->quotation_customer_decisions, 404);
 
-        $invoice = $shareLink->invoice()->with('events')->firstOrFail();
-        abort_unless($invoice->document_type->isQuotation(), 404);
+            $invoice = $shareLink->invoice()->with('events')->firstOrFail();
+            abort_unless($invoice->document_type->isQuotation(), 404);
 
-        $validated = $request->validate([
-            'decision' => ['required', Rule::in([QuotationStatus::Accepted->value, QuotationStatus::Rejected->value])],
-            'response' => ['nullable', 'string', 'max:1000'],
-            'name' => ['nullable', 'string', 'max:120'],
-        ]);
+            $validated = $request->validate([
+                'decision' => ['required', Rule::in([QuotationStatus::Accepted->value, QuotationStatus::Rejected->value])],
+                'response' => ['nullable', 'string', 'max:1000'],
+                'name' => ['nullable', 'string', 'max:120'],
+            ]);
 
-        $decision = QuotationStatus::from($validated['decision']);
-        $response = $this->responseText($validated, $decision);
+            $decision = QuotationStatus::from($validated['decision']);
+            $response = $this->responseText($validated, $decision);
 
-        try {
-            // Recording an acceptance deliberately does NOT create an invoice.
-            // A customer tapping "Accept" on a link is not a sale: nobody has
-            // re-confirmed the metal rate and nobody has taken payment, so the
-            // money must wait for a human at the counter to convert it.
-            $this->quotations->decide($invoice, $decision, $response);
-        } catch (RuntimeException $e) {
-            return back()->withErrors(['decision' => $e->getMessage()]);
-        }
+            try {
+                // Recording an acceptance deliberately does NOT create an invoice.
+                // A customer tapping "Accept" on a link is not a sale: nobody has
+                // re-confirmed the metal rate and nobody has taken payment, so the
+                // money must wait for a human at the counter to convert it.
+                $this->quotations->decide($invoice, $decision, $response);
+            } catch (RuntimeException $e) {
+                return back()->withErrors(['decision' => $e->getMessage()]);
+            }
 
-        // The answer is the whole point of sharing a quotation — tell the shop
-        // rather than leaving it to be discovered on the next page refresh.
-        $this->notifier->activity(
-            $invoice,
-            $decision === QuotationStatus::Accepted
-                ? QuotationActivity::Accepted
-                : QuotationActivity::Declined,
-            $response,
-        );
+            // The answer is the whole point of sharing a quotation — tell the shop
+            // rather than leaving it to be discovered on the next page refresh.
+            $this->notifier->activity(
+                $invoice,
+                $decision === QuotationStatus::Accepted
+                    ? QuotationActivity::Accepted
+                    : QuotationActivity::Declined,
+                $response,
+            );
 
-        return back()->with(
-            'message',
-            $decision === QuotationStatus::Accepted
-                ? 'Thank you — your acceptance has been recorded.'
-                : 'Thank you — we have noted your response.',
-        );
+            return back()->with(
+                'message',
+                $decision === QuotationStatus::Accepted
+                    ? 'Thank you — your acceptance has been recorded.'
+                    : 'Thank you — we have noted your response.',
+            );
+        });
+
+        return $result;
     }
 
     /**
@@ -173,47 +179,53 @@ class PublicInvoiceController extends Controller
      */
     public function requestChanges(Request $request, string $token): RedirectResponse
     {
-        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(\App\Concerns\TenantScope::class)->where('token', $token)->firstOrFail();
+        $shareLink = InvoiceShareLink::query()->withoutGlobalScope(TenantScope::class)->where('token', $token)->firstOrFail();
         abort_unless($shareLink->isUsable(), 404);
 
         if ($shareLink->password_hash && ! $request->session()->get("invoice_share_verified.{$token}")) {
             abort(403);
         }
 
-        $settings = BusinessSetting::forTenant($shareLink->invoice->tenant_id);
-        abort_unless($settings->quotation_customer_decisions, 404);
+        $result = Tenant::runInContext($shareLink->tenant_id, function () use ($request, $shareLink) {
+            $settings = BusinessSetting::forTenant($shareLink->tenant_id);
+            abort_unless($settings->quotation_customer_decisions, 404);
 
-        $invoice = $shareLink->invoice()->with('events')->firstOrFail();
-        abort_unless($invoice->document_type->isQuotation(), 404);
+            $invoice = $shareLink->invoice()->with('events')->firstOrFail();
+            abort_unless($invoice->document_type->isQuotation(), 404);
+            abort_if($invoice->converted_to_id !== null, 404);
+            abort_if($invoice->quotation_status?->isDecided(), 404);
 
-        $validated = $request->validate([
-            'response' => ['required', 'string', 'max:1000'],
-            'name' => ['nullable', 'string', 'max:120'],
-        ]);
+            $validated = $request->validate([
+                'response' => ['required', 'string', 'max:1000'],
+                'name' => ['nullable', 'string', 'max:120'],
+            ]);
 
-        $text = trim($validated['response']);
-        $name = trim((string) ($validated['name'] ?? ''));
+            $text = trim($validated['response']);
+            $name = trim((string) ($validated['name'] ?? ''));
 
-        if ($name !== '') {
-            $text = "{$text} — {$name}";
-        }
+            if ($name !== '') {
+                $text = "{$text} — {$name}";
+            }
 
-        $invoice->update([
-            'quotation_response' => $text,
-            'quotation_responded_at' => now(),
-        ]);
+            $invoice->update([
+                'quotation_response' => $text,
+                'quotation_responded_at' => now(),
+            ]);
 
-        InvoiceEvent::log($invoice, InvoiceEventType::Updated, [
-            'action' => 'changes_requested',
-            'response' => $text,
-        ]);
+            InvoiceEvent::log($invoice, InvoiceEventType::Updated, [
+                'action' => 'changes_requested',
+                'response' => $text,
+            ]);
 
-        $this->notifier->activity($invoice, QuotationActivity::ChangesRequested, $text);
+            $this->notifier->activity($invoice, QuotationActivity::ChangesRequested, $text);
 
-        return back()->with(
-            'message',
-            'Thanks — we have recorded your request and will get back to you.',
-        );
+            return back()->with(
+                'message',
+                'Thanks — we have recorded your request and will get back to you.',
+            );
+        });
+
+        return $result;
     }
 
     /**

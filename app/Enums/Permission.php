@@ -28,6 +28,7 @@ enum Permission: string
     case ViewCosts = 'view_costs';
     case ManageSettings = 'manage_settings';
     case ManageUsers = 'manage_users';
+    case DeleteCustomers = 'delete_customers';
 
     // Platform-level, granted only to the super admin.
     case ManageTenants = 'manage_tenants';

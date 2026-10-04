@@ -293,6 +293,8 @@ class InvoiceController extends Controller
 
     public function preview(Invoice $invoice): Response
     {
+        Gate::authorize('view', $invoice);
+
         return $this->show($invoice);
     }
 

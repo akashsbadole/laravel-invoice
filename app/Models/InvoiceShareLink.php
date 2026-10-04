@@ -14,7 +14,7 @@ class InvoiceShareLink extends Model
     use BelongsToTenant;
 
     /** @var list<string> */
-    protected $fillable = ['invoice_id', 'expires_at', 'is_active', 'sent_via', 'sent_at', 'created_by'];
+    protected $fillable = ['invoice_id', 'expires_at', 'is_active', 'sent_via', 'sent_at', 'created_by', 'token'];
 
     /** @var list<string> */
     protected $hidden = ['password_hash'];

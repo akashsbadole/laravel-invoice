@@ -67,11 +67,14 @@ class InvoiceCloner
                 'notes' => $source->notes,
                 'terms' => $source->terms,
                 'rate_locked_at' => $source->rate_locked_at,
+                'created_by' => $createdById,
+            ]);
+
+            $copy->forceFill([
                 'discount_approved_by' => $source->discount_approved_by,
                 'discount_approved_at' => $source->discount_approved_at,
                 'discount_approved_discount' => $source->discount_approved_discount,
-                'created_by' => $createdById,
-            ]);
+            ])->save();
 
             foreach ($source->items as $item) {
                 $newItem = $copy->items()->create(

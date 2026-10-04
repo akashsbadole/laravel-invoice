@@ -4,9 +4,13 @@
     <meta charset="utf-8">
     <title>{{ $invoice->invoice_number }}</title>
     <style>
-        @page { margin: 0; }
+        @page { margin: 12mm; }
+        *, *::before, *::after { box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 9.5px; color: #111827; margin: 0; }
         table { width: 100%; border-collapse: collapse; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        .wrap { padding: 8px 10px 10px; }
 
         /* Masthead: business block left, TAX INVOICE right. */
         .masthead td { vertical-align: top; padding: 7px 8px; border: 1px solid #111827; }
@@ -49,11 +53,12 @@
     </style>
 </head>
 <body>
+<div class="wrap">
 <table class="masthead">
     <tr>
         <td style="width: 62%;">
             @if($business->logo_path)
-                <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 30px; margin-bottom: 3px;">
+                <img src="{{ public_path('storage/' . $business->logo_path) }}" style="max-height: 30px; max-width: 100%; margin-bottom: 3px;">
             @endif
             <div class="shop-name">{{ strtoupper($business->business_name) }}</div>
             @if($business->footer_text)<div class="shop-tagline">{{ $business->footer_text }}</div>@endif
@@ -173,17 +178,14 @@
         @empty
             <tr><td colspan="7" class="center muted">No items on this invoice.</td></tr>
         @endforelse
+        <tr class="total-row">
+            <td colspan="3" class="right">Total</td>
+            <td class="right">{{ rtrim(rtrim(number_format((float) $invoice->items->sum('quantity'), 3), '0'), '.') }}</td>
+            <td></td>
+            <td class="right">{{ number_format((float) $invoice->subtotal, 2) }}</td>
+            <td class="right">{{ number_format((float) $invoice->grand_total, 2) }}</td>
+        </tr>
     </tbody>
-</table>
-
-<table class="items-table" style="margin-top:-1px;">
-    <tr class="total-row">
-        <td colspan="3" class="right">Total</td>
-        <td class="right">{{ rtrim(rtrim(number_format((float) $invoice->items->sum('quantity'), 3), '0'), '.') }}</td>
-        <td></td>
-        <td class="right">{{ number_format((float) $invoice->subtotal, 2) }}</td>
-        <td class="right">{{ number_format((float) $invoice->grand_total, 2) }}</td>
-    </tr>
 </table>
 
 <div class="tax-note">
@@ -318,5 +320,6 @@
     </div>
 @endif
 
+</div>
 </body>
 </html>

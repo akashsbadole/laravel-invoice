@@ -203,6 +203,19 @@ class BillingController extends Controller
             return;
         }
 
+        $paymentEntity = $this->razorpay->fetchPayment($gatewayId);
+        $expectedAmount = (int) round((float) $plan->price * 100);
+
+        if ($paymentEntity && isset($paymentEntity['amount']) && (int) $paymentEntity['amount'] !== $expectedAmount) {
+            Log::warning('Razorpay webhook amount mismatch.', [
+                'expected' => $expectedAmount,
+                'actual' => $paymentEntity['amount'],
+                'gateway_id' => $gatewayId,
+            ]);
+
+            return;
+        }
+
         $subscription = $this->activate($tenant, $plan, $gatewayId);
         $this->sendReceipt($subscription, $plan);
     }

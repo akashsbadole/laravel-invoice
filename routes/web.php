@@ -99,9 +99,9 @@ Route::middleware([EnsurePortalCustomer::class])->group(function () {
 
 // Public, unauthenticated invoice sharing — no auth/verified middleware.
 // Matches the spec's exact public URL shape: /invoice/view/{token}.
-Route::get('invoice/view/{token}', [PublicInvoiceController::class, 'show'])->name('invoices.public.show');
+Route::get('invoice/view/{token}', [PublicInvoiceController::class, 'show'])->middleware('throttle:60,1')->name('invoices.public.show');
 Route::post('invoice/view/{token}/verify', [PublicInvoiceController::class, 'verifyPassword'])->middleware('throttle:20,1')->name('invoices.public.verify');
-Route::get('invoice/view/{token}/pdf', [InvoicePdfController::class, 'public'])->name('invoices.public.pdf');
+Route::get('invoice/view/{token}/pdf', [InvoicePdfController::class, 'public'])->middleware('throttle:60,1')->name('invoices.public.pdf');
 // The customer accepting a quotation is a guest action. This sat inside the
 // auth group, so a real customer was redirected to /login and the headline
 // quotation feature never worked for the person it was built for.
@@ -136,12 +136,12 @@ Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, E
     Route::post('catalog', [CatalogItemController::class, 'store'])->name('catalog.store');
     Route::get('catalog/template', [CatalogItemImportController::class, 'template'])->name('catalog.template');
     Route::get('catalog/export', [CatalogItemImportController::class, 'exportCsv'])->name('catalog.export');
-    Route::post('catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload');
+    Route::post('catalog/import', [CatalogItemImportController::class, 'importCsv'])->name('catalog.upload')->middleware('throttle:30,1');
     Route::get('catalog/excel/template', [CatalogItemImportController::class, 'excelTemplate'])->name('catalog.excel-template');
     Route::get('catalog/excel/export', [CatalogItemImportController::class, 'exportExcel'])->name('catalog.excel-export');
     Route::get('catalog/excel/preview', [CatalogItemImportController::class, 'excelPreview'])->name('catalog.excel-preview');
-    Route::post('catalog/excel/preview', [CatalogItemImportController::class, 'excelPreviewUpload'])->name('catalog.excel-preview-upload');
-    Route::post('catalog/excel/import', [CatalogItemImportController::class, 'importExcel'])->name('catalog.excel-import');
+    Route::post('catalog/excel/preview', [CatalogItemImportController::class, 'excelPreviewUpload'])->name('catalog.excel-preview-upload')->middleware('throttle:30,1');
+    Route::post('catalog/excel/import', [CatalogItemImportController::class, 'importExcel'])->name('catalog.excel-import')->middleware('throttle:30,1');
     Route::post('catalog/{catalogItem}/stock', [CatalogItemController::class, 'adjustStock'])->name('catalog.stock');
     Route::post('catalog/{catalogItem}/activate', [CatalogItemController::class, 'activate'])->name('catalog.activate');
     Route::post('catalog/activate', [CatalogItemController::class, 'activateSelected'])->name('catalog.activate-selected');

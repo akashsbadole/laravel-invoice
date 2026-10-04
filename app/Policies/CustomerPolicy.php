@@ -33,7 +33,7 @@ class CustomerPolicy
     public function delete(User $user, Customer $customer): bool
     {
         return $this->sameTenant($user, $customer->tenant_id)
-            && $user->canDo(Permission::DeleteInvoices);
+            && $user->canDo(Permission::DeleteCustomers);
     }
 
     public function export(User $user): bool

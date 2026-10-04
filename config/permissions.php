@@ -29,7 +29,7 @@ return [
     ],
 
     'admin' => [
-        'view_dashboard', 'view_customers', 'manage_customers',
+        'view_dashboard', 'view_customers', 'manage_customers', 'delete_customers',
         'view_catalog', 'manage_catalog', 'manage_inventory',
         'view_quotations', 'manage_quotations',
         'view_invoices', 'create_invoices', 'edit_invoices', 'delete_invoices',
@@ -40,7 +40,7 @@ return [
     // Runs the day-to-day: everything operational, nothing destructive to
     // settings or people.
     'manager' => [
-        'view_dashboard', 'view_customers', 'manage_customers',
+        'view_dashboard', 'view_customers', 'manage_customers', 'delete_customers',
         'view_catalog', 'manage_catalog', 'manage_inventory',
         'view_quotations', 'manage_quotations',
         'view_invoices', 'create_invoices', 'edit_invoices', 'delete_invoices',
