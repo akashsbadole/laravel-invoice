@@ -172,56 +172,86 @@ export default function InvoicesIndex({
                         </CardContent>
                     </Card>
                 ) : (
-                    <Card className="overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="border-b bg-muted/40 text-left text-muted-foreground">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium">Invoice</th>
-                                        <th className="px-4 py-3 font-medium">Customer</th>
-                                        <th className="px-4 py-3 font-medium">Date</th>
-                                        <th className="px-4 py-3 font-medium">Status</th>
-                                        <th className="px-4 py-3 text-right font-medium">Total</th>
-                                        <th className="px-4 py-3 text-right font-medium">Balance</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {invoices.data.map((invoice) => (
-                                        <tr key={invoice.id} className="hover:bg-muted/30">
-                                            <td className="px-4 py-3 font-mono">
-                                                <Link
-                                                    href={show(invoice.id)}
-                                                    className="font-semibold text-slate-900 dark:text-slate-100 hover:underline"
-                                                >
-                                                    {invoice.invoice_number}
-                                                </Link>
-                                                {invoice.document_type !== 'jewelry_invoice' && (
-                                                    <Badge variant="outline" className="ml-2 text-[11px] font-sans">
-                                                        {documentLabels[invoice.document_type] ?? invoice.document_type}
+                    <>
+                        {/* Desktop / tablet: table */}
+                        <Card className="hidden overflow-hidden md:block">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="border-b bg-muted/40 text-left text-muted-foreground">
+                                        <tr>
+                                            <th className="px-4 py-3 font-medium">Invoice</th>
+                                            <th className="px-4 py-3 font-medium">Customer</th>
+                                            <th className="px-4 py-3 font-medium">Date</th>
+                                            <th className="px-4 py-3 font-medium">Status</th>
+                                            <th className="px-4 py-3 text-right font-medium">Total</th>
+                                            <th className="px-4 py-3 text-right font-medium">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {invoices.data.map((invoice) => (
+                                            <tr key={invoice.id} className="hover:bg-muted/30">
+                                                <td className="px-4 py-3 font-mono">
+                                                    <Link
+                                                        href={show(invoice.id)}
+                                                        className="font-semibold text-slate-900 dark:text-slate-100 hover:underline"
+                                                    >
+                                                        {invoice.invoice_number}
+                                                    </Link>
+                                                    {invoice.document_type !== 'jewelry_invoice' && (
+                                                        <Badge variant="outline" className="ml-2 text-[11px] font-sans">
+                                                            {documentLabels[invoice.document_type] ?? invoice.document_type}
+                                                        </Badge>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">{invoice.customer.full_name}</td>
+                                                <td className="px-4 py-3">
+                                                    {new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <Badge className={`capitalize font-medium ${statusColors[invoice.status]}`} variant="secondary">
+                                                        {invoice.status.replace('_', ' ')}
                                                     </Badge>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">{invoice.customer.full_name}</td>
-                                            <td className="px-4 py-3">
-                                                {new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <Badge className={`capitalize font-medium ${statusColors[invoice.status]}`} variant="secondary">
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-mono font-semibold">
+                                                    {currency.format(Number(invoice.grand_total))}
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-mono">
+                                                    {currency.format(Number(invoice.balance_amount))}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+
+                        {/* Mobile: cards */}
+                        <div className="grid gap-3 md:hidden">
+                            {invoices.data.map((invoice) => (
+                                <Link key={invoice.id} href={show(invoice.id)}>
+                                    <Card className="transition-colors active:bg-muted/40">
+                                        <CardContent className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="font-medium">{invoice.invoice_number}</p>
+                                                <p className="truncate text-sm text-muted-foreground">{invoice.customer.full_name}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                </p>
+                                                <Badge className={`mt-1 capitalize font-medium ${statusColors[invoice.status]}`} variant="secondary">
                                                     {invoice.status.replace('_', ' ')}
                                                 </Badge>
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-mono font-semibold">
-                                                {currency.format(Number(invoice.grand_total))}
-                                            </td>
-                                            <td className="px-4 py-3 text-right font-mono">
-                                                {currency.format(Number(invoice.balance_amount))}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </div>
+                                            <div className="shrink-0 text-right">
+                                                <p className="text-sm text-muted-foreground">Balance</p>
+                                                <p className="font-medium">{currency.format(Number(invoice.balance_amount))}</p>
+                                                <p className="text-sm font-semibold">{currency.format(Number(invoice.grand_total))}</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            ))}
                         </div>
-                    </Card>
+                    </>
                 )}
 
                 {invoices.last_page > 1 && (

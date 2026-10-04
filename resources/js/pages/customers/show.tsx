@@ -594,8 +594,10 @@ function StatCard({
 }
 
 function AddNoteDialog({ customerId }: { customerId: number }) {
+    const [open, setOpen] = useState(false);
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
                     <Plus className="size-4" />
@@ -609,6 +611,7 @@ function AddNoteDialog({ customerId }: { customerId: number }) {
                 <Form
                     {...CustomerNoteController.store.form(customerId)}
                     resetOnSuccess
+                    onSuccess={() => setOpen(false)}
                     className="space-y-4"
                 >
                     {({ processing, errors }) => (
@@ -658,8 +661,10 @@ function AddFollowupDialog({
     customerId: number;
     staff: Staff[];
 }) {
+    const [open, setOpen] = useState(false);
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
                     <Plus className="size-4" />
@@ -673,6 +678,7 @@ function AddFollowupDialog({
                 <Form
                     {...CustomerFollowupController.store.form(customerId)}
                     resetOnSuccess
+                    onSuccess={() => setOpen(false)}
                     className="space-y-4"
                 >
                     {({ processing, errors }) => (
@@ -793,8 +799,10 @@ function AdvanceRow({ customerId, advance }: { customerId: number; advance: Cust
 }
 
 function RecordAdvanceDialog({ customerId }: { customerId: number }) {
+    const [open, setOpen] = useState(false);
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
                     <Plus className="size-4" />
@@ -812,6 +820,7 @@ function RecordAdvanceDialog({ customerId }: { customerId: number }) {
                 <Form
                     {...CustomerAdvanceController.store.form(customerId)}
                     resetOnSuccess
+                    onSuccess={() => setOpen(false)}
                     className="space-y-4"
                 >
                     {({ processing, errors }) => (

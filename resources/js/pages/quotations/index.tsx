@@ -330,8 +330,9 @@ export default function QuotationPipeline({
                         {quotations.length === 0 ? (
                             <p className="text-sm text-slate-500 text-center py-8">No quotations created yet.</p>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
+                            <>
+                                <div className="hidden overflow-x-auto md:block">
+                                    <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-slate-800 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400">
                                             <th className="pb-3 text-left w-10">
@@ -401,8 +402,32 @@ export default function QuotationPipeline({
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                    </CardContent>
+
+                            {/* Mobile quotations */}
+                            <div className="grid gap-3 md:hidden">
+                                {quotations.map((row) => (
+                                    <Link key={row.id} href={invoiceShow(row.id)}>
+                                        <Card className="transition-colors active:bg-muted/40">
+                                            <CardContent className="flex items-center justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium">{row.invoice_number}</p>
+                                                    <p className="truncate text-sm text-muted-foreground">{row.customer}</p>
+                                                    <Badge className={`mt-1 text-xs font-semibold px-2 py-0.5 ${statusColors[row.status] ?? ''}`}>
+                                                        {row.status_label}
+                                                    </Badge>
+                                                </div>
+                                                <div className="shrink-0 text-right">
+                                                    <p className="text-sm text-muted-foreground">Amount</p>
+                                                    <p className="font-semibold">{currency.format(row.grand_total)}</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </Link>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </CardContent>
                 </Card>
 
                 <ChaseList

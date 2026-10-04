@@ -208,7 +208,7 @@ class DatabaseSeeder extends Seeder
 
         // Customers
         $customerData = [
-            ['full_name' => 'Anita Sharma', 'mobile_number' => '+919811112222', 'email' => 'anita@example.com', 'customer_group_id' => $groups['VIP']->id ?? null, 'state_code' => '27', 'customer_type' => 'individual'],
+            ['full_name' => 'pallavi Badole', 'mobile_number' => '+919811112222', 'email' => 'pallavi@example.com', 'customer_group_id' => $groups['VIP']->id ?? null, 'state_code' => '27', 'customer_type' => 'individual'],
             ['full_name' => 'Rajesh Kumar', 'mobile_number' => '+919833334444', 'email' => 'rajesh@example.com', 'customer_group_id' => $groups['Wholesale']->id ?? null, 'state_code' => '29', 'customer_type' => 'business', 'tax_number' => '29AABCU9603R1ZX', 'credit_limit' => 200000],
             ['full_name' => 'Meera Patel', 'mobile_number' => '+919844445555', 'email' => 'meera@example.com', 'state_code' => '24', 'customer_type' => 'individual'],
         ];
@@ -394,7 +394,7 @@ class DatabaseSeeder extends Seeder
 
         // Customer notes on a customer
         $note = new CustomerNote;
-        $note->fill(['customer_id' => $customers['anita@example.com']->id ?? 1, 'type' => 'call', 'note' => 'Prefers morning appointments.', 'created_by' => $adminUser->id]);
+        $note->fill(['customer_id' => $customers['pallavi@example.com']->id ?? 1, 'type' => 'call', 'note' => 'Prefers morning appointments.', 'created_by' => $adminUser->id]);
         $note->tenant_id = $store->id;
         $note->save();
 
@@ -406,7 +406,7 @@ class DatabaseSeeder extends Seeder
 
         // A reminder for unpaid invoice
         $rem = new Reminder;
-        $rem->fill(['customer_id' => $customers['anita@example.com']->id ?? 1, 'assigned_to' => $adminUser->id, 'title' => 'Follow up on invoice JWL-2026-00001', 'notes' => 'Call client for payment update', 'remind_on' => now()->addDays(3), 'is_done' => false, 'created_by' => $adminUser->id]);
+        $rem->fill(['customer_id' => $customers['pallavi@example.com']->id ?? 1, 'assigned_to' => $adminUser->id, 'title' => 'Follow up on invoice JWL-2026-00001', 'notes' => 'Call client for payment update', 'remind_on' => now()->addDays(3), 'is_done' => false, 'created_by' => $adminUser->id]);
         $rem->tenant_id = $store->id;
         $rem->save();
     }

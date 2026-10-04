@@ -82,7 +82,8 @@ export default function PaymentsIndex({
                     </CardContent>
                 </Card>
 
-                <Card className="overflow-hidden">
+                {/* Desktop / tablet: table */}
+                <Card className="hidden overflow-hidden md:block">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead className="border-b bg-muted/40 text-left text-muted-foreground">
@@ -126,6 +127,34 @@ export default function PaymentsIndex({
                         </table>
                     </div>
                 </Card>
+
+                {/* Mobile: cards */}
+                <div className="grid gap-3 md:hidden">
+                    {payments.data.length === 0 ? (
+                        <Card>
+                            <CardContent className="py-12 text-center text-muted-foreground">
+                                No payments found.
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        payments.data.map((p) => (
+                            <Card key={p.id} className="active:bg-muted/40">
+                                <CardContent className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="font-medium">{p.invoice?.invoice_number ?? 'Unlinked'}</p>
+                                        <p className="truncate text-sm text-muted-foreground">{p.invoice?.customer.full_name ?? '-'}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(p.payment_date).toLocaleDateString()} · {p.payment_method.replace('_', ' ')}</p>
+                                    </div>
+                                    <div className="shrink-0 text-right">
+                                        <p className="text-sm text-muted-foreground">Amount</p>
+                                        <p className="font-medium">{currency.format(Number(p.amount))}</p>
+                                        <a href={receipt(p.id).url} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground">Receipt</a>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </div>
 
                 {payments.last_page > 1 && (
                     <nav className="flex flex-wrap justify-center gap-1">
