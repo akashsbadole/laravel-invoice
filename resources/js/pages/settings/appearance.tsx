@@ -4,7 +4,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppearance } from '@/hooks/use-appearance';
-import { useLocale, type Locale } from '@/lib/i18n';
+import { supportedLocales, useLocale } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 const options = [
@@ -13,10 +13,20 @@ const options = [
     { value: 'system', label: 'System', description: 'Follow your device setting.' },
 ] as const;
 
-const locales: { value: Locale; label: string; description: string }[] = [
-    { value: 'en', label: 'English', description: 'Default interface language.' },
-    { value: 'hi', label: 'Hindi (à¤¹à¤¿à¤¨à¥à¤¦à¥€)', description: 'à¤®à¥‡à¤¨à¥‚ à¤”à¤° à¤¶à¥€à¤°à¥à¤·à¤• à¤¹à¤¿à¤¨à¥à¤¦à¥€ à¤®à¥‡à¤‚à¥¤' },
-];
+/**
+ * Descriptions are shown in English on purpose: the language picker is where
+ * someone decides what they read, so explaining the choice in the language they
+ * are still deciding about helps nobody. The name itself is written natively.
+ */
+const localeDescriptions: Record<string, string> = {
+    en: 'Default interface language.',
+    hi: 'Menus and headings in Hindi.',
+    te: 'Menus and headings in Telugu.',
+    mr: 'Menus and headings in Marathi.',
+    ta: 'Menus and headings in Tamil.',
+    gu: 'Menus and headings in Gujarati.',
+    bn: 'Menus and headings in Bengali.',
+};
 
 export default function Appearance() {
     const { appearance, updateAppearance } = useAppearance();
@@ -70,22 +80,23 @@ export default function Appearance() {
                             {t('language.title')}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-3 pt-0 sm:grid-cols-2">
-                        <p className="-mt-2 text-sm text-muted-foreground sm:col-span-2">
+                    <CardContent className="grid gap-3 pt-0 sm:grid-cols-2 lg:grid-cols-3">
+                        <p className="-mt-2 text-sm text-muted-foreground sm:col-span-2 lg:col-span-3">
                             {t('language.description')}
                         </p>
-                        {locales.map((option) => {
+                        {supportedLocales.map((option) => {
                             const isActive = locale === option.value;
                             return (
                                 <Button
                                     key={option.value}
                                     type="button"
                                     variant={isActive ? 'default' : 'outline'}
-                                    className="flex h-auto flex-col items-start gap-1 p-4 text-left"
+                                    className="h-auto flex-col items-start gap-1 p-4 text-left"
+                                    lang={option.value}
                                     onClick={() => updateLocale(option.value)}
                                 >
                                     <span className="flex w-full items-center justify-between font-medium">
-                                        {option.label}
+                                        {option.nativeLabel}
                                         {isActive && <Check className="size-4" />}
                                     </span>
                                     <span
@@ -96,7 +107,7 @@ export default function Appearance() {
                                                 : 'text-muted-foreground',
                                         )}
                                     >
-                                        {option.description}
+                                        {localeDescriptions[option.value]}
                                     </span>
                                 </Button>
                             );

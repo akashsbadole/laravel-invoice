@@ -94,6 +94,7 @@ const { auth } = usePage<{ auth: Auth }>().props;
     const canDeleteCustomer = ['admin', 'super_admin', 'manager'].includes(auth.user.role);
     // Tracked by id so only the row being worked on shows a spinner.
     const [reQuotingId, setReQuotingId] = useState<number | null>(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     /** The repeat order: same items, priced at today's metal rate. */
     function reQuote(invoiceId: number) {
@@ -136,7 +137,7 @@ const { auth } = usePage<{ auth: Auth }>().props;
                         </Button>
 
                         {canDeleteCustomer && (
-                            <Dialog>
+                            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="destructive">
                                         <Trash2 className="size-4" />
@@ -157,6 +158,7 @@ const { auth } = usePage<{ auth: Auth }>().props;
                                         {...CustomerController.destroy.form(
                                             customer.id,
                                         )}
+                                        onSuccess={() => setDeleteOpen(false)}
                                     >
                                         {({ processing }) => (
                                             <DialogFooter className="mt-4 gap-2">

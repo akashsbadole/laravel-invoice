@@ -196,6 +196,8 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
     }
     const [shareOpen, setShareOpen] = useState(false);
     const [planOpen, setPlanOpen] = useState(false);
+    const [convertOpen, setConvertOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     function approveDiscount() {
         setApproving(true);
@@ -321,7 +323,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             <QuotationStatusCard invoice={invoice} />
                         )}
                         {canWrite && invoice.document_type === 'quotation' && !invoice.converted_to_id && (
-                            <Dialog>
+                            <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
                                 <DialogTrigger asChild>
                                     <Button size="sm">Convert</Button>
                                 </DialogTrigger>
@@ -333,7 +335,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                          A new document is created with the same items.
                                          The quotation is marked as converted.
                                      </p>
-                                     <Form {...InvoiceController.convert.form(invoice.id)}>
+                                     <Form {...InvoiceController.convert.form(invoice.id)} onSuccess={() => setConvertOpen(false)}>
                                          {({ processing, errors }) => (
                                              <>
                                                  <div className="grid gap-2">
@@ -376,7 +378,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                             </Dialog>
                         )}
                         {isAdmin && (
-                            <Dialog>
+                            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="destructive" size="icon" title="Delete">
                                         <Trash2 className="size-4" />
@@ -389,7 +391,7 @@ export default function ShowInvoice({ invoice, recurringProfile, business, insta
                                     <p className="text-sm text-muted-foreground">
                                         This can't be undone.
                                     </p>
-                                    <Form {...InvoiceController.destroy.form(invoice.id)}>
+                                    <Form {...InvoiceController.destroy.form(invoice.id)} onSuccess={() => setDeleteOpen(false)}>
                                         {({ processing }) => (
                                             <DialogFooter className="mt-4 gap-2">
                                                 <DialogClose asChild>
