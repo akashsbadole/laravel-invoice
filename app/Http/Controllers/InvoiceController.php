@@ -57,6 +57,8 @@ class InvoiceController extends Controller
 
     public function index(Request $request): Response
     {
+        Gate::authorize('viewAny', Invoice::class);
+
         $filters = $request->only(['search', 'status', 'customer_id', 'document_type']);
 
         $invoices = Invoice::query()
@@ -310,6 +312,9 @@ class InvoiceController extends Controller
     {
         Gate::authorize('update', $invoice);
 
+        abort_if($invoice->isLocked(), 422,
+            'Issued, paid, or e-invoiced documents cannot be edited.');
+
         DB::transaction(function () use ($request, $invoice) {
             $business = BusinessSetting::query()->lockForUpdate()->first() ?? BusinessSetting::current();
             $customer = Customer::query()
@@ -327,6 +332,9 @@ class InvoiceController extends Controller
             // cancelling and re-issuing rather than editing history.
             abort_if($invoice->document_type->isAdjustment(), 422,
                 'Credit and debit notes cannot be edited — cancel and issue a new one.');
+
+            abort_if(in_array($documentType, DocumentType::adjustmentValues(), true), 422,
+                'Invoices cannot be re-typed into credit or debit notes.');
 
             // Pass the existing invoice so its current balance is not counted
             // twice when re-saving.
@@ -420,6 +428,9 @@ class InvoiceController extends Controller
     public function destroy(Invoice $invoice): RedirectResponse
     {
         Gate::authorize('delete', $invoice);
+
+        abort_if($invoice->isLocked(), 422,
+            'Issued, paid, or e-invoiced documents cannot be deleted.');
 
         // Notes travel with the invoice they correct — an orphaned credit
         // note would still claim to adjust a document that no longer exists.

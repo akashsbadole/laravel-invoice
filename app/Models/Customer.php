@@ -174,7 +174,18 @@ class Customer extends Model
 
     public function totalOutstanding(): string
     {
-        return (string) $this->invoices()->sum('balance_amount');
+        $saleTypes = array_column(
+            array_filter(DocumentType::cases(), fn (DocumentType $type) => $type->isSale()),
+            'value',
+        );
+
+        return (string) round(
+            (float) $this->invoices()
+                ->whereIn('document_type', $saleTypes)
+                ->whereNotIn('status', [InvoiceStatus::Cancelled->value, InvoiceStatus::Refunded->value, InvoiceStatus::Draft->value])
+                ->sum('balance_amount'),
+            2,
+        );
     }
 
     /**

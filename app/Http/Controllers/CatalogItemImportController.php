@@ -62,7 +62,16 @@ class CatalogItemImportController extends Controller
      */
     protected function columnsFor(string $industry): array
     {
-        return CatalogField::names($industry);
+        $columns = CatalogField::names($industry);
+
+        if (! request()->user()?->canDo(Permission::ViewCosts)) {
+            $columns = array_values(array_filter(
+                $columns,
+                fn (string $column): bool => $column !== 'cost_price',
+            ));
+        }
+
+        return $columns;
     }
 
     public function template(): StreamedResponse

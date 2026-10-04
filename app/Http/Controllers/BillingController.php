@@ -100,6 +100,18 @@ class BillingController extends Controller
             'razorpay_signature' => ['required', 'string'],
         ]);
 
+        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
+
+        /** @var Tenant $tenant */
+        $tenant = $request->user()->tenant;
+        $plan = Plan::query()->where('slug', $validated['plan'])->firstOrFail();
+
+        // 1. Prevent payment replay attack
+        if (Subscription::query()->where('gateway_subscription_id', $validated['razorpay_payment_id'])->exists()) {
+            return back()->withErrors(['plan' => 'This payment has already been processed.']);
+        }
+
+        // 2. Verify payment signature
         if (! $this->razorpay->verifyPaymentSignature(
             $validated['razorpay_order_id'],
             $validated['razorpay_payment_id'],
@@ -108,11 +120,26 @@ class BillingController extends Controller
             return back()->withErrors(['plan' => 'Payment verification failed. Please try again.']);
         }
 
-        abort_unless($request->user()->canDo(Permission::ManageUsers), 403);
+        // 3. Verify order notes and paid amount match plan and tenant
+        if ($this->razorpay->configured()) {
+            $order = $this->razorpay->fetchOrder($validated['razorpay_order_id']);
+            if ($order) {
+                $notes = $order['notes'] ?? [];
+                $expectedAmount = (int) round((float) $plan->price * 100);
 
-        /** @var Tenant $tenant */
-        $tenant = $request->user()->tenant;
-        $plan = Plan::query()->where('slug', $validated['plan'])->firstOrFail();
+                if (isset($notes['plan_slug']) && $notes['plan_slug'] !== $plan->slug) {
+                    return back()->withErrors(['plan' => 'Payment does not match the selected plan.']);
+                }
+
+                if (isset($notes['tenant_id']) && (int) $notes['tenant_id'] !== (int) $tenant->id) {
+                    return back()->withErrors(['plan' => 'Payment belongs to another account.']);
+                }
+
+                if (isset($order['amount']) && $order['amount'] !== null && (int) $order['amount'] !== $expectedAmount) {
+                    return back()->withErrors(['plan' => 'Paid amount does not match the plan price.']);
+                }
+            }
+        }
 
         $subscription = $this->activate($tenant, $plan, $validated['razorpay_payment_id']);
         $this->sendReceipt($subscription, $plan);

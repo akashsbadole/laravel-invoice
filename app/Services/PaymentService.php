@@ -9,6 +9,7 @@ use App\Models\InvoiceEvent;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Single entry point for recording money against an invoice, so a manual
@@ -23,23 +24,71 @@ class PaymentService
     public function record(Invoice $invoice, array $attributes, ?User $receivedBy = null): Payment
     {
         return DB::transaction(function () use ($invoice, $attributes, $receivedBy) {
-            $payment = $invoice->payments()->create([
+            /** @var Invoice $lockedInvoice */
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($invoice->id);
+            $lockedInvoice->load('payments');
+            $lockedInvoice->recalculatePaymentStatus();
+
+            $amount = (float) $attributes['amount'];
+            $balance = (float) $lockedInvoice->balance_amount;
+
+            if ($amount > $balance + 0.005) {
+                throw ValidationException::withMessages([
+                    'amount' => sprintf('Payment amount exceeds remaining balance of Rs. %s.', number_format($balance, 2)),
+                ]);
+            }
+
+            $payment = $lockedInvoice->payments()->create([
                 ...$attributes,
                 'received_by' => $receivedBy?->id,
             ]);
 
-            $invoice->load('payments');
-            $invoice->recalculatePaymentStatus();
-            $invoice->save();
+            $lockedInvoice->load('payments');
+            $lockedInvoice->recalculatePaymentStatus();
+            $lockedInvoice->save();
 
             InvoiceEvent::log(
-                $invoice,
+                $lockedInvoice,
                 InvoiceEventType::PaymentRecorded,
                 ['amount' => $payment->amount, 'payment_id' => $payment->id],
                 $receivedBy?->id,
             );
 
             return $payment;
+        });
+    }
+
+    public function reverse(Payment $payment, ?User $reversedBy = null, ?string $reason = null): void
+    {
+        DB::transaction(function () use ($payment, $reversedBy, $reason) {
+            /** @var Invoice $lockedInvoice */
+            $lockedInvoice = Invoice::query()->lockForUpdate()->findOrFail($payment->invoice_id);
+
+            $lockedInvoice->installments()
+                ->where('payment_id', $payment->id)
+                ->update([
+                    'status' => InstallmentStatus::Pending,
+                    'payment_id' => null,
+                    'paid_at' => null,
+                ]);
+
+            InvoiceEvent::log(
+                $lockedInvoice,
+                InvoiceEventType::Updated,
+                [
+                    'action' => 'payment_reversed',
+                    'amount' => $payment->amount,
+                    'payment_id' => $payment->id,
+                    'reason' => $reason,
+                ],
+                $reversedBy?->id,
+            );
+
+            $payment->delete();
+
+            $lockedInvoice->load('payments');
+            $lockedInvoice->recalculatePaymentStatus();
+            $lockedInvoice->save();
         });
     }
 

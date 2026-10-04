@@ -64,6 +64,10 @@ class Tenant extends Model
                 return (int) $impersonated;
             }
 
+            if ($currentFirm = session('current_tenant_id')) {
+                return (int) $currentFirm;
+            }
+
             return auth()->user()?->tenant_id;
         } finally {
             static::$resolving = false;

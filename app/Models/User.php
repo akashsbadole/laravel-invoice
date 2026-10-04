@@ -53,13 +53,42 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             /* @chisel-2fa */
             'two_factor_confirmed_at' => 'datetime',
             /* @end-chisel-2fa */
         ];
+    }
+
+    public function getTenantIdAttribute(): ?int
+    {
+        if ($impersonated = session('impersonating.tenant_id')) {
+            return (int) $impersonated;
+        }
+
+        if ($currentFirm = session('current_tenant_id')) {
+            return (int) $currentFirm;
+        }
+
+        return $this->attributes['tenant_id'] ?? null;
+    }
+
+    public function getRoleAttribute(): ?UserRole
+    {
+        if ($currentFirm = session('current_tenant_id')) {
+            $membershipRole = $this->membershipRole((int) $currentFirm);
+            if ($membershipRole) {
+                return $membershipRole;
+            }
+        }
+
+        $raw = $this->attributes['role'] ?? null;
+        if (! $raw) {
+            return null;
+        }
+
+        return $raw instanceof UserRole ? $raw : UserRole::tryFrom($raw);
     }
 
     public function isAdmin(): bool

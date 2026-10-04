@@ -91,7 +91,7 @@ export default function ShowCustomer({
     timeline: TimelineEvent[];
 }) {
 const { auth } = usePage<{ auth: Auth }>().props;
-    const isAdmin = auth.user.role === 'admin';
+    const canDeleteCustomer = ['admin', 'super_admin', 'manager'].includes(auth.user.role);
     // Tracked by id so only the row being worked on shows a spinner.
     const [reQuotingId, setReQuotingId] = useState<number | null>(null);
 
@@ -135,7 +135,7 @@ const { auth } = usePage<{ auth: Auth }>().props;
                             </Link>
                         </Button>
 
-                        {isAdmin && (
+                        {canDeleteCustomer && (
                             <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="destructive">

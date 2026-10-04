@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CatalogStatus;
+use App\Enums\Permission;
 use App\Http\Requests\Quotations\StoreQuotationDraftRequest;
 use App\Models\CatalogItem;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,8 @@ class QuotationController extends Controller
 {
     public function create(): Response
     {
+        abort_unless(request()->user()->canDo(Permission::ManageQuotations), 403);
+
         return Inertia::render('quotations/create', [
             'products' => $this->products(),
         ]);
@@ -58,6 +61,8 @@ class QuotationController extends Controller
 
     public function draft(StoreQuotationDraftRequest $request): RedirectResponse
     {
+        abort_unless($request->user()->canDo(Permission::ManageQuotations), 403);
+
         $selected = collect($request->validated('items'))
             ->keyBy('catalog_item_id');
 

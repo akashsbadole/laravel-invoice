@@ -62,6 +62,8 @@ Route::get('/contact', fn () => inertia('contact', [
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'create'])->name('login');
     Route::post('login', [AuthController::class, 'store'])->middleware('throttle:6,1');
+    Route::get('two-factor-challenge', [AuthController::class, 'twoFactorChallenge'])->name('two-factor.login');
+    Route::post('two-factor-challenge', [AuthController::class, 'verifyTwoFactor'])->name('two-factor.verify')->middleware('throttle:6,1');
     Route::get('forgot-password', [AuthController::class, 'forgot'])->name('password.request');
     Route::post('forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email')->middleware('throttle:6,1');
     Route::get('reset-password/{token}', [AuthController::class, 'reset'])->name('password.reset');
@@ -171,6 +173,7 @@ Route::middleware(['auth', EnsureTenantUser::class, EnsureUserIsActive::class, E
 
     Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('payments/{payment}/receipt', [ReceiptController::class, 'payment'])->name('payments.receipt');
+    Route::post('payments/{payment}/reverse', [PaymentController::class, 'reverse'])->name('payments.reverse');
     Route::post('invoices/{invoice}/installments', [InstallmentController::class, 'store'])->name('invoices.installments.store');
     Route::post('invoices/{invoice}/installments/{installment}/collect', [InstallmentController::class, 'collect'])->name('invoices.installments.collect');
     Route::delete('invoices/{invoice}/installments/{installment}', [InstallmentController::class, 'destroy'])->name('invoices.installments.destroy');

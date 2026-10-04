@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\CustomerPortalLinkMail;
+use App\Concerns\TenantScope;
 use App\Models\Customer;
 use App\Models\CustomerPortalToken;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +27,7 @@ class PortalAuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $customer = Customer::query()->where('email', $validated['email'])->first();
+        $customer = Customer::query()->withoutGlobalScope(TenantScope::class)->where('email', $validated['email'])->first();
 
         // Always respond identically so emails can't be enumerated.
         if ($customer && $customer->email) {
@@ -46,7 +47,7 @@ class PortalAuthController extends Controller
 
     public function verify(Request $request, string $token): RedirectResponse
     {
-        $loginToken = CustomerPortalToken::query()->where('token', $token)->first();
+        $loginToken = CustomerPortalToken::query()->withoutGlobalScope(TenantScope::class)->where('token', $token)->first();
 
         if (! $loginToken || ! $loginToken->isUsable()) {
             return to_route('portal.login')->withErrors(['email' => __('This sign-in link is invalid or expired.')]);
