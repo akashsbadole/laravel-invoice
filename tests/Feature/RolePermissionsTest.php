@@ -353,4 +353,40 @@ class RolePermissionsTest extends TestCase
         // No trial, no paid plan — the free plan must not bounce them to billing.
         $this->get(route('dashboard'))->assertOk();
     }
+
+    public function test_role_by_route_permission_enforcement(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $this->subscribe($tenant);
+
+        $viewer = $this->userWithRole(UserRole::Viewer, $tenant);
+        $creator = $this->userWithRole(UserRole::InvoiceCreator, $tenant);
+        $manager = $this->userWithRole(UserRole::Manager, $tenant);
+        $admin = $this->userWithRole(UserRole::Admin, $tenant);
+
+        // Viewer checks
+        $this->actingAs($viewer)->get(route('invoices.index'))->assertOk();
+        $this->actingAs($viewer)->get(route('customers.index'))->assertOk();
+        $this->actingAs($viewer)->get(route('catalog.index'))->assertOk();
+        $this->actingAs($viewer)->get(route('invoices.create'))->assertForbidden();
+        $this->actingAs($viewer)->get(route('reports.index'))->assertOk();
+        $this->actingAs($viewer)->get(route('payments.index'))->assertForbidden();
+        $this->actingAs($viewer)->get(route('business.edit'))->assertForbidden();
+
+        // InvoiceCreator checks
+        $this->actingAs($creator)->get(route('invoices.index'))->assertOk();
+        $this->actingAs($creator)->get(route('invoices.create'))->assertOk();
+        $this->actingAs($creator)->get(route('payments.index'))->assertOk();
+        $this->actingAs($creator)->get(route('reports.index'))->assertForbidden();
+        $this->actingAs($creator)->get(route('business.edit'))->assertForbidden();
+
+        // Manager checks
+        $this->actingAs($manager)->get(route('reports.index'))->assertOk();
+        $this->actingAs($manager)->get(route('catalog.create'))->assertOk();
+        $this->actingAs($manager)->get(route('business.edit'))->assertForbidden();
+
+        // Admin checks
+        $this->actingAs($admin)->get(route('business.edit'))->assertOk();
+        $this->actingAs($admin)->get(route('users.index'))->assertOk();
+    }
 }
