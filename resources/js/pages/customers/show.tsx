@@ -32,16 +32,11 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { dashboard } from '@/routes';
 import { edit as editCustomer, index } from '@/routes/customers';
+import { usePage } from '@inertiajs/react';
 import { update as updateFollowup } from '@/routes/customers/followups';
 import type { Auth } from '@/types/auth';
 import type { Customer, CustomerAdvance, CustomerFollowup, Staff } from '@/types/customer';
-import { cn } from '@/lib/utils';
-
-const currency = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-});
+import { cn, formatCurrency } from '@/lib/utils';
 
 const statusOptions: CustomerFollowup['status'][] = [
     'pending',
@@ -90,6 +85,11 @@ export default function ShowCustomer({
     staff: Staff[];
     timeline: TimelineEvent[];
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 0),
+    };
 const { auth } = usePage<{ auth: Auth }>().props;
     const canDeleteCustomer = ['admin', 'super_admin', 'manager'].includes(auth.user.role);
     // Tracked by id so only the row being worked on shows a spinner.

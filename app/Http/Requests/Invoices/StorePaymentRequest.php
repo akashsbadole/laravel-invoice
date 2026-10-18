@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Invoices;
 
+use App\Enums\PaymentMethod;
 use App\Enums\Permission;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePaymentRequest extends FormRequest
 {
@@ -24,7 +26,7 @@ class StorePaymentRequest extends FormRequest
         return [
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_date' => ['required', 'date'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,card,upi,cheque,other'],
+            'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
             'reference_number' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];

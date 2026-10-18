@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Package, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import QuotationController from '@/actions/App/Http/Controllers/QuotationController';
@@ -7,24 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { rateTypeLabel } from '@/lib/industries';
 import { index as catalogIndex } from '@/routes/catalog';
 import { index as invoicesIndex } from '@/routes/invoices';
 import { dashboard } from '@/routes';
 import type { QuotationProduct } from '@/types/invoice';
 
-const currency = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2,
-});
-
 export default function CreateQuotation({
     products,
 }: {
     products: QuotationProduct[];
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 2),
+    };
     const [query, setQuery] = useState('');
     const [picked, setPicked] = useState<
         Record<number, { quantity: number; rate: number | null }>

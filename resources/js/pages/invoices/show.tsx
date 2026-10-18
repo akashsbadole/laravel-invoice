@@ -36,9 +36,7 @@ import AdjustmentNoteDialog from '@/components/invoices/adjustment-note-dialog';
 import { buildDocumentMessage, buildMailtoUrl, buildPlainShareMessage, buildPublicInvoiceUrl, buildUpiCollectUrl, buildWhatsAppShareUrl } from '@/lib/share-invoice';
 import type { Auth } from '@/types/auth';
 import type { Installment, Invoice } from '@/types/invoice';
-import { cn } from '@/lib/utils';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
+import { cn, formatCurrency } from '@/lib/utils';
 
 type RecurringProfile = {
     id: number;
@@ -67,6 +65,11 @@ type DiscountApproval = {
 };
 
 export default function ShowInvoice({ invoice, recurringProfile, business, installmentPlan, capabilities, availableAdvances, discountApproval }: { invoice: Invoice; recurringProfile: RecurringProfile; business: { default_currency: string; business_name: string; upi_id: string | null }; installmentPlan: { planned_total: number; collected_total: number; count: number }; capabilities?: { metal_rates?: boolean }; availableAdvances?: AvailableAdvance[]; discountApproval?: DiscountApproval }) {
+    const currencyCode = business?.default_currency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 2),
+    };
+
     const usesWeightFields =
         capabilities?.metal_rates !== false && invoice.items.some((i) => i.metal_type || i.purity);
     const hasAreaItems = invoice.items.some((i) => i.length && i.width);

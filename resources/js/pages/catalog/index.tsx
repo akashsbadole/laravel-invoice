@@ -38,10 +38,10 @@ import {
 } from '@/components/ui/select';
 import {
     create as catalogCreate,
-    excelDownload,
+    excelExport as excelDownload,
     excelTemplate,
     template as catalogTemplate,
-    download as catalogDownload,
+    exportMethod as catalogDownload,
 } from '@/routes/catalog';
 import { dashboard } from '@/routes';
 import type { CatalogFieldSpec, IndustryConfig } from '@/lib/industries';

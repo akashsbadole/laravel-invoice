@@ -1,14 +1,13 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Bell, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { create as createInvoice, show as showInvoice } from '@/routes/invoices';
 import { index as remindersIndex } from '@/routes/reminders';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
 type Stats = {
     total_invoices: number;
@@ -46,6 +45,12 @@ export default function Dashboard({
     recentInvoices: RecentInvoice[];
     reminderCount: number;
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 0),
+    };
+
     const maxSales = Math.max(...months.map((m) => Math.max(m.sales, m.collected)), 1);
 
     return (

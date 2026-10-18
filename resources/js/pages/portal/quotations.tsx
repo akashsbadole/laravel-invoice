@@ -1,12 +1,11 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { FileText, LogOut } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 import type { PortalQuotation } from '@/types/customer';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
 export default function PortalQuotations({
     customer,
@@ -15,6 +14,11 @@ export default function PortalQuotations({
     customer: { full_name: string; email: string | null; mobile_number: string };
     quotations: PortalQuotation[];
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 0),
+    };
     return (
         <>
             <Head title="My quotations" />

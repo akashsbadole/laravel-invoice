@@ -1,9 +1,10 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Download, FileText, LogOut } from 'lucide-react';
 import { AppLogo } from '@/components/app-logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 import type { Paginated } from '@/types/customer';
 
 type PortalInvoice = {
@@ -18,8 +19,6 @@ type PortalInvoice = {
     balance_amount: string;
 };
 
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-
 export default function PortalDashboard({
     customer,
     invoices,
@@ -29,6 +28,11 @@ export default function PortalDashboard({
     invoices: Paginated<PortalInvoice>;
     totals: { invoiced: number; paid: number; outstanding: number };
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 0),
+    };
     return (
         <>
             <Head title="My invoices" />

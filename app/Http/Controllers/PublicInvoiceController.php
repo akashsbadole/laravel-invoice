@@ -53,7 +53,7 @@ class PublicInvoiceController extends Controller
 
         return Tenant::runInContext($shareLink->tenant_id, function () use ($shareLink, $firstView, $token) {
             $invoice = $shareLink->invoice()->with([
-                'customer', 'salesperson', 'items.charges', 'payments', 'template',
+                'customer', 'salesperson', 'items.charges', 'charges', 'payments', 'template',
             ])->firstOrFail();
 
             $template = $invoice->template ?? InvoiceTemplate::forTenantDefault($invoice->tenant_id);
@@ -78,7 +78,7 @@ class PublicInvoiceController extends Controller
                 'business' => [
                     ...$settings->only([
                         'business_name', 'logo_path', 'address', 'phone', 'email',
-                        'website', 'tax_number', 'footer_text',
+                        'website', 'tax_number', 'footer_text', 'default_currency',
                     ]),
                     'upi_id' => $settings->bank_details['upi_id'] ?? null,
                 ],
@@ -264,19 +264,28 @@ class PublicInvoiceController extends Controller
                 'item_name' => $item->item_name,
                 'description' => $item->description,
                 'quantity' => (float) $item->quantity,
-                'unit_label' => $item->unit_label,
                 'rate_type' => $item->rate_type?->value,
                 'rate' => (float) $item->rate,
+                'metal_type' => $item->metal_type,
+                'purity' => $item->purity,
+                'huid_number' => $item->huid_number,
+                'hsn_code' => $item->hsn_code,
                 'net_weight' => $item->net_weight !== null ? (float) $item->net_weight : null,
                 'gross_weight' => $item->gross_weight !== null ? (float) $item->gross_weight : null,
                 'wastage_percent' => $item->wastage_percent !== null ? (float) $item->wastage_percent : null,
-                'making_charge' => $item->making_charge !== null ? (float) $item->making_charge : null,
-                'item_total' => (float) $item->item_total,
+                'total' => (float) $item->total,
+                'item_total' => (float) $item->total,
                 'charges' => $item->charges->map(fn ($c) => [
                     'id' => $c->id,
-                    'charge_name' => $c->charge_name,
+                    'label' => $c->label,
+                    'charge_name' => $c->label,
                     'amount' => (float) $c->amount,
                 ])->values()->all(),
+            ])->values()->all(),
+            'charges' => $invoice->charges->map(fn ($c) => [
+                'id' => $c->id,
+                'label' => $c->label,
+                'amount' => (float) $c->amount,
             ])->values()->all(),
             'payments' => $invoice->payments->map(fn ($p) => [
                 'id' => $p->id,

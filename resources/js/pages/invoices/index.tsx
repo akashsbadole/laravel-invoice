@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { FileText, Package, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +12,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatCurrency } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { create, index, show } from '@/routes/invoices';
 import type { Paginated } from '@/types/customer';
 import type { Invoice, InvoiceStatus } from '@/types/invoice';
 import InvoiceController from '@/actions/App/Http/Controllers/InvoiceController';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
 const statusColors: Record<InvoiceStatus, string> = {
     unpaid: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
@@ -52,6 +51,12 @@ export default function InvoicesIndex({
     filters: { search?: string; status?: string; document_type?: string };
     usesJewelryDocuments: boolean;
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 0),
+    };
+
     const activeTab = filters.document_type || 'all';
 
     // A tenant that never sells jewelry has no jewelry documents to filter.

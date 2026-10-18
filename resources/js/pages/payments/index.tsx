@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Receipt } from 'lucide-react';
 import Heading from '@/components/heading';
 import PaymentController from '@/actions/App/Http/Controllers/PaymentController';
@@ -12,12 +12,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatCurrency } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import { index as paymentsIndex, receipt } from '@/routes/payments';
 import type { Paginated } from '@/types/customer';
 import type { PaymentRow } from '@/types/payment';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
 export default function PaymentsIndex({
     payments,
@@ -28,6 +27,11 @@ export default function PaymentsIndex({
     total: number;
     filters: { search?: string; method?: string; from?: string; to?: string };
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 2),
+    };
     return (
         <>
             <Head title="Payments" />

@@ -5,9 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { buildUpiCollectUrl } from '@/lib/share-invoice';
+import { formatCurrency } from '@/lib/utils';
 import type { Invoice } from '@/types/invoice';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
 export default function PortalInvoiceShow({
     invoice,
@@ -21,8 +20,13 @@ export default function PortalInvoiceShow({
         email: string | null;
         tax_number: string | null;
         upi_id: string | null;
+        default_currency?: string | null;
     };
 }) {
+    const currencyCode = business.default_currency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 2),
+    };
     const upiUrl =
         business.upi_id && Number(invoice.balance_amount) > 0
             ? buildUpiCollectUrl({

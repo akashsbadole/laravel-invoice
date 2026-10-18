@@ -5,6 +5,7 @@ namespace App\Http\Requests\Invoices;
 use App\Enums\DocumentType;
 use App\Enums\LineType;
 use App\Enums\Permission;
+use App\Enums\PricingMode;
 use App\Models\CatalogVariant;
 use App\Support\Attributes;
 use App\Support\Industry;
@@ -83,7 +84,7 @@ class StoreInvoiceRequest extends FormRequest
             'reference_number' => ['nullable', 'string', 'max:255'],
             'salesperson_id' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $this->user()->tenant_id)],
             'invoice_template_id' => ['nullable', Rule::exists('invoice_templates', 'id')->where('tenant_id', $this->user()->tenant_id)],
-            'pricing_mode' => ['required', 'in:manual,jewelry_calculated'],
+            'pricing_mode' => ['required', Rule::enum(PricingMode::class)],
             'tax_mode' => ['nullable', 'in:single,cgst_sgst,igst'],
             'discount' => ['nullable', 'numeric', 'min:0'],
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],

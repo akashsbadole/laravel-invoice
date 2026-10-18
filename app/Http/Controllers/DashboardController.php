@@ -74,10 +74,7 @@ class DashboardController extends Controller
 
         $acceptedQuotesReadyToConvert = Invoice::query()
             ->where('document_type', DocumentType::Quotation->value)
-            ->where(function ($q) {
-                $q->where('quotation_status', 'accepted')
-                    ->orWhere('status', 'accepted');
-            })
+            ->where('quotation_status', 'accepted')
             ->whereNull('converted_to_id')
             ->with('customer:id,full_name,mobile_number')
             ->latest('invoice_date')
@@ -90,9 +87,7 @@ class DashboardController extends Controller
         $waitingOnCustomer = Invoice::query()
             ->where('document_type', DocumentType::Quotation->value)
             ->whereNull('converted_to_id')
-            ->where(function ($q) {
-                $q->where('quotation_status', 'sent')->orWhere('status', 'sent');
-            })
+            ->where('quotation_status', 'sent')
             ->whereDate('invoice_date', '<=', $today->copy()->subDays(2))
             ->with([
                 'customer:id,full_name,mobile_number',

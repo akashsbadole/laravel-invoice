@@ -602,7 +602,7 @@ class InvoiceController extends Controller
             'apply_advances' => ['nullable', 'boolean'],
         ]);
 
-        $industry = $invoice->tenant->industry ?? 'general_trade';
+        $industry = $invoice->tenant->industry ?? 'general';
         $defaultType = Industry::usesWeightFields($industry) ? DocumentType::JewelryInvoice->value : DocumentType::GeneralInvoice->value;
         $documentType = $validated['document_type'] ?? $defaultType;
 
@@ -731,9 +731,15 @@ class InvoiceController extends Controller
             'message' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        Mail::to($validated['email'])->send(
-            new InvoicePdfMail($invoice, $validated['message'] ?? null)
-        );
+        try {
+            Mail::to($validated['email'])->send(
+                new InvoicePdfMail($invoice, $validated['message'] ?? null)
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withErrors(['email' => __('Failed to send email. Please check mail configuration.')]);
+        }
 
         InvoiceEvent::log(
             $invoice,

@@ -1,4 +1,4 @@
-import { Form, Head, Link, router } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { Cake, FileText, Gift, MessageSquare, Plus, Receipt as ReceiptIcon, Users } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
@@ -25,6 +25,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { formatCurrency } from '@/lib/utils';
 import ReminderController from '@/actions/App/Http/Controllers/ReminderController';
 import { dashboard } from '@/routes';
 import { index as remindersIndex } from '@/routes/reminders';
@@ -37,8 +38,6 @@ import type {
     ExpiringQuote,
     OccasionReminder,
 } from '@/types/reminder';
-
-const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
 export default function RemindersPage({
     payments,
@@ -61,6 +60,12 @@ export default function RemindersPage({
     customers: { id: number; full_name: string }[];
     smsDriver: string;
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const currency = {
+        format: (val: number) => formatCurrency(val, currencyCode, 2),
+    };
+
     return (
         <>
             <Head title="Reminders" />
