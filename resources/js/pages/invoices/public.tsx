@@ -9,13 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { buildUpiCollectUrl, buildWhatsAppShareUrl } from "@/lib/share-invoice";
-import { cn } from "@/lib/utils";
-
-const currency = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 2,
-});
+import { cn, formatCurrency } from "@/lib/utils";
 
 type PublicInvoice = {
   invoice_number: string;
@@ -72,6 +66,7 @@ type Business = {
   tax_number: string | null;
   footer_text: string | null;
   upi_id: string | null;
+  default_currency?: string | null;
 };
 
 type TemplateConfig = {
@@ -140,6 +135,11 @@ export default function PublicInvoicePage({
   }
 
   if (!invoice || !business) return null;
+
+  const currencyCode = business.default_currency || "INR";
+  const currency = {
+    format: (val: number) => formatCurrency(val, currencyCode, 2),
+  };
 
   const isQuotation = quotation !== null && quotation !== undefined;
 
@@ -425,12 +425,13 @@ export default function PublicInvoicePage({
 
             {/* Summary & Totals */}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2 text-sm max-w-sm ml-auto">
-              <Row label="Subtotal" value={invoice.subtotal} />
+              <Row label="Subtotal" value={invoice.subtotal} currencyCode={currencyCode} />
               {(invoice.charges_summary ?? []).map((row) => (
                 <Row
                   key={row.label}
                   label={row.label}
                   value={String(row.amount)}
+                  currencyCode={currencyCode}
                 />
               ))}
               {Number(invoice.discount) > 0 && (
@@ -438,23 +439,25 @@ export default function PublicInvoicePage({
                   label="Discount"
                   value={`-${invoice.discount}`}
                   className="text-emerald-600 dark:text-emerald-400 font-medium"
+                  currencyCode={currencyCode}
                 />
               )}
               {invoice.tax_breakdown && invoice.tax_breakdown.length > 0
                 ? invoice.tax_breakdown.map((row, i) => (
-                    <Row key={i} label={row.label} value={String(row.amount)} />
+                    <Row key={i} label={row.label} value={String(row.amount)} currencyCode={currencyCode} />
                   ))
                 : Number(invoice.tax) > 0 && (
-                    <Row label="Tax" value={invoice.tax} />
+                    <Row label="Tax" value={invoice.tax} currencyCode={currencyCode} />
                   )}
               {Number(invoice.tcs_amount) > 0 && (
                 <Row
                   label={`TCS @ ${invoice.tcs_rate}%`}
                   value={invoice.tcs_amount}
+                  currencyCode={currencyCode}
                 />
               )}
               {Number(invoice.round_off) !== 0 && (
-                <Row label="Round off" value={invoice.round_off} />
+                <Row label="Round off" value={invoice.round_off} currencyCode={currencyCode} />
               )}
 
               <div className="border-t-2 border-blue-200 dark:border-blue-800 pt-3 mt-3 flex justify-between items-center bg-blue-50/60 dark:bg-blue-950/30 -mx-2 px-2 py-2 rounded-lg">
@@ -514,6 +517,11 @@ function QuotationPanel({
   invoice: PublicInvoice;
   business: Business;
 }) {
+  const currencyCode = business.default_currency || "INR";
+  const currency = {
+    format: (val: number) => formatCurrency(val, currencyCode, 2),
+  };
+
   const decide = useForm({ decision: "accepted", response: "", name: "" });
   const changes = useForm({ response: "", name: "" });
 
@@ -752,11 +760,13 @@ function Row({
   value,
   emphasize,
   className,
+  currencyCode = "INR",
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
   className?: string;
+  currencyCode?: string;
 }) {
   return (
     <div
@@ -768,7 +778,7 @@ function Row({
       )}
     >
       <span>{label}</span>
-      <span>{currency.format(Number(value))}</span>
+      <span>{formatCurrency(Number(value), currencyCode, 2)}</span>
     </div>
   );
 }

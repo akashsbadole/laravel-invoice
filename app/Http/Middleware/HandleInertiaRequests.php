@@ -64,6 +64,9 @@ class HandleInertiaRequests extends Middleware
                     'metal_rates' => Industry::usesMetalRates($this->industryKey($request)),
                 ]
                 : [],
+            'defaultCurrency' => fn (): string => $request->user()?->tenant_id
+                ? (BusinessSetting::forTenant($request->user()->tenant_id)->default_currency ?? 'INR')
+                : 'INR',
         ]);
     }
 

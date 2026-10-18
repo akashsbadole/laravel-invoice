@@ -39,7 +39,11 @@ class PortalAuthController extends Controller
             $token->tenant_id = $customer->tenant_id;
             $token->save();
 
-            Mail::to($customer->email)->send(new CustomerPortalLinkMail($customer, $token->token));
+            try {
+                Mail::to($customer->email)->send(new CustomerPortalLinkMail($customer, $token->token));
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return back()->with('status', __('If an account exists for that email, a sign-in link is on its way.'));

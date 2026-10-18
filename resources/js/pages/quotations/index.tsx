@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { BellRing, Eye, Package } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -6,14 +6,9 @@ import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/utils';
 import { index as invoicesIndex, show as invoiceShow } from '@/routes/invoices';
 import { create as createQuotation, nudge } from '@/routes/quotations';
-
-const currency = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-});
 
 type Stage = {
     value: string;
@@ -76,6 +71,14 @@ type Analytics = {
     conversion_rate: number;
 };
 
+function useCurrency(maxDigits = 0) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    return {
+        format: (val: number) => formatCurrency(val, currencyCode, maxDigits),
+    };
+}
+
 export default function QuotationPipeline({
     stages,
     openValue,
@@ -99,6 +102,7 @@ export default function QuotationPipeline({
     acceptedQuotations?: ExtendedQuotationRow[];
     quotations?: ExtendedQuotationRow[];
 }) {
+    const currency = useCurrency(0);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     function toggleSelect(id: number) {
@@ -458,6 +462,7 @@ export default function QuotationPipeline({
  * 1-Click Convert to Invoice Dialog
  */
 function ConvertDialog({ quote }: { quote: ExtendedQuotationRow }) {
+    const currency = useCurrency(0);
     const [open, setOpen] = useState(false);
 
     return (
@@ -558,6 +563,8 @@ function ChaseList({
     selectedIds: Set<number>;
     onToggleSelect: (id: number) => void;
 }) {
+    const currency = useCurrency(0);
+
     if (rows.length === 0) {
         return null;
     }

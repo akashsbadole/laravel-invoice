@@ -39,14 +39,14 @@ class QuotationDigestCommand extends Command
                 });
 
                 $needsChase = $quotations->filter(function ($q) {
-                    return $q->quotation_status === QuotationStatus::Sent->value
+                    return $q->quotation_status === QuotationStatus::Sent
                         && $q->shareLinks->isNotEmpty()
                         && $q->shareLinks->sortByDesc('id')->first()->viewed_at !== null
                         && $q->invoice_date->diffInDays(now()) >= 3;
                 });
 
                 $acceptedNotConverted = $quotations->filter(function ($q) {
-                    return $q->quotation_status === QuotationStatus::Accepted->value
+                    return $q->quotation_status === QuotationStatus::Accepted
                         && $q->converted_to_id === null;
                 });
 

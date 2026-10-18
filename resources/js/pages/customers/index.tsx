@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Download, Plus, Search } from 'lucide-react';
 import CustomerController from '@/actions/App/Http/Controllers/CustomerController';
 import Heading from '@/components/heading';
@@ -13,19 +13,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatCurrency } from '@/lib/utils';
 import { create, download, index, show } from '@/routes/customers';
 import { dashboard } from '@/routes';
 import type { Customer, CustomerFilters, Paginated, Staff } from '@/types/customer';
-
-const currency = new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-});
-
-function money(value?: string | null) {
-    return currency.format(Number(value ?? 0));
-}
 
 export default function CustomersIndex({
     customers,
@@ -36,6 +27,9 @@ export default function CustomersIndex({
     filters: CustomerFilters;
     staff: Staff[];
 }) {
+    const { defaultCurrency } = usePage<{ defaultCurrency?: string }>().props;
+    const currencyCode = defaultCurrency || 'INR';
+    const money = (value?: string | null) => formatCurrency(Number(value ?? 0), currencyCode, 0);
     return (
         <>
             <Head title="Customers" />
